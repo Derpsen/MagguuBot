@@ -6,7 +6,9 @@ import { api } from '../lib/api';
 interface Warning {
   id: number;
   userId: string;
+  username: string;
   moderatorId: string;
+  moderator: string;
   reason: string | null;
   createdAt: string;
 }
@@ -44,11 +46,11 @@ onMounted(load);
         <div v-for="w in warnings" :key="w.id" class="table-row">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 text-sm">
-              <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300">{{ w.userId }}</code>
-              <span class="text-slate-500">by</span>
-              <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300">{{ w.moderatorId }}</code>
+              <span class="font-medium text-white">{{ w.username }}</span>
+              <span class="text-slate-500">von</span>
+              <span class="text-slate-300">{{ w.moderator }}</span>
             </div>
-            <div class="mt-1 truncate text-sm text-slate-300">{{ w.reason ?? '_kein Grund_' }}</div>
+            <div class="mt-1 truncate text-sm text-slate-300">{{ w.reason ?? 'kein Grund angegeben' }}</div>
             <div class="mt-0.5 text-xs text-slate-500">{{ new Date(w.createdAt).toLocaleString() }}</div>
           </div>
           <button class="btn-danger" @click="del(w.id)">

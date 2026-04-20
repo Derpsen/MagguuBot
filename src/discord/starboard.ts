@@ -8,10 +8,10 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
-import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { starboardPosts } from '../db/schema.js';
 import { Colors, truncate } from '../embeds/colors.js';
+import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
 import { getClient } from './client.js';
@@ -24,7 +24,7 @@ function starEmojiFrom(reaction: MessageReaction | PartialMessageReaction): stri
 
 function matchesStar(reaction: MessageReaction | PartialMessageReaction): boolean {
   const emoji = starEmojiFrom(reaction);
-  return emoji === config.STARBOARD_EMOJI;
+  return emoji === getSetting('starboardEmoji');
 }
 
 async function countStars(message: Message | PartialMessage): Promise<number> {
@@ -71,7 +71,7 @@ export async function handleStarboardReactionChange(
   if (!starboard || starboard.type !== ChannelType.GuildText) return;
 
   if (!existing) {
-    if (count < config.STARBOARD_THRESHOLD) return;
+    if (count < getSetting('starboardThreshold')) return;
     const embed = buildStarEmbed(message as Message, count);
     const posted = await starboard.send({ embeds: [embed] });
     db.insert(starboardPosts)
@@ -137,7 +137,7 @@ function buildStarEmbed(message: Message, count: number): EmbedBuilder {
       name: 'Source',
       value: `[Zum Original](${message.url}) · <#${message.channelId}>`,
     })
-    .setFooter({ text: `${config.STARBOARD_EMOJI} ${count} · ${message.id}` })
+    .setFooter({ text: `${getSetting('starboardEmoji')} ${count} · ${message.id}` })
     .setTimestamp(message.createdAt);
 
   const imageAttachment = message.attachments.find((a) =>

@@ -6,6 +6,11 @@ import {
   ShieldAlert,
   Trophy,
   Webhook,
+  Hash,
+  Clock,
+  Inbox,
+  Puzzle,
+  Settings as SettingsIcon,
   LogOut,
 } from 'lucide-vue-next';
 import type { SessionUser } from '../composables/useSession';
@@ -17,9 +22,14 @@ const { logout } = useSession();
 
 const nav = [
   { name: 'dashboard', label: 'Übersicht', icon: LayoutDashboard, to: '/' },
+  { name: 'requests', label: 'Seerr Requests', icon: Inbox, to: '/requests' },
   { name: 'warnings', label: 'Warnings', icon: ShieldAlert, to: '/warnings' },
   { name: 'leaderboard', label: 'XP-Leaderboard', icon: Trophy, to: '/leaderboard' },
+  { name: 'reminders', label: 'Reminders', icon: Clock, to: '/reminders' },
+  { name: 'role-panels', label: 'Role Panels', icon: Puzzle, to: '/role-panels' },
+  { name: 'channels', label: 'Channels', icon: Hash, to: '/channels' },
   { name: 'webhooks', label: 'Webhooks', icon: Webhook, to: '/webhooks' },
+  { name: 'settings', label: 'Settings', icon: SettingsIcon, to: '/settings' },
 ] as const;
 
 const displayName = computed(() => props.user.globalName ?? props.user.username);

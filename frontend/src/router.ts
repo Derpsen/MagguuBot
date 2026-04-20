@@ -6,6 +6,11 @@ const routes: RouteRecordRaw[] = [
   { path: '/warnings', name: 'warnings', component: () => import('./pages/Warnings.vue') },
   { path: '/leaderboard', name: 'leaderboard', component: () => import('./pages/Leaderboard.vue') },
   { path: '/webhooks', name: 'webhooks', component: () => import('./pages/Webhooks.vue') },
+  { path: '/channels', name: 'channels', component: () => import('./pages/Channels.vue') },
+  { path: '/reminders', name: 'reminders', component: () => import('./pages/Reminders.vue') },
+  { path: '/requests', name: 'requests', component: () => import('./pages/Requests.vue') },
+  { path: '/role-panels', name: 'role-panels', component: () => import('./pages/RolePanels.vue') },
+  { path: '/settings', name: 'settings', component: () => import('./pages/Settings.vue') },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

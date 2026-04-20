@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, type Message } from 'discord.js';
-import { config } from '../config.js';
+import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { postModLog } from './mod-log.js';
 
@@ -7,7 +7,7 @@ const INVITE_PATTERN =
   /(?:https?:\/\/)?(?:www\.)?(?:discord(?:app)?\.com\/invite|discord\.gg|dsc\.gg)\/[A-Za-z0-9-]+/i;
 
 export async function runAutomod(message: Message): Promise<boolean> {
-  if (!config.AUTOMOD_INVITE_FILTER) return false;
+  if (!getSetting('automodInviteFilter')) return false;
   if (!message.inGuild()) return false;
   if (!message.member) return false;
   if (message.author.bot) return false;

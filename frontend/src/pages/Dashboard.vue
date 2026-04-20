@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Clock, ShieldAlert, Trophy, Webhook } from 'lucide-vue-next';
+import { Clock, ShieldAlert, Trophy, Webhook, Inbox, Star } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 interface Stats {
@@ -9,6 +9,9 @@ interface Stats {
   webhooksLast24h: number;
   topUser: { username: string; xp: number; level: number } | null;
   recentActions: Array<{ id: number; action: string; moderator: string; target: string; createdAt: string }>;
+  remindersCount: number;
+  pendingSeerrCount: number;
+  starboardCount: number;
 }
 
 const stats = ref<Stats | null>(null);
@@ -51,14 +54,14 @@ function formatUptime(sec: number): string {
         </div>
         <div class="stat-number">{{ stats.webhooksLast24h }}</div>
       </div>
-      <div class="stat-card">
+      <router-link to="/warnings" class="stat-card cursor-pointer transition-colors hover:border-blurple">
         <div class="flex items-center gap-2 text-slate-400">
           <ShieldAlert class="h-4 w-4" />
-          <span class="stat-label">Active Warnings</span>
+          <span class="stat-label">Warnings</span>
         </div>
         <div class="stat-number">{{ stats.warningsCount }}</div>
-      </div>
-      <div class="stat-card">
+      </router-link>
+      <router-link to="/leaderboard" class="stat-card cursor-pointer transition-colors hover:border-blurple">
         <div class="flex items-center gap-2 text-slate-400">
           <Trophy class="h-4 w-4" />
           <span class="stat-label">Top User</span>
@@ -68,6 +71,27 @@ function formatUptime(sec: number): string {
           <span class="ml-1 text-sm font-normal text-slate-500">Lv {{ stats.topUser.level }}</span>
         </div>
         <div v-else class="stat-number text-slate-600">—</div>
+      </router-link>
+      <router-link to="/requests" class="stat-card cursor-pointer transition-colors hover:border-blurple">
+        <div class="flex items-center gap-2 text-slate-400">
+          <Inbox class="h-4 w-4" />
+          <span class="stat-label">Pending Seerr</span>
+        </div>
+        <div class="stat-number">{{ stats.pendingSeerrCount }}</div>
+      </router-link>
+      <router-link to="/reminders" class="stat-card cursor-pointer transition-colors hover:border-blurple">
+        <div class="flex items-center gap-2 text-slate-400">
+          <Clock class="h-4 w-4" />
+          <span class="stat-label">Active Reminders</span>
+        </div>
+        <div class="stat-number">{{ stats.remindersCount }}</div>
+      </router-link>
+      <div class="stat-card">
+        <div class="flex items-center gap-2 text-slate-400">
+          <Star class="h-4 w-4" />
+          <span class="stat-label">Starboard Posts</span>
+        </div>
+        <div class="stat-number">{{ stats.starboardCount }}</div>
       </div>
     </div>
 
