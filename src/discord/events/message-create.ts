@@ -1,5 +1,6 @@
 import { logger } from '../../utils/logger.js';
 import { runAutomod } from '../automod.js';
+import { runAutoresponder } from '../autoresponder.js';
 import { grantXp } from '../xp.js';
 import type { BotEvent } from './types.js';
 
@@ -15,6 +16,12 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
       if (deleted) return;
     } catch (err) {
       logger.error({ err, userId: message.author.id }, 'automod failed');
+    }
+
+    try {
+      await runAutoresponder(message);
+    } catch (err) {
+      logger.error({ err }, 'autoresponder failed');
     }
 
     try {

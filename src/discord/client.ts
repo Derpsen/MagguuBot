@@ -11,9 +11,11 @@ import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
 import { allEvents } from './events/index.js';
+import { autocompleteTagNames } from './commands/tag.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
+import { handleTicketButton } from './interactions/ticket-buttons.js';
 
 let client: Client | null = null;
 
@@ -52,6 +54,12 @@ export async function startDiscord(): Promise<void> {
           return;
         }
         await cmd.execute(interaction);
+      } else if (interaction.isAutocomplete()) {
+        if (interaction.commandName === 'tag' && interaction.guildId) {
+          const focused = interaction.options.getFocused();
+          const results = autocompleteTagNames(interaction.guildId, focused);
+          await interaction.respond(results);
+        }
       } else if (interaction.isButton()) {
         if (interaction.customId.startsWith('seerr:')) {
           await handleSeerrButton(interaction);
@@ -59,6 +67,8 @@ export async function startDiscord(): Promise<void> {
           await handleRolePanelButton(interaction);
         } else if (interaction.customId.startsWith('role:')) {
           await handleRoleButton(interaction);
+        } else if (interaction.customId.startsWith('ticket:')) {
+          await handleTicketButton(interaction);
         }
       }
     } catch (err) {

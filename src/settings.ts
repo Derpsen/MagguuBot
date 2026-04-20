@@ -6,7 +6,27 @@ import { botSettings } from './db/schema.js';
 export type SettingKey =
   | 'starboardThreshold'
   | 'starboardEmoji'
-  | 'automodInviteFilter';
+  | 'automodInviteFilter'
+  | 'automodCapsFilter'
+  | 'automodCapsThreshold'
+  | 'automodCapsMinLen'
+  | 'automodMentionSpam'
+  | 'automodMentionThreshold'
+  | 'automodExternalLinkFilter'
+  | 'autoRoleId';
+
+export interface SettingValueMap {
+  starboardThreshold: number;
+  starboardEmoji: string;
+  automodInviteFilter: boolean;
+  automodCapsFilter: boolean;
+  automodCapsThreshold: number;
+  automodCapsMinLen: number;
+  automodMentionSpam: boolean;
+  automodMentionThreshold: number;
+  automodExternalLinkFilter: boolean;
+  autoRoleId: string | null;
+}
 
 interface SettingDef<T> {
   parse: (raw: string) => T;
@@ -14,12 +34,15 @@ interface SettingDef<T> {
   envValue: () => T;
 }
 
+const asBool = (raw: string): boolean => raw === 'true' || raw === '1';
+const asInt = (fallback: number) => (raw: string): number => {
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
   starboardThreshold: {
-    parse: (raw) => {
-      const n = Number.parseInt(raw, 10);
-      return Number.isFinite(n) && n > 0 ? n : 3;
-    },
+    parse: asInt(3),
     serialize: String,
     envValue: () => config.STARBOARD_THRESHOLD,
   },
@@ -29,17 +52,46 @@ const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
     envValue: () => config.STARBOARD_EMOJI,
   },
   automodInviteFilter: {
-    parse: (raw) => raw === 'true' || raw === '1',
+    parse: asBool,
     serialize: (v) => (v ? 'true' : 'false'),
     envValue: () => config.AUTOMOD_INVITE_FILTER,
   },
+  automodCapsFilter: {
+    parse: asBool,
+    serialize: (v) => (v ? 'true' : 'false'),
+    envValue: () => config.AUTOMOD_CAPS_FILTER,
+  },
+  automodCapsThreshold: {
+    parse: asInt(70),
+    serialize: String,
+    envValue: () => config.AUTOMOD_CAPS_THRESHOLD,
+  },
+  automodCapsMinLen: {
+    parse: asInt(10),
+    serialize: String,
+    envValue: () => config.AUTOMOD_CAPS_MIN_LEN,
+  },
+  automodMentionSpam: {
+    parse: asBool,
+    serialize: (v) => (v ? 'true' : 'false'),
+    envValue: () => config.AUTOMOD_MENTION_SPAM,
+  },
+  automodMentionThreshold: {
+    parse: asInt(5),
+    serialize: String,
+    envValue: () => config.AUTOMOD_MENTION_THRESHOLD,
+  },
+  automodExternalLinkFilter: {
+    parse: asBool,
+    serialize: (v) => (v ? 'true' : 'false'),
+    envValue: () => config.AUTOMOD_EXTERNAL_LINK_FILTER,
+  },
+  autoRoleId: {
+    parse: (raw) => (raw || null),
+    serialize: (v) => v ?? '',
+    envValue: () => config.AUTO_ROLE_ID ?? null,
+  },
 };
-
-export interface SettingValueMap {
-  starboardThreshold: number;
-  starboardEmoji: string;
-  automodInviteFilter: boolean;
-}
 
 export function getSetting<K extends SettingKey>(key: K): SettingValueMap[K] {
   const row = db
@@ -48,7 +100,7 @@ export function getSetting<K extends SettingKey>(key: K): SettingValueMap[K] {
     .where(and(eq(botSettings.guildId, config.DISCORD_GUILD_ID), eq(botSettings.key, key)))
     .get();
   const def = DEFS[key];
-  if (row?.value) {
+  if (row?.value !== undefined && row.value !== '') {
     return def.parse(row.value) as SettingValueMap[K];
   }
   return def.envValue() as SettingValueMap[K];
@@ -71,5 +123,12 @@ export function getAllSettings(): SettingValueMap {
     starboardThreshold: getSetting('starboardThreshold'),
     starboardEmoji: getSetting('starboardEmoji'),
     automodInviteFilter: getSetting('automodInviteFilter'),
+    automodCapsFilter: getSetting('automodCapsFilter'),
+    automodCapsThreshold: getSetting('automodCapsThreshold'),
+    automodCapsMinLen: getSetting('automodCapsMinLen'),
+    automodMentionSpam: getSetting('automodMentionSpam'),
+    automodMentionThreshold: getSetting('automodMentionThreshold'),
+    automodExternalLinkFilter: getSetting('automodExternalLinkFilter'),
+    autoRoleId: getSetting('autoRoleId'),
   };
 }

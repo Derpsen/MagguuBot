@@ -24,6 +24,13 @@ const schema = z.object({
   STARBOARD_THRESHOLD: z.coerce.number().int().positive().default(3),
   STARBOARD_EMOJI: z.string().default('⭐'),
   AUTOMOD_INVITE_FILTER: z.coerce.boolean().default(true),
+  AUTOMOD_CAPS_FILTER: z.coerce.boolean().default(false),
+  AUTOMOD_CAPS_THRESHOLD: z.coerce.number().min(0).max(100).default(70),
+  AUTOMOD_CAPS_MIN_LEN: z.coerce.number().int().positive().default(10),
+  AUTOMOD_MENTION_SPAM: z.coerce.boolean().default(true),
+  AUTOMOD_MENTION_THRESHOLD: z.coerce.number().int().positive().default(5),
+  AUTOMOD_EXTERNAL_LINK_FILTER: z.coerce.boolean().default(false),
+  AUTO_ROLE_ID: z.string().optional(),
 
   HTTP_PORT: z.coerce.number().int().positive().default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),

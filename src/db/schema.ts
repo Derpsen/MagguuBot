@@ -122,3 +122,82 @@ export const botSettings = sqliteTable('bot_settings', {
 });
 
 export type BotSetting = typeof botSettings.$inferSelect;
+
+export const customCommands = sqliteTable('custom_commands', {
+  guildId: text('guild_id').notNull(),
+  name: text('name').notNull(),
+  response: text('response').notNull(),
+  createdBy: text('created_by').notNull(),
+  uses: integer('uses').notNull().default(0),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const autoresponders = sqliteTable('autoresponders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  pattern: text('pattern').notNull(),
+  response: text('response').notNull(),
+  matchType: text('match_type', { enum: ['substring', 'word', 'regex'] }).notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const scheduledAnnouncements = sqliteTable('scheduled_announcements', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  color: text('color').notNull().default('brand'),
+  fireAt: integer('fire_at', { mode: 'timestamp_ms' }).notNull(),
+  fired: integer('fired', { mode: 'boolean' }).notNull().default(false),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const tickets = sqliteTable('tickets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull().unique(),
+  openerId: text('opener_id').notNull(),
+  topic: text('topic'),
+  closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const reputation = sqliteTable('reputation', {
+  guildId: text('guild_id').notNull(),
+  userId: text('user_id').notNull(),
+  rep: integer('rep').notNull().default(0),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const reputationLog = sqliteTable('reputation_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  giverId: text('giver_id').notNull(),
+  receiverId: text('receiver_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type CustomCommand = typeof customCommands.$inferSelect;
+export type Autoresponder = typeof autoresponders.$inferSelect;
+export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;
+export type Ticket = typeof tickets.$inferSelect;
+export type Reputation = typeof reputation.$inferSelect;

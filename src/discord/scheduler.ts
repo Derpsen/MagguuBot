@@ -1,8 +1,8 @@
 import { EmbedBuilder, type TextChannel } from 'discord.js';
-import { eq, lte } from 'drizzle-orm';
+import { and, eq, lte } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
-import { reminders } from '../db/schema.js';
+import { reminders, scheduledAnnouncements } from '../db/schema.js';
 import { Colors, truncate } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { getClient } from './client.js';
@@ -10,9 +10,11 @@ import { updateStatsChannels } from './stats-channels.js';
 
 const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
+const ANNOUNCE_TICK_MS = 30_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
+let announceTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   remindersTimer = setInterval(() => {
@@ -23,19 +25,70 @@ export function startScheduler(): void {
     void updateStatsChannels().catch((err) => logger.error({ err }, 'stats tick failed'));
   }, STATS_TICK_MS);
 
+  announceTimer = setInterval(() => {
+    void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce tick failed'));
+  }, ANNOUNCE_TICK_MS);
+
   setImmediate(() => {
     void processDueReminders().catch((err) => logger.error({ err }, 'reminder boot tick failed'));
     void updateStatsChannels().catch((err) => logger.error({ err }, 'stats boot tick failed'));
+    void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce boot tick failed'));
   });
 
-  logger.info({ reminderMs: REMINDER_TICK_MS, statsMs: STATS_TICK_MS }, 'scheduler started');
+  logger.info(
+    { reminderMs: REMINDER_TICK_MS, statsMs: STATS_TICK_MS, announceMs: ANNOUNCE_TICK_MS },
+    'scheduler started',
+  );
 }
 
 export function stopScheduler(): void {
   if (remindersTimer) clearInterval(remindersTimer);
   if (statsTimer) clearInterval(statsTimer);
+  if (announceTimer) clearInterval(announceTimer);
   remindersTimer = null;
   statsTimer = null;
+  announceTimer = null;
+}
+
+const COLOR_MAP: Record<string, number> = {
+  brand: Colors.brand,
+  info: Colors.info,
+  success: Colors.success,
+  warn: Colors.warn,
+  danger: Colors.danger,
+};
+
+async function processDueAnnouncements(): Promise<void> {
+  const now = new Date();
+  const due = db
+    .select()
+    .from(scheduledAnnouncements)
+    .where(and(eq(scheduledAnnouncements.fired, false), lte(scheduledAnnouncements.fireAt, now)))
+    .all();
+  if (due.length === 0) return;
+
+  const client = getClient();
+  for (const a of due) {
+    try {
+      const channel = (await client.channels.fetch(a.channelId).catch(() => null)) as TextChannel | null;
+      if (channel?.isTextBased()) {
+        const embed = new EmbedBuilder()
+          .setColor(COLOR_MAP[a.color] ?? Colors.brand)
+          .setTitle(a.title)
+          .setDescription(truncate(a.message, 4000))
+          .setFooter({ text: 'Scheduled announcement' })
+          .setTimestamp(new Date());
+        await channel.send({ embeds: [embed] });
+      }
+      db.update(scheduledAnnouncements)
+        .set({ fired: true })
+        .where(eq(scheduledAnnouncements.id, a.id))
+        .run();
+      logger.info({ announceId: a.id }, 'scheduled announcement fired');
+    } catch (err) {
+      logger.error({ err, announceId: a.id }, 'announce delivery failed');
+    }
+  }
 }
 
 async function processDueReminders(): Promise<void> {

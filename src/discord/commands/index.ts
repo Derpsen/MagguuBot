@@ -11,8 +11,13 @@ import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
 import { queueCommand } from './queue.js';
 import { rankCommand } from './rank.js';
+import { autoresponderCommand } from './autoresponder.js';
 import { remindmeCommand } from './remindme.js';
+import { repCommand } from './rep.js';
 import { rolesPanelCommand } from './roles-panel.js';
+import { scheduleAnnounceCommand } from './schedule-announce.js';
+import { tagCommand } from './tag.js';
+import { ticketPanelCommand } from './ticket-panel.js';
 import { searchCommand } from './search.js';
 import { serverinfoCommand } from './serverinfo.js';
 import { setupServerCommand } from './setup-server.js';
@@ -50,6 +55,11 @@ const all: SlashCommand[] = [
   avatarCommand,
   botinfoCommand,
   rolesPanelCommand,
+  tagCommand,
+  autoresponderCommand,
+  scheduleAnnounceCommand,
+  ticketPanelCommand,
+  repCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));

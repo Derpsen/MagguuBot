@@ -116,5 +116,71 @@ function ensureSchema(): void {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (guild_id, key)
     );
+
+    CREATE TABLE IF NOT EXISTS custom_commands (
+      guild_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      response TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      uses INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, name)
+    );
+
+    CREATE TABLE IF NOT EXISTS autoresponders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      pattern TEXT NOT NULL,
+      response TEXT NOT NULL,
+      match_type TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_autoresponders_guild ON autoresponders(guild_id, enabled);
+
+    CREATE TABLE IF NOT EXISTS scheduled_announcements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT 'brand',
+      fire_at INTEGER NOT NULL,
+      fired INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_scheduled_due ON scheduled_announcements(fired, fire_at);
+
+    CREATE TABLE IF NOT EXISTS tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL UNIQUE,
+      opener_id TEXT NOT NULL,
+      topic TEXT,
+      closed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tickets_open ON tickets(guild_id, closed_at);
+
+    CREATE TABLE IF NOT EXISTS reputation (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      rep INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_reputation_leaderboard ON reputation(guild_id, rep DESC);
+
+    CREATE TABLE IF NOT EXISTS reputation_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      giver_id TEXT NOT NULL,
+      receiver_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_reputation_log_giver ON reputation_log(guild_id, giver_id, created_at DESC);
   `);
 }
