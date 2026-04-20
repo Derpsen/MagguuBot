@@ -2,6 +2,9 @@
 import { onMounted, ref } from 'vue';
 import { Save, Star, Shield, UserPlus } from 'lucide-vue-next';
 import { api } from '../lib/api';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 interface Settings {
   starboardThreshold: number;
@@ -26,7 +29,6 @@ const settings = ref<Settings | null>(null);
 const roles = ref<Role[]>([]);
 const loading = ref(true);
 const saving = ref(false);
-const toast = ref<string | null>(null);
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -47,11 +49,9 @@ async function save(): Promise<void> {
       method: 'PUT',
       body: JSON.stringify(settings.value),
     });
-    toast.value = 'Gespeichert.';
-    setTimeout(() => (toast.value = null), 2500);
+    toast.success('Gespeichert', 'Die Settings sind sofort aktiv.');
   } catch {
-    toast.value = 'Fehler beim Speichern.';
-    setTimeout(() => (toast.value = null), 2500);
+    toast.error('Fehler beim Speichern', 'Check die Bot-Logs.');
   } finally {
     saving.value = false;
   }
@@ -62,10 +62,14 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Settings</h1>
-    <p class="mt-1 text-sm text-slate-400">
-      Runtime-Einstellungen. Änderungen greifen sofort — kein Container-Restart nötig.
-    </p>
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">
+          Runtime-Einstellungen. Änderungen greifen sofort — kein Container-Restart nötig.
+        </p>
+      </div>
+    </div>
 
     <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>
 
@@ -209,7 +213,6 @@ onMounted(load);
           <Save class="h-4 w-4" />
           {{ saving ? 'Speichere…' : 'Speichern' }}
         </button>
-        <span v-if="toast" class="text-sm text-green-400">{{ toast }}</span>
       </div>
     </div>
   </div>

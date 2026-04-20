@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Clock, ShieldAlert, Trophy, Webhook, Inbox, Star } from 'lucide-vue-next';
+import {
+  Clock,
+  ShieldAlert,
+  Trophy,
+  Webhook,
+  Inbox,
+  Star,
+  Tag as TagIcon,
+  Ticket,
+  Calendar,
+} from 'lucide-vue-next';
 import { api } from '../lib/api';
+import Skeleton from '../components/Skeleton.vue';
 
 interface Stats {
   uptimeSeconds: number;
@@ -12,6 +23,9 @@ interface Stats {
   remindersCount: number;
   pendingSeerrCount: number;
   starboardCount: number;
+  tagsCount: number;
+  openTicketsCount: number;
+  scheduledPending: number;
 }
 
 const stats = ref<Stats | null>(null);
@@ -34,36 +48,42 @@ function formatUptime(sec: number): string {
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Übersicht</h1>
-    <p class="mt-1 text-sm text-slate-400">Live-Status deines Bots und der letzten Aktivität.</p>
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Übersicht</h1>
+        <p class="page-subtitle">Live-Status deines Bots und der letzten Aktivität.</p>
+      </div>
+    </div>
 
-    <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>
+    <div v-if="loading" class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div v-for="i in 8" :key="i" class="skeleton h-24" />
+    </div>
 
     <div v-else-if="stats" class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <div class="stat-card">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Clock class="h-4 w-4" />
+        <div class="flex items-center gap-2">
+          <Clock class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Uptime</span>
         </div>
         <div class="stat-number">{{ formatUptime(stats.uptimeSeconds) }}</div>
       </div>
       <div class="stat-card">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Webhook class="h-4 w-4" />
+        <div class="flex items-center gap-2">
+          <Webhook class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Webhooks 24h</span>
         </div>
         <div class="stat-number">{{ stats.webhooksLast24h }}</div>
       </div>
-      <router-link to="/warnings" class="stat-card cursor-pointer transition-colors hover:border-blurple">
-        <div class="flex items-center gap-2 text-slate-400">
-          <ShieldAlert class="h-4 w-4" />
+      <router-link to="/warnings" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <ShieldAlert class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Warnings</span>
         </div>
         <div class="stat-number">{{ stats.warningsCount }}</div>
       </router-link>
-      <router-link to="/leaderboard" class="stat-card cursor-pointer transition-colors hover:border-blurple">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Trophy class="h-4 w-4" />
+      <router-link to="/leaderboard" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <Trophy class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Top User</span>
         </div>
         <div v-if="stats.topUser" class="stat-number">
@@ -72,43 +92,71 @@ function formatUptime(sec: number): string {
         </div>
         <div v-else class="stat-number text-slate-600">—</div>
       </router-link>
-      <router-link to="/requests" class="stat-card cursor-pointer transition-colors hover:border-blurple">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Inbox class="h-4 w-4" />
+      <router-link to="/requests" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <Inbox class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Pending Seerr</span>
         </div>
         <div class="stat-number">{{ stats.pendingSeerrCount }}</div>
       </router-link>
-      <router-link to="/reminders" class="stat-card cursor-pointer transition-colors hover:border-blurple">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Clock class="h-4 w-4" />
+      <router-link to="/tickets" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <Ticket class="h-4 w-4 text-slate-500" />
+          <span class="stat-label">Open Tickets</span>
+        </div>
+        <div class="stat-number">{{ stats.openTicketsCount }}</div>
+      </router-link>
+      <router-link to="/reminders" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <Clock class="h-4 w-4 text-slate-500" />
           <span class="stat-label">Active Reminders</span>
         </div>
         <div class="stat-number">{{ stats.remindersCount }}</div>
       </router-link>
+      <router-link to="/scheduled" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <Calendar class="h-4 w-4 text-slate-500" />
+          <span class="stat-label">Scheduled</span>
+        </div>
+        <div class="stat-number">{{ stats.scheduledPending }}</div>
+      </router-link>
+      <router-link to="/tags" class="stat-card clickable">
+        <div class="flex items-center gap-2">
+          <TagIcon class="h-4 w-4 text-slate-500" />
+          <span class="stat-label">Tags</span>
+        </div>
+        <div class="stat-number">{{ stats.tagsCount }}</div>
+      </router-link>
       <div class="stat-card">
-        <div class="flex items-center gap-2 text-slate-400">
-          <Star class="h-4 w-4" />
-          <span class="stat-label">Starboard Posts</span>
+        <div class="flex items-center gap-2">
+          <Star class="h-4 w-4 text-slate-500" />
+          <span class="stat-label">Starboard</span>
         </div>
         <div class="stat-number">{{ stats.starboardCount }}</div>
       </div>
     </div>
 
-    <div v-if="stats" class="mt-8 card">
-      <h2 class="text-lg font-semibold text-white">Letzte Mod-Aktionen</h2>
+    <div v-if="stats" class="mt-6 card">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-white">Letzte Mod-Aktionen</h2>
+        <router-link to="/warnings" class="text-xs text-blurple hover:underline">Alle →</router-link>
+      </div>
       <div v-if="stats.recentActions.length === 0" class="mt-4 text-sm text-slate-500">
         Noch keine Aktionen aufgezeichnet.
       </div>
-      <div v-else class="mt-3">
-        <div v-for="a in stats.recentActions" :key="a.id" class="table-row text-sm">
-          <div>
-            <span class="font-medium text-white">{{ a.action }}</span>
-            <span class="ml-2 text-slate-400">von {{ a.moderator }} → {{ a.target }}</span>
+      <div v-else class="mt-3 -mx-1">
+        <div v-for="a in stats.recentActions" :key="a.id" class="row text-sm">
+          <div class="flex items-center gap-2">
+            <span class="badge-warn">{{ a.action }}</span>
+            <span class="text-slate-400">{{ a.moderator }} → {{ a.target }}</span>
           </div>
           <div class="text-xs text-slate-500">{{ new Date(a.createdAt).toLocaleString() }}</div>
         </div>
       </div>
+    </div>
+
+    <div v-else-if="!loading" class="mt-6 card">
+      <Skeleton :rows="3" />
     </div>
   </div>
 </template>
