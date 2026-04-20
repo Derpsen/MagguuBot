@@ -34,7 +34,11 @@ export function buildApp(): Hono {
   app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
 
   app.use('/webhook/*', async (c, next) => {
-    if (c.req.path.startsWith('/webhook/github') || c.req.path.startsWith('/webhook/maintainerr')) {
+    if (
+      c.req.path.startsWith('/webhook/github') ||
+      c.req.path.startsWith('/webhook/maintainerr') ||
+      c.req.path.startsWith('/webhook/tautulli')
+    ) {
       await next();
       return;
     }
