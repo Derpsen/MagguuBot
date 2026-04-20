@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { seerrRequests } from '../../db/schema.js';
+import { seerrRequests, webhookEvents } from '../../db/schema.js';
 import { getChannel } from '../../discord/channel-store.js';
 import { buildSeerrApprovalButtons, buildSeerrRequestEmbed } from '../../embeds/seerr.js';
 import { logger } from '../../utils/logger.js';
@@ -23,6 +23,18 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
   logger.debug({ notification_type: body.notification_type }, 'seerr webhook received');
 
   if (body.notification_type === 'TEST_NOTIFICATION') {
+    db.insert(webhookEvents)
+      .values({
+        source: 'seerr',
+        eventType: 'TEST_NOTIFICATION',
+        payload: body,
+        channelId: null,
+        messageId: null,
+        status: 'skipped',
+        error: 'test notification — not posted to Discord',
+      })
+      .run();
+    logger.info('seerr TEST_NOTIFICATION received');
     return c.json({ ok: true, test: true });
   }
 
