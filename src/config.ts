@@ -30,6 +30,11 @@ const schema = z.object({
   WEBHOOK_SECRET: z.string().min(16),
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
 
+  DISCORD_CLIENT_SECRET: z.string().optional(),
+  SESSION_SECRET: z.string().min(16).optional(),
+  ADMIN_USER_IDS: z.string().optional(),
+  DASHBOARD_BASE_URL: z.string().url().optional(),
+
   SONARR_URL: z.string().url().optional(),
   SONARR_API_KEY: z.string().optional(),
   RADARR_URL: z.string().url().optional(),

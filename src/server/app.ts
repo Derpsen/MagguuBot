@@ -1,13 +1,31 @@
-import { Hono } from 'hono';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { extname, join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
+import { Hono } from 'hono';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { adminRouter } from './admin/index.js';
+import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
 import { sonarrWebhook } from './webhooks/sonarr.js';
 import { tautulliWebhook } from './webhooks/tautulli.js';
+
+const FRONTEND_DIR = resolve(process.cwd(), 'dist-frontend');
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
 
 export function buildApp(): Hono {
   const app = new Hono();
@@ -34,6 +52,16 @@ export function buildApp(): Hono {
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
 
+  app.route('/auth', authRouter);
+  app.route('/api/admin', adminRouter);
+
+  app.get('*', (c) => {
+    if (!existsSync(FRONTEND_DIR)) {
+      return c.json({ ok: false, error: 'not found' }, 404);
+    }
+    return serveStatic(c.req.path);
+  });
+
   app.notFound((c) => c.json({ ok: false, error: 'not found' }, 404));
   app.onError((err, c) => {
     logger.error({ err }, 'unhandled error');
@@ -41,6 +69,29 @@ export function buildApp(): Hono {
   });
 
   return app;
+}
+
+function serveStatic(pathname: string): Response {
+  const cleaned = pathname.replace(/^\/+/, '');
+  const candidate = cleaned ? join(FRONTEND_DIR, cleaned) : '';
+
+  if (candidate && candidate.startsWith(FRONTEND_DIR) && existsSync(candidate)) {
+    try {
+      if (statSync(candidate).isFile()) return fileResponse(candidate);
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const indexHtml = join(FRONTEND_DIR, 'index.html');
+  if (existsSync(indexHtml)) return fileResponse(indexHtml);
+  return new Response('not found', { status: 404 });
+}
+
+function fileResponse(filePath: string): Response {
+  const body = readFileSync(filePath);
+  const mime = MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+  return new Response(body, { headers: { 'Content-Type': mime } });
 }
 
 function constantTimeEquals(a: string, b: string): boolean {

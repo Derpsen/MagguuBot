@@ -2,16 +2,19 @@
   "name": "magguu-bot",
   "version": "0.1.0",
   "private": true,
-  "description": "Discord bot for the download side of a media homelab (Sonarr, Radarr, Seerr, Tautulli, SABnzbd).",
+  "description": "Discord bot + admin dashboard for a media homelab (Sonarr, Radarr, Seerr, Tautulli, SABnzbd).",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "dev:frontend": "vite",
+    "build": "npm run build:frontend && tsc",
+    "build:frontend": "vite build",
+    "build:backend": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p frontend/tsconfig.json",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },
@@ -28,8 +31,17 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.28.1",
+    "lucide-vue-next": "^0.469.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.1.10"
   }
 }
