@@ -260,23 +260,25 @@ export const setupServerCommand: SlashCommand = {
 
         if (type === ChannelType.GuildText) {
           captureRef(refs, ch, result.channel.id);
-          if (result.created) {
-            freshTextChannels.push({ plan: ch, channel: result.channel as TextChannel });
-          }
+          freshTextChannels.push({ plan: ch, channel: result.channel as TextChannel });
         }
       }
     }
 
+    let embedsPosted = 0;
+    const botUserId = interaction.client.user?.id;
     for (const { plan, channel } of freshTextChannels) {
       const builder = WELCOME_BUILDERS[plan.name];
       if (!builder) continue;
       try {
+        if (botUserId && (await hasWelcomeEmbed(channel, botUserId, plan.name))) continue;
         const embed = builder(refs);
         if (plan.name === '🎭・rollen') {
           await channel.send({ embeds: [embed], components: [buildRolePickerButtons()] });
         } else {
           await channel.send({ embeds: [embed] });
         }
+        embedsPosted++;
       } catch (err) {
         logger.warn({ err, channel: plan.name }, 'welcome embed post failed');
       }
@@ -292,6 +294,7 @@ export const setupServerCommand: SlashCommand = {
     const lines: string[] = [];
     if (created.length) lines.push(`**✨ Created (${created.length})**\n${created.slice(0, 20).join('\n')}`);
     if (renamed.length) lines.push(`**🔁 Renamed (${renamed.length})**\n${renamed.slice(0, 20).join('\n')}`);
+    if (embedsPosted) lines.push(`**💬 Welcome-Embeds gepostet:** ${embedsPosted}`);
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
 
     await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
@@ -394,6 +397,25 @@ async function ensureChannel(
   }
 
   return { channel: created, created: true, renamed: false };
+}
+
+async function hasWelcomeEmbed(
+  channel: TextChannel,
+  botUserId: string,
+  planName: string,
+): Promise<boolean> {
+  const builder = WELCOME_BUILDERS[planName];
+  if (!builder) return true;
+  const expectedTitle = builder({}).data.title;
+  if (!expectedTitle) return true;
+  try {
+    const messages = await channel.messages.fetch({ limit: 50 });
+    return messages.some(
+      (msg) => msg.author.id === botUserId && msg.embeds.some((e) => e.title === expectedTitle),
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function sortServerStructure(guild: Guild): Promise<void> {
