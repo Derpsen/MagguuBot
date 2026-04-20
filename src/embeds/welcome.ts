@@ -53,8 +53,8 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
         name: '🔗 Nützliche Links',
         value: [
           '• [Plex-Web öffnen](https://app.plex.tv)',
-          '• [Service-Dashboard](https://ui.magguu.xyz)',
-          '• [Seerr-Requests](https://seerr.magguu.xyz)',
+          '• `/queue` — Download-Queue im Chat',
+          '• `/search` — Medien requesten',
         ].join('\n'),
         inline: true,
       },
@@ -231,7 +231,7 @@ export function buildRequestsChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .addFields(
       {
         name: '🌐 Seerr (empfohlen)',
-        value: '[seerr.magguu.xyz öffnen](https://seerr.magguu.xyz) · Filme/Serien suchen · Request klicken · fertig.',
+        value: 'Öffne dein Seerr-Frontend → Filme/Serien suchen → Request klicken → fertig. Admins kennen die URL.',
       },
       {
         name: '💬 Discord (schnell)',

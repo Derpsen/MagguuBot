@@ -17,7 +17,7 @@ export const tagCommand: SlashCommand = {
   category: 'utility',
   data: new SlashCommandBuilder()
     .setName('tag')
-    .setDescription('Custom text responses — wie Tags bei YAGPDB/Carl-bot')
+    .setDescription('Custom text responses für FAQ-Antworten')
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('get')

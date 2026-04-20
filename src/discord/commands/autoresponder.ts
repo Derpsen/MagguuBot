@@ -21,7 +21,7 @@ export const autoresponderCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('autoresponder')
-    .setDescription('Admin: auto-reply-Regeln für Nachrichten (wie YAGPDB Reply-Triggers)')
+    .setDescription('Admin: auto-reply-Regeln für Nachrichten (Pattern-Trigger)')
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('add')

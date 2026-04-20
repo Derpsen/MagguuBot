@@ -13,7 +13,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Derpsen/MagguuBot/issues</Support>
   <Project>https://github.com/Derpsen/MagguuBot</Project>
-  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, and a GitHub webhook feed. Ships with an optional MEE6-style admin dashboard (Discord OAuth2 login, warnings/XP/webhook views) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Single container, runs headless with an append-only activity log under /app/data.</Overview>
+  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Maintainerr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, and a GitHub webhook feed. Ships with an optional embedded admin dashboard (Discord OAuth2 login, warnings/XP/webhook views) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Single container, runs headless with an append-only activity log under /app/data.</Overview>
   <Category>Tools: MediaApp:Other Network:Messenger</Category>
   <WebUI>http://[IP]:[PORT:3000]/healthz</WebUI>
   <TemplateURL/>
