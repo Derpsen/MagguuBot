@@ -1,22 +1,43 @@
 import {
   ChannelType,
-  EmbedBuilder,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
   type CategoryChannel,
+  type EmbedBuilder,
   type Guild,
   type TextChannel,
 } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
+import {
+  buildAnnouncementsEmbed,
+  buildApprovalsChannelEmbed,
+  buildBotCommandsChannelEmbed,
+  buildBotHelpEmbed,
+  buildFailuresChannelEmbed,
+  buildGeneralChatEmbed,
+  buildGrabsChannelEmbed,
+  buildHealthChannelEmbed,
+  buildImportsChannelEmbed,
+  buildNewOnPlexChannelEmbed,
+  buildRequestsChannelEmbed,
+  buildRolePickerButtons,
+  buildRolePickerEmbed,
+  buildRulesEmbed,
+  buildSpoilerChannelEmbed,
+  buildWelcomeHeroEmbed,
+  type ChannelRefs,
+} from '../../embeds/welcome.js';
 import { logger } from '../../utils/logger.js';
 import type { SlashCommand } from './index.js';
 
+type ChannelKind = 'text' | 'voice';
+
 interface ChannelPlan {
+  key: keyof ChannelRefs | 'announcements' | 'spoilerZone';
   name: string;
-  topic: string;
+  topic?: string;
+  kind?: ChannelKind;
   readOnly?: boolean;
-  welcome?: () => EmbedBuilder;
 }
 
 interface CategoryPlan {
@@ -45,81 +66,51 @@ const ROLES: RolePlan[] = [
 
 const STRUCTURE: CategoryPlan[] = [
   {
+    name: '🏠 INFO',
+    channels: [
+      { key: 'rules' as const, name: 'willkommen', topic: 'Start hier — Regeln + Quick-Start.', readOnly: true },
+      { key: 'rules' as const, name: 'regeln', topic: 'Server-Regeln. Lesen, verstehen, einhalten.', readOnly: true },
+      { key: 'announcements' as const, name: 'ankündigungen', topic: 'Server-Updates + Wartungsfenster.', readOnly: true },
+      { key: 'botHelp' as const, name: 'bot-hilfe', topic: 'Alle Slash-Commands + wie der Bot tickt.', readOnly: true },
+      { key: 'roles' as const, name: 'rollen', topic: 'Hol dir Benachrichtigungs-Rollen per Button.', readOnly: true },
+    ],
+  },
+  {
     name: '🎬 MEDIA',
     channels: [
-      {
-        name: 'requests',
-        topic: '📝 Request movies / shows here. The bot forwards to Seerr.',
-        welcome: () =>
-          banner('📝 Requests', Colors.seerr)
-            .setDescription(
-              'Request a new movie or show through **Seerr**.\nAdmins see incoming requests in <#approvals>.',
-            ),
-      },
-      {
-        name: 'approvals',
-        topic: '⏳ Pending Seerr requests. Admin-only approve/decline.',
-        readOnly: true,
-        welcome: () =>
-          banner('⏳ Approvals', Colors.warn).setDescription(
-            'Admins approve / decline Seerr requests with a single button click.',
-          ),
-      },
-      {
-        name: 'new-on-plex',
-        topic: '✨ Recently added to the Plex library (via Tautulli).',
-        readOnly: true,
-        welcome: () =>
-          banner('✨ New on Plex', Colors.plex).setDescription(
-            'Fresh arrivals on Plex. Posted automatically by Tautulli when new media is added.',
-          ),
-      },
+      { key: 'requests' as const, name: 'requests', topic: 'Film / Serie requesten — über Seerr oder hier.' },
+      { key: 'approvals' as const, name: 'approvals', topic: 'Admin-only Approve/Decline für Seerr.', readOnly: true },
+      { key: 'newOnPlex' as const, name: 'new-on-plex', topic: 'Frisch auf Plex — Tautulli postet automatisch.', readOnly: true },
     ],
   },
   {
     name: '📥 DOWNLOADS',
     channels: [
-      {
-        name: 'grabs',
-        topic: '📥 Sonarr / Radarr have grabbed a release and queued it in SABnzbd.',
-        readOnly: true,
-        welcome: () =>
-          banner('📥 Grabs', Colors.info).setDescription(
-            'Every time Sonarr / Radarr sends a release to SABnzbd, it shows up here.',
-          ),
-      },
-      {
-        name: 'imports',
-        topic: '✅ Downloads completed + imported into the library.',
-        readOnly: true,
-        welcome: () =>
-          banner('✅ Imports', Colors.success).setDescription(
-            'Completed downloads — imported by Sonarr / Radarr, or finished by SABnzbd.',
-          ),
-      },
-      {
-        name: 'failures',
-        topic: '⚠️ Downloads that failed / need manual intervention.',
-        readOnly: true,
-        welcome: () =>
-          banner('⚠️ Failures', Colors.danger).setDescription(
-            'Things that need attention: unpack errors, manual interactions, SAB failures.',
-          ),
-      },
+      { key: 'grabs' as const, name: 'grabs', topic: 'Sonarr / Radarr grabs + SAB queue-additions.', readOnly: true },
+      { key: 'imports' as const, name: 'imports', topic: 'Erfolgreich importierte Files (ready to stream).', readOnly: true },
+      { key: 'failures' as const, name: 'failures', topic: 'Failures + manual-interaction events.', readOnly: true },
     ],
   },
   {
-    name: '🔧 ARR-STACK',
+    name: '🔧 STATUS',
     channels: [
-      {
-        name: 'health',
-        topic: '🩺 Sonarr / Radarr / SABnzbd health events.',
-        readOnly: true,
-        welcome: () =>
-          banner('🩺 Health', Colors.muted).setDescription(
-            'Health warnings and errors from the *arr stack and SABnzbd.',
-          ),
-      },
+      { key: 'health' as const, name: 'health', topic: 'Sonarr / Radarr / SAB Health-Warnings.', readOnly: true },
+    ],
+  },
+  {
+    name: '💬 CHAT',
+    channels: [
+      { key: 'general' as const, name: 'general', topic: 'Labern, Empfehlungen, Smalltalk.' },
+      { key: 'botCommands' as const, name: 'bot-commands', topic: 'Für /queue, /search etc.' },
+      { key: 'spoilerZone' as const, name: 'spoiler-zone', topic: 'Spoiler erlaubt — auf eigene Gefahr.' },
+    ],
+  },
+  {
+    name: '🎧 VOICE',
+    channels: [
+      { key: 'general' as const, name: '🔊 General', kind: 'voice' },
+      { key: 'general' as const, name: '🎬 Movie Night', kind: 'voice' },
+      { key: 'general' as const, name: '💤 AFK', kind: 'voice' },
     ],
   },
 ];
@@ -154,19 +145,37 @@ export const setupServerCommand: SlashCommand = {
       created.push(`role: ${r.name}`);
     }
 
+    const freshTextChannels: Array<{ plan: ChannelPlan; channel: TextChannel }> = [];
+    const refs: ChannelRefs = {};
+
     for (const cat of STRUCTURE) {
       const category = await ensureCategory(interaction.guild, cat.name);
       if (category.existed) skipped.push(`category: ${cat.name}`);
       else created.push(`category: ${cat.name}`);
 
       for (const ch of cat.channels) {
+        const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
         const existing = interaction.guild.channels.cache.find(
-          (c) => c.name === ch.name && c.parentId === category.channel.id,
+          (c) => c.name === ch.name && c.parentId === category.channel.id && c.type === type,
         );
         if (existing) {
           skipped.push(`#${ch.name}`);
+          if (ch.kind !== 'voice' && existing.type === ChannelType.GuildText) {
+            captureRef(refs, ch, existing.id);
+          }
           continue;
         }
+
+        if (ch.kind === 'voice') {
+          await interaction.guild.channels.create({
+            name: ch.name,
+            type: ChannelType.GuildVoice,
+            parent: category.channel.id,
+          });
+          created.push(`🔊 ${ch.name}`);
+          continue;
+        }
+
         const channel = (await interaction.guild.channels.create({
           name: ch.name,
           type: ChannelType.GuildText,
@@ -179,10 +188,23 @@ export const setupServerCommand: SlashCommand = {
             ViewChannel: true,
           });
         }
-        if (ch.welcome) {
-          await channel.send({ embeds: [ch.welcome()] }).catch(() => {});
-        }
+        captureRef(refs, ch, channel.id);
+        freshTextChannels.push({ plan: ch, channel });
         created.push(`#${ch.name}`);
+      }
+    }
+
+    for (const { plan, channel } of freshTextChannels) {
+      const embed = welcomeEmbedFor(plan, refs);
+      if (!embed) continue;
+      try {
+        if (plan.name === 'rollen') {
+          await channel.send({ embeds: [embed], components: [buildRolePickerButtons()] });
+        } else {
+          await channel.send({ embeds: [embed] });
+        }
+      } catch (err) {
+        logger.warn({ err, channel: plan.name }, 'failed to post welcome embed');
       }
     }
 
@@ -202,12 +224,71 @@ export const setupServerCommand: SlashCommand = {
   },
 };
 
-function banner(title: string, color: number): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(color)
-    .setTitle(title)
-    .setFooter({ text: 'MagguuBot' })
-    .setTimestamp(new Date());
+function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): void {
+  if (plan.name === 'willkommen' || plan.name === 'regeln') {
+    refs.rules = channelId;
+  } else if (plan.name === 'rollen') {
+    refs.roles = channelId;
+  } else if (plan.name === 'bot-hilfe') {
+    refs.botHelp = channelId;
+  } else if (plan.name === 'ankündigungen') {
+    refs.announcements = channelId;
+  } else if (plan.name === 'requests') {
+    refs.requests = channelId;
+  } else if (plan.name === 'approvals') {
+    refs.approvals = channelId;
+  } else if (plan.name === 'new-on-plex') {
+    refs.newOnPlex = channelId;
+  } else if (plan.name === 'grabs') {
+    refs.grabs = channelId;
+  } else if (plan.name === 'imports') {
+    refs.imports = channelId;
+  } else if (plan.name === 'failures') {
+    refs.failures = channelId;
+  } else if (plan.name === 'health') {
+    refs.health = channelId;
+  } else if (plan.name === 'general') {
+    refs.general = channelId;
+  } else if (plan.name === 'bot-commands') {
+    refs.botCommands = channelId;
+  }
+}
+
+function welcomeEmbedFor(plan: ChannelPlan, refs: ChannelRefs): EmbedBuilder | null {
+  switch (plan.name) {
+    case 'willkommen':
+      return buildWelcomeHeroEmbed(refs);
+    case 'regeln':
+      return buildRulesEmbed();
+    case 'ankündigungen':
+      return buildAnnouncementsEmbed();
+    case 'bot-hilfe':
+      return buildBotHelpEmbed(refs);
+    case 'rollen':
+      return buildRolePickerEmbed();
+    case 'requests':
+      return buildRequestsChannelEmbed(refs);
+    case 'approvals':
+      return buildApprovalsChannelEmbed();
+    case 'new-on-plex':
+      return buildNewOnPlexChannelEmbed();
+    case 'grabs':
+      return buildGrabsChannelEmbed(refs);
+    case 'imports':
+      return buildImportsChannelEmbed();
+    case 'failures':
+      return buildFailuresChannelEmbed();
+    case 'health':
+      return buildHealthChannelEmbed();
+    case 'general':
+      return buildGeneralChatEmbed();
+    case 'bot-commands':
+      return buildBotCommandsChannelEmbed();
+    case 'spoiler-zone':
+      return buildSpoilerChannelEmbed();
+    default:
+      return null;
+  }
 }
 
 async function ensureCategory(

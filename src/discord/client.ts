@@ -9,6 +9,7 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
+import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
 
 let client: Client | null = null;
@@ -38,6 +39,8 @@ export async function startDiscord(): Promise<void> {
       } else if (interaction.isButton()) {
         if (interaction.customId.startsWith('seerr:')) {
           await handleSeerrButton(interaction);
+        } else if (interaction.customId.startsWith('role:')) {
+          await handleRoleButton(interaction);
         }
       }
     } catch (err) {
