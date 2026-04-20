@@ -44,6 +44,7 @@ interface ChannelPlan {
   topic?: string;
   kind?: ChannelKind;
   readOnly?: boolean;
+  adminOnly?: boolean;
 }
 
 interface CategoryPlan {
@@ -94,7 +95,7 @@ const STRUCTURE: CategoryPlan[] = [
     name: '🎬 MEDIA',
     channels: [
       { name: '📝・anfragen', oldNames: ['requests'], topic: 'Film / Serie requesten.' },
-      { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true },
+      { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
       { name: '✨・neu-auf-plex', oldNames: ['new-on-plex'], topic: 'Recently added (Tautulli).', readOnly: true },
     ],
   },
@@ -103,12 +104,12 @@ const STRUCTURE: CategoryPlan[] = [
     channels: [
       { name: '📥・grabs', oldNames: ['grabs'], topic: 'Sonarr / Radarr / SAB grabs.', readOnly: true },
       { name: '✅・imports', oldNames: ['imports'], topic: 'Erfolgreich importierte Files.', readOnly: true },
-      { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true },
+      { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
   },
   {
     name: '🔧 STATUS',
-    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health.', readOnly: true }],
+    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health.', readOnly: true, adminOnly: true }],
   },
   {
     name: '💬 CHAT',
@@ -129,8 +130,8 @@ const STRUCTURE: CategoryPlan[] = [
   {
     name: '🛡️ MOD',
     channels: [
-      { name: '🛡️・mod-log', oldNames: ['mod-log'], topic: 'Alle Mod-Actions.', readOnly: true },
-      { name: '📋・audit-log', oldNames: ['audit-log'], topic: 'Joins/Leaves/Role-Changes.', readOnly: true },
+      { name: '🛡️・mod-log', oldNames: ['mod-log'], topic: 'Alle Mod-Actions.', readOnly: true, adminOnly: true },
+      { name: '📋・audit-log', oldNames: ['audit-log'], topic: 'Joins/Leaves/Role-Changes.', readOnly: true, adminOnly: true },
     ],
   },
   {
@@ -254,13 +255,13 @@ export const setupServerCommand: SlashCommand = {
     const freshTextChannels: Array<{ plan: ChannelPlan; channel: TextChannel }> = [];
     const refs: ChannelRefs = {};
 
+    const setupBotId = interaction.client.user?.id;
+
     for (const cat of STRUCTURE) {
-      const category = await ensureCategory(interaction.guild, cat);
+      const category = await ensureCategory(interaction.guild, cat, setupBotId);
       if (category.created) created.push(`category: ${cat.name}`);
       else if (category.renamed) renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
       else skipped.push(`category: ${cat.name}`);
-
-      const setupBotId = interaction.client.user?.id;
 
       for (const ch of cat.channels) {
         const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
@@ -325,11 +326,13 @@ function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): vo
 async function ensureCategory(
   guild: Guild,
   plan: CategoryPlan,
+  botUserId: string | undefined,
 ): Promise<{ channel: CategoryChannel; created: boolean; renamed: boolean; renamedFrom?: string }> {
   const existingWithTarget = guild.channels.cache.find(
     (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === plan.name,
   );
   if (existingWithTarget) {
+    await applyBotCategoryPermissions(existingWithTarget, botUserId);
     return { channel: existingWithTarget, created: false, renamed: false };
   }
 
@@ -341,6 +344,7 @@ async function ensureCategory(
     if (existing) {
       try {
         await existing.setName(plan.name);
+        await applyBotCategoryPermissions(existing, botUserId);
         return { channel: existing, created: false, renamed: true, renamedFrom: oldName };
       } catch (err) {
         logger.warn({ err, oldName, target: plan.name }, 'category rename failed');
@@ -349,6 +353,7 @@ async function ensureCategory(
   }
 
   const created = await guild.channels.create({ name: plan.name, type: ChannelType.GuildCategory });
+  await applyBotCategoryPermissions(created, botUserId);
   return { channel: created, created: true, renamed: false };
 }
 
@@ -409,6 +414,8 @@ async function ensureChannel(
   return { channel: created, created: true, renamed: false };
 }
 
+const STAFF_ROLE_NAMES = ['Admin', 'Moderator'] as const;
+
 async function applyChannelPermissions(
   channel: TextChannel,
   plan: ChannelPlan,
@@ -416,13 +423,31 @@ async function applyChannelPermissions(
   botUserId: string | undefined,
 ): Promise<void> {
   if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) return;
-  if (!plan.readOnly) return;
 
   try {
-    await channel.permissionOverwrites.edit(guild.roles.everyone, {
-      SendMessages: false,
-      ViewChannel: true,
-    });
+    if (plan.adminOnly) {
+      await channel.permissionOverwrites.edit(guild.roles.everyone, {
+        ViewChannel: false,
+        SendMessages: false,
+      });
+      for (const name of STAFF_ROLE_NAMES) {
+        const role = guild.roles.cache.find((r) => r.name === name);
+        if (role) {
+          await channel.permissionOverwrites.edit(role, {
+            ViewChannel: true,
+            SendMessages: !plan.readOnly,
+            ReadMessageHistory: true,
+            ManageMessages: true,
+          });
+        }
+      }
+    } else if (plan.readOnly) {
+      await channel.permissionOverwrites.edit(guild.roles.everyone, {
+        SendMessages: false,
+        ViewChannel: true,
+      });
+    }
+
     if (botUserId) {
       await channel.permissionOverwrites.edit(botUserId, {
         SendMessages: true,
@@ -431,10 +456,32 @@ async function applyChannelPermissions(
         ReadMessageHistory: true,
         ViewChannel: true,
         ManageMessages: true,
+        AddReactions: true,
       });
     }
   } catch (err) {
     logger.warn({ err, channel: channel.name }, 'applyChannelPermissions failed');
+  }
+}
+
+async function applyBotCategoryPermissions(
+  category: CategoryChannel,
+  botUserId: string | undefined,
+): Promise<void> {
+  if (!botUserId) return;
+  try {
+    await category.permissionOverwrites.edit(botUserId, {
+      ViewChannel: true,
+      SendMessages: true,
+      EmbedLinks: true,
+      AttachFiles: true,
+      ReadMessageHistory: true,
+      ManageMessages: true,
+      ManageChannels: true,
+      AddReactions: true,
+    });
+  } catch (err) {
+    logger.warn({ err, category: category.name }, 'applyBotCategoryPermissions failed');
   }
 }
 
