@@ -260,9 +260,11 @@ export const setupServerCommand: SlashCommand = {
       else if (category.renamed) renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
       else skipped.push(`category: ${cat.name}`);
 
+      const setupBotId = interaction.client.user?.id;
+
       for (const ch of cat.channels) {
         const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-        const result = await ensureChannel(interaction.guild, category.channel, ch, type);
+        const result = await ensureChannel(interaction.guild, category.channel, ch, type, setupBotId);
 
         if (result.created) created.push(`#${ch.name}`);
         else if (result.renamed) renamed.push(`#${result.renamedFrom} → ${ch.name}`);
@@ -355,6 +357,7 @@ async function ensureChannel(
   parent: CategoryChannel,
   plan: ChannelPlan,
   type: ChannelType.GuildText | ChannelType.GuildVoice,
+  botUserId: string | undefined,
 ): Promise<{
   channel: GuildBasedChannel;
   created: boolean;
@@ -365,6 +368,7 @@ async function ensureChannel(
     (c) => c.name === plan.name && c.parentId === parent.id && c.type === type,
   );
   if (existingWithTarget) {
+    await applyChannelPermissions(existingWithTarget as TextChannel, plan, guild, botUserId);
     return { channel: existingWithTarget, created: false, renamed: false };
   }
 
@@ -376,6 +380,7 @@ async function ensureChannel(
     if (existing && 'setName' in existing) {
       try {
         await existing.setName(plan.name);
+        await applyChannelPermissions(existing as TextChannel, plan, guild, botUserId);
         return { channel: existing, created: false, renamed: true, renamedFrom: oldName };
       } catch (err) {
         logger.warn({ err, oldName, target: plan.name }, 'channel rename failed');
@@ -399,14 +404,38 @@ async function ensureChannel(
     topic: plan.topic,
   })) as TextChannel;
 
-  if (plan.readOnly) {
-    await created.permissionOverwrites.create(guild.roles.everyone, {
+  await applyChannelPermissions(created, plan, guild, botUserId);
+
+  return { channel: created, created: true, renamed: false };
+}
+
+async function applyChannelPermissions(
+  channel: TextChannel,
+  plan: ChannelPlan,
+  guild: Guild,
+  botUserId: string | undefined,
+): Promise<void> {
+  if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) return;
+  if (!plan.readOnly) return;
+
+  try {
+    await channel.permissionOverwrites.edit(guild.roles.everyone, {
       SendMessages: false,
       ViewChannel: true,
     });
+    if (botUserId) {
+      await channel.permissionOverwrites.edit(botUserId, {
+        SendMessages: true,
+        EmbedLinks: true,
+        AttachFiles: true,
+        ReadMessageHistory: true,
+        ViewChannel: true,
+        ManageMessages: true,
+      });
+    }
+  } catch (err) {
+    logger.warn({ err, channel: channel.name }, 'applyChannelPermissions failed');
   }
-
-  return { channel: created, created: true, renamed: false };
 }
 
 async function hasWelcomeEmbed(
