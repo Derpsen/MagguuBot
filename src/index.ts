@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import { config } from './config.js';
 import './db/client.js';
 import { startDiscord } from './discord/client.js';
+import { startScheduler, stopScheduler } from './discord/scheduler.js';
 import { buildApp } from './server/app.js';
 import { logger } from './utils/logger.js';
 
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
   logger.info({ env: config.NODE_ENV }, 'magguu-bot starting');
 
   await startDiscord();
+  startScheduler();
 
   const app = buildApp();
   serve({ fetch: app.fetch, hostname: config.HTTP_HOST, port: config.HTTP_PORT }, (info) => {
@@ -21,6 +23,7 @@ async function main(): Promise<void> {
 
 function shutdown(): void {
   logger.info('shutting down');
+  stopScheduler();
   process.exit(0);
 }
 

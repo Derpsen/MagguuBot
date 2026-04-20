@@ -49,6 +49,29 @@ export const warnings = sqliteTable('warnings', {
     .$defaultFn(() => new Date()),
 });
 
+export const reminders = sqliteTable('reminders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull(),
+  guildId: text('guild_id'),
+  channelId: text('channel_id'),
+  message: text('message').notNull(),
+  dueAt: integer('due_at', { mode: 'timestamp_ms' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const userXp = sqliteTable('user_xp', {
+  guildId: text('guild_id').notNull(),
+  userId: text('user_id').notNull(),
+  xp: integer('xp').notNull().default(0),
+  level: integer('level').notNull().default(0),
+  messagesCounted: integer('messages_counted').notNull().default(0),
+  lastGrantedAt: integer('last_granted_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
 export type SeerrRequest = typeof seerrRequests.$inferSelect;

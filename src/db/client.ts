@@ -64,5 +64,27 @@ function ensureSchema(): void {
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (guild_id, key)
     );
+
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      guild_id TEXT,
+      channel_id TEXT,
+      message TEXT NOT NULL,
+      due_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_at);
+
+    CREATE TABLE IF NOT EXISTS user_xp (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      xp INTEGER NOT NULL DEFAULT 0,
+      level INTEGER NOT NULL DEFAULT 0,
+      messages_counted INTEGER NOT NULL DEFAULT 0,
+      last_granted_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_xp_leaderboard ON user_xp(guild_id, xp DESC);
   `);
 }

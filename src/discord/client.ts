@@ -22,7 +22,11 @@ export function getClient(): Client {
 
 export async function startDiscord(): Promise<void> {
   const c = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildMessages,
+    ],
   });
   client = c;
 

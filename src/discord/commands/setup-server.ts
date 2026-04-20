@@ -6,6 +6,7 @@ import {
   type CategoryChannel,
   type EmbedBuilder,
   type Guild,
+  type GuildBasedChannel,
   type TextChannel,
 } from 'discord.js';
 import {
@@ -37,8 +38,8 @@ import type { SlashCommand } from './index.js';
 type ChannelKind = 'text' | 'voice';
 
 interface ChannelPlan {
-  key: keyof ChannelRefs | 'announcements' | 'spoilerZone';
   name: string;
+  oldNames?: string[];
   topic?: string;
   kind?: ChannelKind;
   readOnly?: boolean;
@@ -46,6 +47,7 @@ interface ChannelPlan {
 
 interface CategoryPlan {
   name: string;
+  oldNames?: string[];
   channels: ChannelPlan[];
 }
 
@@ -70,83 +72,159 @@ const ROLES: RolePlan[] = [
 
 const STRUCTURE: CategoryPlan[] = [
   {
+    name: '📊 STATISTIK',
+    channels: [
+      { name: '👥 Mitglieder: 0', kind: 'voice' },
+      { name: '📈 Boosts: 0', kind: 'voice' },
+      { name: '🤖 Bot-Uptime: 0h', kind: 'voice' },
+    ],
+  },
+  {
     name: '🏠 INFO',
     channels: [
-      { key: 'rules' as const, name: 'willkommen', topic: 'Start hier — Regeln + Quick-Start.', readOnly: true },
-      { key: 'rules' as const, name: 'regeln', topic: 'Server-Regeln. Lesen, verstehen, einhalten.', readOnly: true },
-      { key: 'announcements' as const, name: 'ankündigungen', topic: 'Server-Updates + Wartungsfenster.', readOnly: true },
-      { key: 'botHelp' as const, name: 'bot-hilfe', topic: 'Alle Slash-Commands + wie der Bot tickt.', readOnly: true },
-      { key: 'roles' as const, name: 'rollen', topic: 'Hol dir Benachrichtigungs-Rollen per Button.', readOnly: true },
+      { name: '👋・willkommen', oldNames: ['willkommen'], topic: 'Start hier — Regeln + Quick-Start.', readOnly: true },
+      { name: '📜・regeln', oldNames: ['regeln'], topic: 'Server-Regeln.', readOnly: true },
+      { name: '📢・ankündigungen', oldNames: ['ankündigungen'], topic: 'Server-Updates.', readOnly: true },
+      { name: '🤖・bot-hilfe', oldNames: ['bot-hilfe'], topic: 'Alle Slash-Commands.', readOnly: true },
+      { name: '🎭・rollen', oldNames: ['rollen'], topic: 'Benachrichtigungs-Rollen per Button.', readOnly: true },
     ],
   },
   {
     name: '🎬 MEDIA',
     channels: [
-      { key: 'requests' as const, name: 'requests', topic: 'Film / Serie requesten — über Seerr oder hier.' },
-      { key: 'approvals' as const, name: 'approvals', topic: 'Admin-only Approve/Decline für Seerr.', readOnly: true },
-      { key: 'newOnPlex' as const, name: 'new-on-plex', topic: 'Frisch auf Plex — Tautulli postet automatisch.', readOnly: true },
+      { name: '📝・anfragen', oldNames: ['requests'], topic: 'Film / Serie requesten.' },
+      { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true },
+      { name: '✨・neu-auf-plex', oldNames: ['new-on-plex'], topic: 'Recently added (Tautulli).', readOnly: true },
     ],
   },
   {
     name: '📥 DOWNLOADS',
     channels: [
-      { key: 'grabs' as const, name: 'grabs', topic: 'Sonarr / Radarr grabs + SAB queue-additions.', readOnly: true },
-      { key: 'imports' as const, name: 'imports', topic: 'Erfolgreich importierte Files (ready to stream).', readOnly: true },
-      { key: 'failures' as const, name: 'failures', topic: 'Failures + manual-interaction events.', readOnly: true },
+      { name: '📥・grabs', oldNames: ['grabs'], topic: 'Sonarr / Radarr / SAB grabs.', readOnly: true },
+      { name: '✅・imports', oldNames: ['imports'], topic: 'Erfolgreich importierte Files.', readOnly: true },
+      { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true },
     ],
   },
   {
     name: '🔧 STATUS',
-    channels: [
-      { key: 'health' as const, name: 'health', topic: 'Sonarr / Radarr / SAB Health-Warnings.', readOnly: true },
-    ],
+    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health.', readOnly: true }],
   },
   {
     name: '💬 CHAT',
     channels: [
-      { key: 'general' as const, name: 'general', topic: 'Labern, Empfehlungen, Smalltalk.' },
-      { key: 'botCommands' as const, name: 'bot-commands', topic: 'Für /queue, /search etc.' },
-      { key: 'spoilerZone' as const, name: 'spoiler-zone', topic: 'Spoiler erlaubt — auf eigene Gefahr.' },
+      { name: '💬・chat', oldNames: ['general'], topic: 'Labern + Smalltalk.' },
+      { name: '⌨️・bot-befehle', oldNames: ['bot-commands'], topic: 'Für /queue, /search etc.' },
+      { name: '🔇・spoiler-zone', oldNames: ['spoiler-zone'], topic: 'Spoiler erlaubt.' },
     ],
   },
   {
     name: '🎧 VOICE',
     channels: [
-      { key: 'general' as const, name: '🔊 General', kind: 'voice' },
-      { key: 'general' as const, name: '🎬 Movie Night', kind: 'voice' },
-      { key: 'general' as const, name: '💤 AFK', kind: 'voice' },
+      { name: '🔊 General', kind: 'voice' },
+      { name: '🎬 Movie Night', kind: 'voice' },
+      { name: '💤 AFK', kind: 'voice' },
     ],
   },
   {
     name: '🛡️ MOD',
     channels: [
-      { key: 'rules' as const, name: 'mod-log', topic: 'Alle Mod-Actions.', readOnly: true },
-      { key: 'rules' as const, name: 'audit-log', topic: 'Server-Events (joins/leaves/role-changes).', readOnly: true },
+      { name: '🛡️・mod-log', oldNames: ['mod-log'], topic: 'Alle Mod-Actions.', readOnly: true },
+      { name: '📋・audit-log', oldNames: ['audit-log'], topic: 'Joins/Leaves/Role-Changes.', readOnly: true },
     ],
   },
   {
     name: '🔨 DEV',
-    channels: [
-      { key: 'rules' as const, name: 'github', topic: 'GitHub-Webhook-Feed (Pushes, Runs, Releases, PRs).', readOnly: true },
-    ],
+    channels: [{ name: '🔨・github', oldNames: ['github'], topic: 'GitHub-Webhook-Feed.', readOnly: true }],
   },
 ];
+
+export const KNOWN_CATEGORIES: ReadonlySet<string> = new Set(STRUCTURE.map((c) => c.name));
+
+const EXPLICIT_CHANNEL_NAMES: ReadonlySet<string> = new Set(
+  STRUCTURE.flatMap((c) => [
+    ...c.channels.map((ch) => ch.name),
+    ...c.channels.flatMap((ch) => ch.oldNames ?? []),
+  ]),
+);
+
+const STATS_CHANNEL_PREFIXES = ['👥 Mitglieder: ', '📈 Boosts: ', '🤖 Bot-Uptime: '];
+
+export function isKnownChannelName(name: string): boolean {
+  if (EXPLICIT_CHANNEL_NAMES.has(name)) return true;
+  return STATS_CHANNEL_PREFIXES.some((p) => name.startsWith(p));
+}
+
+const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
+  '👋・willkommen': 'welcome',
+  '📜・regeln': 'rules',
+  '🎭・rollen': 'roles',
+  '🤖・bot-hilfe': 'botHelp',
+  '📢・ankündigungen': 'announcements',
+  '📝・anfragen': 'requests',
+  '⏳・freigaben': 'approvals',
+  '✨・neu-auf-plex': 'newOnPlex',
+  '📥・grabs': 'grabs',
+  '✅・imports': 'imports',
+  '⚠️・fehler': 'failures',
+  '🩺・health': 'health',
+  '💬・chat': 'general',
+  '⌨️・bot-befehle': 'botCommands',
+  '🛡️・mod-log': 'modLog',
+  '📋・audit-log': 'auditLog',
+  '🔨・github': 'github',
+};
+
+const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
+  'grabs',
+  'imports',
+  'failures',
+  'requests',
+  'approvals',
+  'newOnPlex',
+  'health',
+  'welcome',
+  'auditLog',
+  'modLog',
+  'github',
+]);
+
+const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
+  '👋・willkommen': buildWelcomeHeroEmbed,
+  '📜・regeln': () => buildRulesEmbed(),
+  '📢・ankündigungen': () => buildAnnouncementsEmbed(),
+  '🤖・bot-hilfe': buildBotHelpEmbed,
+  '🎭・rollen': () => buildRolePickerEmbed(),
+  '📝・anfragen': buildRequestsChannelEmbed,
+  '⏳・freigaben': () => buildApprovalsChannelEmbed(),
+  '✨・neu-auf-plex': () => buildNewOnPlexChannelEmbed(),
+  '📥・grabs': buildGrabsChannelEmbed,
+  '✅・imports': () => buildImportsChannelEmbed(),
+  '⚠️・fehler': () => buildFailuresChannelEmbed(),
+  '🩺・health': () => buildHealthChannelEmbed(),
+  '💬・chat': () => buildGeneralChatEmbed(),
+  '⌨️・bot-befehle': () => buildBotCommandsChannelEmbed(),
+  '🔇・spoiler-zone': () => buildSpoilerChannelEmbed(),
+  '🛡️・mod-log': () => buildModLogChannelEmbed(),
+  '📋・audit-log': () => buildAuditLogChannelEmbed(),
+  '🔨・github': () => buildGithubChannelEmbed(),
+};
 
 export const setupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('setup-server')
-    .setDescription('Scaffold the MagguuBot Discord channels + roles (idempotent)')
+    .setDescription('Kategorien, Channels + Rollen anlegen, umbennen, sortieren (idempotent)')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply('This command must be run in a guild.');
+      await interaction.editReply('Guild only.');
       return;
     }
 
     const created: string[] = [];
     const skipped: string[] = [];
+    const renamed: string[] = [];
 
     for (const r of ROLES) {
       const existing = interaction.guild.roles.cache.find((x) => x.name === r.name);
@@ -167,116 +245,58 @@ export const setupServerCommand: SlashCommand = {
     const refs: ChannelRefs = {};
 
     for (const cat of STRUCTURE) {
-      const category = await ensureCategory(interaction.guild, cat.name);
-      if (category.existed) skipped.push(`category: ${cat.name}`);
-      else created.push(`category: ${cat.name}`);
+      const category = await ensureCategory(interaction.guild, cat);
+      if (category.created) created.push(`category: ${cat.name}`);
+      else if (category.renamed) renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
+      else skipped.push(`category: ${cat.name}`);
 
       for (const ch of cat.channels) {
         const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-        const existing = interaction.guild.channels.cache.find(
-          (c) => c.name === ch.name && c.parentId === category.channel.id && c.type === type,
-        );
-        if (existing) {
-          skipped.push(`#${ch.name}`);
-          if (ch.kind !== 'voice' && existing.type === ChannelType.GuildText) {
-            captureRef(refs, ch, existing.id);
+        const result = await ensureChannel(interaction.guild, category.channel, ch, type);
+
+        if (result.created) created.push(`#${ch.name}`);
+        else if (result.renamed) renamed.push(`#${result.renamedFrom} → ${ch.name}`);
+        else skipped.push(`#${ch.name}`);
+
+        if (type === ChannelType.GuildText) {
+          captureRef(refs, ch, result.channel.id);
+          if (result.created) {
+            freshTextChannels.push({ plan: ch, channel: result.channel as TextChannel });
           }
-          continue;
         }
-
-        if (ch.kind === 'voice') {
-          await interaction.guild.channels.create({
-            name: ch.name,
-            type: ChannelType.GuildVoice,
-            parent: category.channel.id,
-          });
-          created.push(`🔊 ${ch.name}`);
-          continue;
-        }
-
-        const channel = (await interaction.guild.channels.create({
-          name: ch.name,
-          type: ChannelType.GuildText,
-          parent: category.channel.id,
-          topic: ch.topic,
-        })) as TextChannel;
-        if (ch.readOnly) {
-          await channel.permissionOverwrites.create(interaction.guild.roles.everyone, {
-            SendMessages: false,
-            ViewChannel: true,
-          });
-        }
-        captureRef(refs, ch, channel.id);
-        freshTextChannels.push({ plan: ch, channel });
-        created.push(`#${ch.name}`);
       }
     }
 
     for (const { plan, channel } of freshTextChannels) {
-      const embed = welcomeEmbedFor(plan, refs);
-      if (!embed) continue;
+      const builder = WELCOME_BUILDERS[plan.name];
+      if (!builder) continue;
       try {
-        if (plan.name === 'rollen') {
+        const embed = builder(refs);
+        if (plan.name === '🎭・rollen') {
           await channel.send({ embeds: [embed], components: [buildRolePickerButtons()] });
         } else {
           await channel.send({ embeds: [embed] });
         }
       } catch (err) {
-        logger.warn({ err, channel: plan.name }, 'failed to post welcome embed');
+        logger.warn({ err, channel: plan.name }, 'welcome embed post failed');
       }
     }
 
     await sortServerStructure(interaction.guild);
 
-    logger.info({ created: created.length, skipped: skipped.length }, 'server setup completed');
-    const summary = [
-      `**Created (${created.length})**`,
-      created.slice(0, 30).join('\n') || '_none_',
-      created.length > 30 ? `…and ${created.length - 30} more` : '',
-      '',
-      `**Skipped / already existed (${skipped.length})**`,
-      skipped.slice(0, 15).join('\n') || '_none_',
-      skipped.length > 15 ? `…and ${skipped.length - 15} more` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-    await interaction.editReply(summary.slice(0, 1900));
+    logger.info(
+      { created: created.length, renamed: renamed.length, skipped: skipped.length },
+      'server setup completed',
+    );
+
+    const lines: string[] = [];
+    if (created.length) lines.push(`**✨ Created (${created.length})**\n${created.slice(0, 20).join('\n')}`);
+    if (renamed.length) lines.push(`**🔁 Renamed (${renamed.length})**\n${renamed.slice(0, 20).join('\n')}`);
+    if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
+
+    await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
   },
 };
-
-const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
-  willkommen: 'welcome',
-  regeln: 'rules',
-  rollen: 'roles',
-  'bot-hilfe': 'botHelp',
-  ankündigungen: 'announcements',
-  requests: 'requests',
-  approvals: 'approvals',
-  'new-on-plex': 'newOnPlex',
-  grabs: 'grabs',
-  imports: 'imports',
-  failures: 'failures',
-  health: 'health',
-  general: 'general',
-  'bot-commands': 'botCommands',
-  'mod-log': 'modLog',
-  'audit-log': 'auditLog',
-  github: 'github',
-};
-
-const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
-  'grabs',
-  'imports',
-  'failures',
-  'requests',
-  'approvals',
-  'newOnPlex',
-  'health',
-  'welcome',
-  'auditLog',
-  'modLog',
-  'github',
-]);
 
 function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): void {
   const key = NAME_TO_REF_KEY[plan.name];
@@ -287,47 +307,93 @@ function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): vo
   }
 }
 
-function welcomeEmbedFor(plan: ChannelPlan, refs: ChannelRefs): EmbedBuilder | null {
-  switch (plan.name) {
-    case 'willkommen':
-      return buildWelcomeHeroEmbed(refs);
-    case 'regeln':
-      return buildRulesEmbed();
-    case 'ankündigungen':
-      return buildAnnouncementsEmbed();
-    case 'bot-hilfe':
-      return buildBotHelpEmbed(refs);
-    case 'rollen':
-      return buildRolePickerEmbed();
-    case 'requests':
-      return buildRequestsChannelEmbed(refs);
-    case 'approvals':
-      return buildApprovalsChannelEmbed();
-    case 'new-on-plex':
-      return buildNewOnPlexChannelEmbed();
-    case 'grabs':
-      return buildGrabsChannelEmbed(refs);
-    case 'imports':
-      return buildImportsChannelEmbed();
-    case 'failures':
-      return buildFailuresChannelEmbed();
-    case 'health':
-      return buildHealthChannelEmbed();
-    case 'general':
-      return buildGeneralChatEmbed();
-    case 'bot-commands':
-      return buildBotCommandsChannelEmbed();
-    case 'spoiler-zone':
-      return buildSpoilerChannelEmbed();
-    case 'mod-log':
-      return buildModLogChannelEmbed();
-    case 'audit-log':
-      return buildAuditLogChannelEmbed();
-    case 'github':
-      return buildGithubChannelEmbed();
-    default:
-      return null;
+async function ensureCategory(
+  guild: Guild,
+  plan: CategoryPlan,
+): Promise<{ channel: CategoryChannel; created: boolean; renamed: boolean; renamedFrom?: string }> {
+  const existingWithTarget = guild.channels.cache.find(
+    (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === plan.name,
+  );
+  if (existingWithTarget) {
+    return { channel: existingWithTarget, created: false, renamed: false };
   }
+
+  const oldNames = plan.oldNames ?? [];
+  for (const oldName of oldNames) {
+    const existing = guild.channels.cache.find(
+      (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === oldName,
+    );
+    if (existing) {
+      try {
+        await existing.setName(plan.name);
+        return { channel: existing, created: false, renamed: true, renamedFrom: oldName };
+      } catch (err) {
+        logger.warn({ err, oldName, target: plan.name }, 'category rename failed');
+      }
+    }
+  }
+
+  const created = await guild.channels.create({ name: plan.name, type: ChannelType.GuildCategory });
+  return { channel: created, created: true, renamed: false };
+}
+
+async function ensureChannel(
+  guild: Guild,
+  parent: CategoryChannel,
+  plan: ChannelPlan,
+  type: ChannelType.GuildText | ChannelType.GuildVoice,
+): Promise<{
+  channel: GuildBasedChannel;
+  created: boolean;
+  renamed: boolean;
+  renamedFrom?: string;
+}> {
+  const existingWithTarget = guild.channels.cache.find(
+    (c) => c.name === plan.name && c.parentId === parent.id && c.type === type,
+  );
+  if (existingWithTarget) {
+    return { channel: existingWithTarget, created: false, renamed: false };
+  }
+
+  const oldNames = plan.oldNames ?? [];
+  for (const oldName of oldNames) {
+    const existing = guild.channels.cache.find(
+      (c) => c.name === oldName && c.parentId === parent.id && c.type === type,
+    );
+    if (existing && 'setName' in existing) {
+      try {
+        await existing.setName(plan.name);
+        return { channel: existing, created: false, renamed: true, renamedFrom: oldName };
+      } catch (err) {
+        logger.warn({ err, oldName, target: plan.name }, 'channel rename failed');
+      }
+    }
+  }
+
+  if (type === ChannelType.GuildVoice) {
+    const created = await guild.channels.create({
+      name: plan.name,
+      type: ChannelType.GuildVoice,
+      parent: parent.id,
+    });
+    return { channel: created, created: true, renamed: false };
+  }
+
+  const created = (await guild.channels.create({
+    name: plan.name,
+    type: ChannelType.GuildText,
+    parent: parent.id,
+    topic: plan.topic,
+  })) as TextChannel;
+
+  if (plan.readOnly) {
+    await created.permissionOverwrites.create(guild.roles.everyone, {
+      SendMessages: false,
+      ViewChannel: true,
+    });
+  }
+
+  return { channel: created, created: true, renamed: false };
 }
 
 async function sortServerStructure(guild: Guild): Promise<void> {
@@ -348,10 +414,7 @@ async function sortServerStructure(guild: Guild): Promise<void> {
       const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
       const channel = guild.channels.cache.find(
         (c) =>
-          c.name === ch.name &&
-          c.parentId === category.id &&
-          c.type === type &&
-          'setPosition' in c,
+          c.name === ch.name && c.parentId === category.id && c.type === type && 'setPosition' in c,
       );
       if (!channel || !('setPosition' in channel)) continue;
       await channel
@@ -359,16 +422,4 @@ async function sortServerStructure(guild: Guild): Promise<void> {
         .catch((err: unknown) => logger.warn({ err, name: ch.name }, 'channel sort failed'));
     }
   }
-}
-
-async function ensureCategory(
-  guild: Guild,
-  name: string,
-): Promise<{ channel: CategoryChannel; existed: boolean }> {
-  const existing = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === name);
-  if (existing && existing.type === ChannelType.GuildCategory) {
-    return { channel: existing as CategoryChannel, existed: true };
-  }
-  const created = await guild.channels.create({ name, type: ChannelType.GuildCategory });
-  return { channel: created, existed: false };
 }

@@ -1,14 +1,22 @@
 import type { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { announceCommand } from './announce.js';
+import { avatarCommand } from './avatar.js';
 import { banCommand, unbanCommand } from './ban.js';
+import { botinfoCommand } from './botinfo.js';
+import { cleanupServerCommand } from './cleanup-server.js';
 import { helpCommand } from './help.js';
 import { kickCommand } from './kick.js';
+import { leaderboardCommand } from './leaderboard.js';
 import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
 import { queueCommand } from './queue.js';
+import { rankCommand } from './rank.js';
+import { remindmeCommand } from './remindme.js';
 import { searchCommand } from './search.js';
+import { serverinfoCommand } from './serverinfo.js';
 import { setupServerCommand } from './setup-server.js';
 import { timeoutCommand } from './timeout.js';
+import { userinfoCommand } from './userinfo.js';
 import { warnCommand } from './warn.js';
 
 export type CommandCategory = 'downloads' | 'moderation' | 'utility' | 'admin';
@@ -23,6 +31,7 @@ const all: SlashCommand[] = [
   queueCommand,
   searchCommand,
   setupServerCommand,
+  cleanupServerCommand,
   warnCommand,
   timeoutCommand,
   kickCommand,
@@ -32,6 +41,13 @@ const all: SlashCommand[] = [
   helpCommand,
   announceCommand,
   pollCommand,
+  remindmeCommand,
+  rankCommand,
+  leaderboardCommand,
+  userinfoCommand,
+  serverinfoCommand,
+  avatarCommand,
+  botinfoCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));
