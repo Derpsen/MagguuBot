@@ -1,7 +1,7 @@
 import { EmbedBuilder, type Guild, type TextChannel, type User } from 'discord.js';
-import { config } from '../config.js';
 import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { getChannel } from './channel-store.js';
 
 export type ModAction = 'warn' | 'timeout' | 'untimeout' | 'kick' | 'ban' | 'unban' | 'purge';
 
@@ -35,7 +35,7 @@ const ICONS: Record<ModAction, string> = {
 };
 
 export async function postModLog(i: ModLogInput): Promise<void> {
-  const channelId = config.DISCORD_CHANNEL_MOD_LOG;
+  const channelId = getChannel('modLog');
   if (!channelId) return;
 
   try {

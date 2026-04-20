@@ -31,6 +31,7 @@ import {
   type ChannelRefs,
 } from '../../embeds/welcome.js';
 import { logger } from '../../utils/logger.js';
+import { saveChannel, type ChannelKey } from '../channel-store.js';
 import type { SlashCommand } from './index.js';
 
 type ChannelKind = 'text' | 'voice';
@@ -243,39 +244,46 @@ export const setupServerCommand: SlashCommand = {
   },
 };
 
+const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
+  willkommen: 'welcome',
+  regeln: 'rules',
+  rollen: 'roles',
+  'bot-hilfe': 'botHelp',
+  ankündigungen: 'announcements',
+  requests: 'requests',
+  approvals: 'approvals',
+  'new-on-plex': 'newOnPlex',
+  grabs: 'grabs',
+  imports: 'imports',
+  failures: 'failures',
+  health: 'health',
+  general: 'general',
+  'bot-commands': 'botCommands',
+  'mod-log': 'modLog',
+  'audit-log': 'auditLog',
+  github: 'github',
+};
+
+const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
+  'grabs',
+  'imports',
+  'failures',
+  'requests',
+  'approvals',
+  'newOnPlex',
+  'health',
+  'welcome',
+  'auditLog',
+  'modLog',
+  'github',
+]);
+
 function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): void {
-  if (plan.name === 'willkommen' || plan.name === 'regeln') {
-    refs.rules = channelId;
-  } else if (plan.name === 'rollen') {
-    refs.roles = channelId;
-  } else if (plan.name === 'bot-hilfe') {
-    refs.botHelp = channelId;
-  } else if (plan.name === 'ankündigungen') {
-    refs.announcements = channelId;
-  } else if (plan.name === 'requests') {
-    refs.requests = channelId;
-  } else if (plan.name === 'approvals') {
-    refs.approvals = channelId;
-  } else if (plan.name === 'new-on-plex') {
-    refs.newOnPlex = channelId;
-  } else if (plan.name === 'grabs') {
-    refs.grabs = channelId;
-  } else if (plan.name === 'imports') {
-    refs.imports = channelId;
-  } else if (plan.name === 'failures') {
-    refs.failures = channelId;
-  } else if (plan.name === 'health') {
-    refs.health = channelId;
-  } else if (plan.name === 'general') {
-    refs.general = channelId;
-  } else if (plan.name === 'bot-commands') {
-    refs.botCommands = channelId;
-  } else if (plan.name === 'mod-log') {
-    refs.modLog = channelId;
-  } else if (plan.name === 'audit-log') {
-    refs.auditLog = channelId;
-  } else if (plan.name === 'github') {
-    refs.github = channelId;
+  const key = NAME_TO_REF_KEY[plan.name];
+  if (!key) return;
+  refs[key] = channelId;
+  if (PERSISTENT_KEYS.has(key)) {
+    saveChannel(key as ChannelKey, channelId);
   }
 }
 

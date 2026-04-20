@@ -29,6 +29,15 @@ export const seerrRequests = sqliteTable('seerr_requests', {
     .$defaultFn(() => new Date()),
 });
 
+export const channelConfig = sqliteTable('channel_config', {
+  guildId: text('guild_id').notNull(),
+  key: text('key').notNull(),
+  channelId: text('channel_id').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const warnings = sqliteTable('warnings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guildId: text('guild_id').notNull(),

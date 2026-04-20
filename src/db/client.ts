@@ -56,5 +56,13 @@ function ensureSchema(): void {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_warnings_user ON warnings(guild_id, user_id);
+
+    CREATE TABLE IF NOT EXISTS channel_config (
+      guild_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, key)
+    );
   `);
 }

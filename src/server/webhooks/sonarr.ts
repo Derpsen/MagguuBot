@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { config } from '../../config.js';
+import { getChannel } from '../../discord/channel-store.js';
 import { buildFailureEmbed, buildGrabEmbed, buildHealthEmbed, buildImportEmbed } from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
@@ -33,7 +33,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     }
     case 'Grab': {
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_GRABS,
+        channelId: getChannel('grabs'),
         embed: buildGrabEmbed({
           service: 'sonarr',
           title: body.series?.title ?? 'Unknown series',
@@ -54,7 +54,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     }
     case 'Download': {
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_IMPORTS,
+        channelId: getChannel('imports'),
         embed: buildImportEmbed({
           service: 'sonarr',
           title: body.series?.title ?? 'Unknown series',
@@ -75,7 +75,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     case 'ManualInteractionRequired':
     case 'DownloadFailure': {
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_FAILURES,
+        channelId: getChannel('failures'),
         embed: buildFailureEmbed({
           service: 'sonarr',
           title: body.series?.title ?? 'Unknown',
@@ -91,7 +91,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     case 'Health':
     case 'HealthRestored': {
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_HEALTH,
+        channelId: getChannel('health'),
         embed: buildHealthEmbed({
           service: 'Sonarr',
           level: body.level ?? 'warning',

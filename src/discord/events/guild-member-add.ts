@@ -1,14 +1,14 @@
 import { EmbedBuilder, type TextChannel } from 'discord.js';
-import { config } from '../../config.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
+import { getChannel } from '../channel-store.js';
 import type { BotEvent } from './types.js';
 
 export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
   name: 'guildMemberAdd',
   async execute(member) {
     try {
-      const welcomeChannelId = config.DISCORD_CHANNEL_WELCOME;
+      const welcomeChannelId = getChannel('welcome');
       if (welcomeChannelId) {
         const channel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
         if (channel && channel.isSendable()) {
@@ -19,7 +19,7 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
         }
       }
 
-      const auditChannelId = config.DISCORD_CHANNEL_AUDIT_LOG;
+      const auditChannelId = getChannel('auditLog');
       if (auditChannelId) {
         const channel = await member.guild.channels.fetch(auditChannelId).catch(() => null);
         if (channel && channel.isSendable()) {

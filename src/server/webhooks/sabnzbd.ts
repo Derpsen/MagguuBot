@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { config } from '../../config.js';
+import { getChannel } from '../../discord/channel-store.js';
 import { buildSabEventEmbed } from '../../embeds/sabnzbd.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
@@ -15,9 +15,9 @@ const sabSchema = z.object({
 });
 
 const channelFor = {
-  complete: () => config.DISCORD_CHANNEL_IMPORTS,
-  failed: () => config.DISCORD_CHANNEL_FAILURES,
-  warning: () => config.DISCORD_CHANNEL_HEALTH,
+  complete: () => getChannel('imports'),
+  failed: () => getChannel('failures'),
+  warning: () => getChannel('health'),
 } as const;
 
 export const sabnzbdWebhook = new Hono().post('/', async (c) => {

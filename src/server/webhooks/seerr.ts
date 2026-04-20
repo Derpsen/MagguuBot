@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
-import { config } from '../../config.js';
 import { db } from '../../db/client.js';
 import { seerrRequests } from '../../db/schema.js';
+import { getChannel } from '../../discord/channel-store.js';
 import { buildSeerrApprovalButtons, buildSeerrRequestEmbed } from '../../embeds/seerr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
@@ -48,7 +48,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
       });
       const buttons = buildSeerrApprovalButtons(requestId);
       const message = await postEmbed({
-        channelId: config.DISCORD_CHANNEL_APPROVALS ?? config.DISCORD_CHANNEL_REQUESTS,
+        channelId: getChannel('approvals') ?? getChannel('requests'),
         embed,
         components: [buttons],
         source: 'seerr',
@@ -78,7 +78,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
         db.update(seerrRequests).set({ status: 'approved' }).where(eq(seerrRequests.seerrRequestId, requestId)).run();
       }
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_REQUESTS,
+        channelId: getChannel('requests'),
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -100,7 +100,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
         db.update(seerrRequests).set({ status: 'declined' }).where(eq(seerrRequests.seerrRequestId, requestId)).run();
       }
       await postEmbed({
-        channelId: config.DISCORD_CHANNEL_REQUESTS,
+        channelId: getChannel('requests'),
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,

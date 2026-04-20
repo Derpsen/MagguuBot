@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { EmbedBuilder } from 'discord.js';
-import { config } from '../../config.js';
+import { getChannel } from '../../discord/channel-store.js';
 import { Colors, truncate } from '../../embeds/colors.js';
 import { postEmbed } from '../discord-poster.js';
 
@@ -29,7 +29,7 @@ export const tautulliWebhook = new Hono().post('/', async (c) => {
   if (body.mediaType) embed.addFields({ name: 'Type', value: body.mediaType, inline: true });
 
   await postEmbed({
-    channelId: config.DISCORD_CHANNEL_NEW_ON_PLEX,
+    channelId: getChannel('newOnPlex'),
     embed,
     source: 'tautulli',
     eventType: body.event ?? 'recently_added',

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { config } from '../../config.js';
+import { getChannel } from '../../discord/channel-store.js';
 import {
   buildPullRequestEmbed,
   buildPushEmbed,
@@ -100,7 +101,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     return c.json({ ok: false, error: 'invalid JSON' }, 400);
   }
 
-  const channelId = config.DISCORD_CHANNEL_GITHUB;
+  const channelId = getChannel('github');
 
   if (eventName === 'ping') {
     const p = body as PingPayload;

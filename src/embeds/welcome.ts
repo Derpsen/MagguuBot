@@ -4,6 +4,7 @@ import { Colors } from './colors.js';
 const DIVIDER = '─────────────────────';
 
 export interface ChannelRefs {
+  welcome?: string;
   rules?: string;
   roles?: string;
   botHelp?: string;

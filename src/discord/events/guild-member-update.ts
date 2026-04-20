@@ -1,14 +1,14 @@
 import { EmbedBuilder, type TextChannel } from 'discord.js';
-import { config } from '../../config.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
+import { getChannel } from '../channel-store.js';
 import type { BotEvent } from './types.js';
 
 export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
   name: 'guildMemberUpdate',
   async execute(oldMember, newMember) {
     try {
-      const auditChannelId = config.DISCORD_CHANNEL_AUDIT_LOG;
+      const auditChannelId = getChannel('auditLog');
       if (!auditChannelId) return;
 
       const addedRoles = newMember.roles.cache.filter((r) => !oldMember.roles.cache.has(r.id));
