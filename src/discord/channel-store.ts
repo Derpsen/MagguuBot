@@ -10,6 +10,8 @@ export type ChannelKey =
   | 'requests'
   | 'approvals'
   | 'newOnPlex'
+  | 'plexActivity'
+  | 'maintainerr'
   | 'health'
   | 'welcome'
   | 'auditLog'
@@ -24,6 +26,8 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   requests: config.DISCORD_CHANNEL_REQUESTS,
   approvals: config.DISCORD_CHANNEL_APPROVALS,
   newOnPlex: config.DISCORD_CHANNEL_NEW_ON_PLEX,
+  plexActivity: config.DISCORD_CHANNEL_PLEX_ACTIVITY,
+  maintainerr: config.DISCORD_CHANNEL_MAINTAINERR,
   health: config.DISCORD_CHANNEL_HEALTH,
   welcome: config.DISCORD_CHANNEL_WELCOME,
   auditLog: config.DISCORD_CHANNEL_AUDIT_LOG,

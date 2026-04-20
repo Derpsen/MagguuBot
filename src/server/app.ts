@@ -7,6 +7,7 @@ import { logger } from '../utils/logger.js';
 import { adminRouter } from './admin/index.js';
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
+import { maintainerrWebhook } from './webhooks/maintainerr.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
@@ -33,7 +34,7 @@ export function buildApp(): Hono {
   app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
 
   app.use('/webhook/*', async (c, next) => {
-    if (c.req.path.startsWith('/webhook/github')) {
+    if (c.req.path.startsWith('/webhook/github') || c.req.path.startsWith('/webhook/maintainerr')) {
       await next();
       return;
     }
@@ -51,6 +52,7 @@ export function buildApp(): Hono {
   app.route('/webhook/tautulli', tautulliWebhook);
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
+  app.route('/webhook/maintainerr', maintainerrWebhook);
 
   app.route('/auth', authRouter);
   app.route('/api/admin', adminRouter);

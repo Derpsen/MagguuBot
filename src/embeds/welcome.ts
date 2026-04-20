@@ -20,6 +20,8 @@ export interface ChannelRefs {
   auditLog?: string;
   github?: string;
   starboard?: string;
+  plexActivity?: string;
+  maintainerr?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -445,6 +447,46 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
       },
     )
     .setFooter({ text: 'MagguuBot  ·  GitHub activity' });
+}
+
+export function buildPlexActivityChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.plex)
+    .setTitle('🎬 Plex Activity')
+    .setDescription(
+      'Live-Feed was gerade auf Plex läuft: wer was schaut, pausiert, weiter-guckt oder zu Ende gesehen hat.',
+    )
+    .addFields(
+      { name: '▶️ Play / Resume', value: 'Jemand startet oder setzt fort', inline: true },
+      { name: '⏸️ Pause', value: 'Jemand hat pausiert', inline: true },
+      { name: '⏹️ Stop / Watched', value: 'Stream beendet oder zu Ende', inline: true },
+      {
+        name: 'Setup in Tautulli',
+        value:
+          'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched aktivieren',
+      },
+    )
+    .setFooter({ text: 'MagguuBot · Plex activity' });
+}
+
+export function buildMaintainerrChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.danger)
+    .setTitle('🗑️ Maintainerr')
+    .setDescription(
+      'Was Maintainerr aus Plex entfernt — und was bald entfernt wird, falls keiner es wieder anschaut.',
+    )
+    .addFields(
+      { name: '🗓️ About to handle', value: 'Medien kommen in die Delete-Queue', inline: true },
+      { name: '🗑️ Handled / Deleted', value: 'Medien wurden entfernt', inline: true },
+      { name: '↩️ Removed from collection', value: 'Rule-Check greift nicht mehr', inline: true },
+      {
+        name: 'Setup in Maintainerr',
+        value:
+          'Maintainerr → **Settings → Notifications → Add Agent** · Agent `Discord` · Webhook URL `http://<unraid-ip>:3000/webhook/maintainerr` · Types: alle sechs ✅ · Speichern + Test-Connection',
+      },
+    )
+    .setFooter({ text: 'MagguuBot · Maintainerr cleanup feed' });
 }
 
 export function buildStarboardChannelEmbed(): EmbedBuilder {

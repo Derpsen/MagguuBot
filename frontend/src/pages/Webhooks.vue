@@ -27,6 +27,7 @@ const SOURCE_EMOJI: Record<string, string> = {
   tautulli: '✨',
   sabnzbd: '📦',
   github: '🔨',
+  maintainerr: '🗑️',
 };
 
 onMounted(async () => {

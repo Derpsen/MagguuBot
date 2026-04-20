@@ -20,6 +20,8 @@ const schema = z.object({
   DISCORD_CHANNEL_MOD_LOG: z.string().optional(),
   DISCORD_CHANNEL_GITHUB: z.string().optional(),
   DISCORD_CHANNEL_STARBOARD: z.string().optional(),
+  DISCORD_CHANNEL_PLEX_ACTIVITY: z.string().optional(),
+  DISCORD_CHANNEL_MAINTAINERR: z.string().optional(),
 
   STARBOARD_THRESHOLD: z.coerce.number().int().positive().default(3),
   STARBOARD_EMOJI: z.string().default('⭐'),
