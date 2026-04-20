@@ -19,6 +19,11 @@ const schema = z.object({
   DISCORD_CHANNEL_AUDIT_LOG: z.string().optional(),
   DISCORD_CHANNEL_MOD_LOG: z.string().optional(),
   DISCORD_CHANNEL_GITHUB: z.string().optional(),
+  DISCORD_CHANNEL_STARBOARD: z.string().optional(),
+
+  STARBOARD_THRESHOLD: z.coerce.number().int().positive().default(3),
+  STARBOARD_EMOJI: z.string().default('⭐'),
+  AUTOMOD_INVITE_FILTER: z.coerce.boolean().default(true),
 
   HTTP_PORT: z.coerce.number().int().positive().default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),

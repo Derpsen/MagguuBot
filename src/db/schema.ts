@@ -72,9 +72,42 @@ export const userXp = sqliteTable('user_xp', {
     .$defaultFn(() => new Date()),
 });
 
+export const rolePanels = sqliteTable('role_panels', {
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  messageId: text('message_id').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  roles: text('roles', { mode: 'json' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const starboardPosts = sqliteTable('starboard_posts', {
+  guildId: text('guild_id').notNull(),
+  originalMessageId: text('original_message_id').notNull(),
+  originalChannelId: text('original_channel_id').notNull(),
+  starboardMessageId: text('starboard_message_id').notNull(),
+  starCount: integer('star_count').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
 export type SeerrRequest = typeof seerrRequests.$inferSelect;
 export type NewSeerrRequest = typeof seerrRequests.$inferInsert;
 export type Warning = typeof warnings.$inferSelect;
 export type NewWarning = typeof warnings.$inferInsert;
+export type RolePanel = typeof rolePanels.$inferSelect;
+export type NewRolePanel = typeof rolePanels.$inferInsert;
+export type StarboardPost = typeof starboardPosts.$inferSelect;
+export type NewStarboardPost = typeof starboardPosts.$inferInsert;
+
+export interface RolePanelEntry {
+  roleId: string;
+  label: string;
+  emoji?: string;
+}

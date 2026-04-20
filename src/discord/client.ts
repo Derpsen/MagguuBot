@@ -3,6 +3,7 @@ import {
   GatewayIntentBits,
   type Interaction,
   MessageFlags,
+  Partials,
   REST,
   Routes,
 } from 'discord.js';
@@ -11,6 +12,7 @@ import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
 import { allEvents } from './events/index.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
+import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
 
 let client: Client | null = null;
@@ -26,7 +28,9 @@ export async function startDiscord(): Promise<void> {
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMessageReactions,
     ],
+    partials: [Partials.Message, Partials.Channel, Partials.Reaction],
   });
   client = c;
 
@@ -51,6 +55,8 @@ export async function startDiscord(): Promise<void> {
       } else if (interaction.isButton()) {
         if (interaction.customId.startsWith('seerr:')) {
           await handleSeerrButton(interaction);
+        } else if (interaction.customId.startsWith('role-panel:')) {
+          await handleRolePanelButton(interaction);
         } else if (interaction.customId.startsWith('role:')) {
           await handleRoleButton(interaction);
         }

@@ -1,4 +1,5 @@
 import { logger } from '../../utils/logger.js';
+import { runAutomod } from '../automod.js';
 import { grantXp } from '../xp.js';
 import type { BotEvent } from './types.js';
 
@@ -8,6 +9,13 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
     if (message.author.bot) return;
     if (!message.inGuild()) return;
     if (!message.member) return;
+
+    try {
+      const deleted = await runAutomod(message);
+      if (deleted) return;
+    } catch (err) {
+      logger.error({ err, userId: message.author.id }, 'automod failed');
+    }
 
     try {
       await grantXp(message.member);

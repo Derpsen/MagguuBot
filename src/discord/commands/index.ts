@@ -12,6 +12,7 @@ import { purgeCommand } from './purge.js';
 import { queueCommand } from './queue.js';
 import { rankCommand } from './rank.js';
 import { remindmeCommand } from './remindme.js';
+import { rolesPanelCommand } from './roles-panel.js';
 import { searchCommand } from './search.js';
 import { serverinfoCommand } from './serverinfo.js';
 import { setupServerCommand } from './setup-server.js';
@@ -48,6 +49,7 @@ const all: SlashCommand[] = [
   serverinfoCommand,
   avatarCommand,
   botinfoCommand,
+  rolesPanelCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));

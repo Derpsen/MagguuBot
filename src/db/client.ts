@@ -86,5 +86,27 @@ function ensureSchema(): void {
       PRIMARY KEY (guild_id, user_id)
     );
     CREATE INDEX IF NOT EXISTS idx_user_xp_leaderboard ON user_xp(guild_id, xp DESC);
+
+    CREATE TABLE IF NOT EXISTS role_panels (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      roles TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, message_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_role_panels_channel ON role_panels(guild_id, channel_id);
+
+    CREATE TABLE IF NOT EXISTS starboard_posts (
+      guild_id TEXT NOT NULL,
+      original_message_id TEXT NOT NULL,
+      original_channel_id TEXT NOT NULL,
+      starboard_message_id TEXT NOT NULL,
+      star_count INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, original_message_id)
+    );
   `);
 }

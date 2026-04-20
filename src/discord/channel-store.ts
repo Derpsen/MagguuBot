@@ -14,7 +14,8 @@ export type ChannelKey =
   | 'welcome'
   | 'auditLog'
   | 'modLog'
-  | 'github';
+  | 'github'
+  | 'starboard';
 
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
@@ -28,6 +29,7 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   auditLog: config.DISCORD_CHANNEL_AUDIT_LOG,
   modLog: config.DISCORD_CHANNEL_MOD_LOG,
   github: config.DISCORD_CHANNEL_GITHUB,
+  starboard: config.DISCORD_CHANNEL_STARBOARD,
 };
 
 export function getChannel(key: ChannelKey): string | undefined {

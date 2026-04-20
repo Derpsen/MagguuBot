@@ -3,7 +3,15 @@ import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
 
-export type ModAction = 'warn' | 'timeout' | 'untimeout' | 'kick' | 'ban' | 'unban' | 'purge';
+export type ModAction =
+  | 'warn'
+  | 'timeout'
+  | 'untimeout'
+  | 'kick'
+  | 'ban'
+  | 'unban'
+  | 'purge'
+  | 'automod';
 
 interface ModLogInput {
   guild: Guild;
@@ -22,6 +30,7 @@ const COLORS: Record<ModAction, number> = {
   ban: Colors.danger,
   unban: Colors.success,
   purge: Colors.muted,
+  automod: Colors.warn,
 };
 
 const ICONS: Record<ModAction, string> = {
@@ -32,6 +41,7 @@ const ICONS: Record<ModAction, string> = {
   ban: '🔨',
   unban: '🕊️',
   purge: '🧹',
+  automod: '🤖',
 };
 
 export async function postModLog(i: ModLogInput): Promise<void> {

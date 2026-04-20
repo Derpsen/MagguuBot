@@ -28,6 +28,7 @@ import {
   buildRolePickerEmbed,
   buildRulesEmbed,
   buildSpoilerChannelEmbed,
+  buildStarboardChannelEmbed,
   buildWelcomeHeroEmbed,
   type ChannelRefs,
 } from '../../embeds/welcome.js';
@@ -136,6 +137,12 @@ const STRUCTURE: CategoryPlan[] = [
     name: '🔨 DEV',
     channels: [{ name: '🔨・github', oldNames: ['github'], topic: 'GitHub-Webhook-Feed.', readOnly: true }],
   },
+  {
+    name: '⭐ HIGHLIGHTS',
+    channels: [
+      { name: '⭐・starboard', oldNames: ['starboard'], topic: 'Nachrichten mit 3+ ⭐ landen hier.', readOnly: true },
+    ],
+  },
 ];
 
 export const KNOWN_CATEGORIES: ReadonlySet<string> = new Set(STRUCTURE.map((c) => c.name));
@@ -172,6 +179,7 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '🛡️・mod-log': 'modLog',
   '📋・audit-log': 'auditLog',
   '🔨・github': 'github',
+  '⭐・starboard': 'starboard',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -186,6 +194,7 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'auditLog',
   'modLog',
   'github',
+  'starboard',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -207,6 +216,7 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '🛡️・mod-log': () => buildModLogChannelEmbed(),
   '📋・audit-log': () => buildAuditLogChannelEmbed(),
   '🔨・github': () => buildGithubChannelEmbed(),
+  '⭐・starboard': () => buildStarboardChannelEmbed(),
 };
 
 export const setupServerCommand: SlashCommand = {

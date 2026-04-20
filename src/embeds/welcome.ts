@@ -19,6 +19,7 @@ export interface ChannelRefs {
   modLog?: string;
   auditLog?: string;
   github?: string;
+  starboard?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -444,6 +445,26 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
       },
     )
     .setFooter({ text: 'MagguuBot  ·  GitHub activity' });
+}
+
+export function buildStarboardChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.warn)
+    .setTitle('⭐ Starboard — Highlights')
+    .setDescription(
+      [
+        '**So funktioniert\'s:**',
+        'Reagier mit ⭐ auf eine Nachricht — sobald **3 Leute** gesternt haben, landet eine Kopie hier.',
+        '',
+        'Bot-Messages zählen nicht. Self-Stars zählen nicht. Entfernst du deinen Stern, sinkt der Counter wieder.',
+      ].join('\n'),
+    )
+    .addFields(
+      { name: '⭐ Threshold', value: '3 Sterne', inline: true },
+      { name: '✨ Update', value: 'Live — Count wird nachgezogen', inline: true },
+      { name: '🧹 Aufräumen', value: 'Bei 0 Sternen wird der Eintrag gelöscht', inline: true },
+    )
+    .setFooter({ text: 'MagguuBot  ·  highlights curated by you' });
 }
 
 export function buildSpoilerChannelEmbed(): EmbedBuilder {
