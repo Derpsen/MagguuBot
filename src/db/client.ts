@@ -46,5 +46,15 @@ function ensureSchema(): void {
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_seerr_status ON seerr_requests(status);
+
+    CREATE TABLE IF NOT EXISTS warnings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      moderator_id TEXT NOT NULL,
+      reason TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_warnings_user ON warnings(guild_id, user_id);
   `);
 }

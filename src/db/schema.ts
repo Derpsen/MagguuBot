@@ -29,7 +29,20 @@ export const seerrRequests = sqliteTable('seerr_requests', {
     .$defaultFn(() => new Date()),
 });
 
+export const warnings = sqliteTable('warnings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  userId: text('user_id').notNull(),
+  moderatorId: text('moderator_id').notNull(),
+  reason: text('reason'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
 export type SeerrRequest = typeof seerrRequests.$inferSelect;
 export type NewSeerrRequest = typeof seerrRequests.$inferInsert;
+export type Warning = typeof warnings.$inferSelect;
+export type NewWarning = typeof warnings.$inferInsert;

@@ -6,6 +6,7 @@ import { getSonarrQueue } from '../../services/sonarr.js';
 import type { SlashCommand } from './index.js';
 
 export const queueCommand: SlashCommand = {
+  category: 'downloads',
   data: new SlashCommandBuilder()
     .setName('queue')
     .setDescription('Show the current Sonarr + Radarr + SABnzbd download queue') as SlashCommandBuilder,

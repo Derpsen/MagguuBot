@@ -17,6 +17,9 @@ export interface ChannelRefs {
   health?: string;
   general?: string;
   botCommands?: string;
+  modLog?: string;
+  auditLog?: string;
+  github?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -284,6 +287,53 @@ export function buildBotCommandsChannelEmbed(): EmbedBuilder {
       'Für Slash-Commands wie `/queue` oder `/search` — hält andere Channels spam-frei.',
     )
     .setFooter({ text: 'MagguuBot  ·  /queue · /search · /setup-server' });
+}
+
+export function buildModLogChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.danger)
+    .setTitle('🛡️ Mod-Log')
+    .setDescription(
+      'Alle Moderation-Actions landen hier: warns, timeouts, kicks, bans, purges — mit Moderator, Ziel und Grund.',
+    )
+    .setFooter({ text: 'MagguuBot  ·  moderation audit' });
+}
+
+export function buildAuditLogChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.muted)
+    .setTitle('📋 Audit-Log')
+    .setDescription(
+      [
+        'Alles was auf dem Server passiert:',
+        '',
+        '• 🟢 Member joins',
+        '• ⚪ Member leaves',
+        '• 🟣 Rollen-Changes',
+        '',
+        '_Keine Message-Edits/Deletes (MessageContent-Intent nicht aktiv, gute Privacy-Default)._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  server audit' });
+}
+
+export function buildGithubChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.info)
+    .setTitle('🔨 GitHub-Feed')
+    .setDescription(
+      [
+        'Live-Feed aus allen deinen Repos:',
+        '',
+        '• 📦 **Pushes** — Commits mit Autor + SHA',
+        '• ✅/❌ **Workflow-Runs** — CI-Status inkl. Link zum failed Run',
+        '• 🏷️ **Releases** — neue Tags + Release-Notes',
+        '• 🟢🔴🟣 **Pull-Requests** — opened/closed/merged',
+        '',
+        '_Setup: im Repo → Settings → Webhooks → Payload URL `/webhook/github` → Secret = `GITHUB_WEBHOOK_SECRET`._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  GitHub activity' });
 }
 
 export function buildSpoilerChannelEmbed(): EmbedBuilder {

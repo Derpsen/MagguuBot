@@ -9,6 +9,7 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
+import { allEvents } from './events/index.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
 
@@ -20,12 +21,19 @@ export function getClient(): Client {
 }
 
 export async function startDiscord(): Promise<void> {
-  const c = new Client({ intents: [GatewayIntentBits.Guilds] });
+  const c = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  });
   client = c;
 
-  c.once('ready', () => {
+  c.once('clientReady', () => {
     logger.info({ tag: c.user?.tag }, 'discord connected');
   });
+
+  for (const event of allEvents) {
+    if (event.once) c.once(event.name, (...args) => Promise.resolve(event.execute(...args)));
+    else c.on(event.name, (...args) => Promise.resolve(event.execute(...args)));
+  }
 
   c.on('interactionCreate', async (interaction: Interaction) => {
     try {
@@ -46,7 +54,9 @@ export async function startDiscord(): Promise<void> {
     } catch (err) {
       logger.error({ err }, 'interaction handler failed');
       if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral }).catch(() => {});
+        await interaction
+          .reply({ content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral })
+          .catch(() => {});
       }
     }
   });

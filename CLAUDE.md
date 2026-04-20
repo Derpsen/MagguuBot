@@ -89,6 +89,25 @@ npm run db:push      # drizzle-kit sync
 | Seerr approved/declined | `DISCORD_CHANNEL_REQUESTS` |
 | Tautulli recently_added | `DISCORD_CHANNEL_NEW_ON_PLEX` |
 | Sonarr/Radarr/SAB health + warnings | `DISCORD_CHANNEL_HEALTH` |
+| Member join welcome embed | `DISCORD_CHANNEL_WELCOME` |
+| Member join/leave + role changes | `DISCORD_CHANNEL_AUDIT_LOG` |
+| Moderation actions (warn/timeout/kick/ban/purge) | `DISCORD_CHANNEL_MOD_LOG` |
+| GitHub push/workflow_run/release/pull_request | `DISCORD_CHANNEL_GITHUB` |
+
+## Slash commands (categorized)
+
+- **Downloads**: `/queue`, `/search movie|show`
+- **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge` (gated by Discord perms)
+- **Utility**: `/help`, `/announce`, `/poll`
+- **Admin**: `/setup-server` (Administrator-only)
+
+## GitHub webhook
+
+`/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), and `ping`. Anything else is logged + ignored.
+
+## Discord intents
+
+`Guilds` (always) + `GuildMembers` (privileged — must be enabled in Dev Portal). `MessageContent` and `Presence` are deliberately off.
 
 ## References
 

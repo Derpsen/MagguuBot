@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { githubWebhook } from './webhooks/github.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
@@ -14,6 +15,10 @@ export function buildApp(): Hono {
   app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
 
   app.use('/webhook/*', async (c, next) => {
+    if (c.req.path.startsWith('/webhook/github')) {
+      await next();
+      return;
+    }
     const token = c.req.header('x-magguu-token');
     if (!token || !constantTimeEquals(token, config.WEBHOOK_SECRET)) {
       logger.warn({ path: c.req.path, ip: c.req.header('x-forwarded-for') }, 'webhook auth failed');
@@ -27,6 +32,7 @@ export function buildApp(): Hono {
   app.route('/webhook/seerr', seerrWebhook);
   app.route('/webhook/tautulli', tautulliWebhook);
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
+  app.route('/webhook/github', githubWebhook);
 
   app.notFound((c) => c.json({ ok: false, error: 'not found' }, 404));
   app.onError((err, c) => {

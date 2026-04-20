@@ -52,6 +52,16 @@
 
   <Config Name="DISCORD_CHANNEL_HEALTH" Target="DISCORD_CHANNEL_HEALTH" Default="" Mode="" Description="Channel ID for health warnings/errors from Sonarr/Radarr/SABnzbd." Type="Variable" Display="always" Required="false" Mask="false"/>
 
+  <Config Name="DISCORD_CHANNEL_WELCOME" Target="DISCORD_CHANNEL_WELCOME" Default="" Mode="" Description="Channel ID where the bot greets new members with a rich welcome embed + @mention." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <Config Name="DISCORD_CHANNEL_AUDIT_LOG" Target="DISCORD_CHANNEL_AUDIT_LOG" Default="" Mode="" Description="Channel ID for server-wide audit events (joins, leaves, role changes). Read-only recommended." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <Config Name="DISCORD_CHANNEL_MOD_LOG" Target="DISCORD_CHANNEL_MOD_LOG" Default="" Mode="" Description="Channel ID for moderation actions (warn/timeout/kick/ban/purge). Admin-only channel recommended." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <Config Name="DISCORD_CHANNEL_GITHUB" Target="DISCORD_CHANNEL_GITHUB" Default="" Mode="" Description="Channel ID for the GitHub webhook feed (pushes, workflow runs, releases, pull requests)." Type="Variable" Display="always" Required="false" Mask="false"/>
+
+  <Config Name="GITHUB_WEBHOOK_SECRET" Target="GITHUB_WEBHOOK_SECRET" Default="" Mode="" Description="HMAC shared secret configured in every GitHub repo's Settings -&gt; Webhooks -&gt; Secret. Generate: openssl rand -hex 32. Leave empty to disable /webhook/github." Type="Variable" Display="always" Required="false" Mask="true"/>
+
   <Config Name="SONARR_URL" Target="SONARR_URL" Default="http://sonarr:8989" Mode="" Description="Sonarr base URL. Use http://sonarr:8989 if Sonarr is on the same Docker network, otherwise http://UNRAID-IP:8989" Type="Variable" Display="always" Required="false" Mask="false">http://sonarr:8989</Config>
 
   <Config Name="SONARR_API_KEY" Target="SONARR_API_KEY" Default="" Mode="" Description="Sonarr API key from Settings -&gt; General. Required for /queue and /search show." Type="Variable" Display="always" Required="false" Mask="true"/>

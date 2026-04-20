@@ -15,10 +15,15 @@ const schema = z.object({
   DISCORD_CHANNEL_APPROVALS: z.string().optional(),
   DISCORD_CHANNEL_NEW_ON_PLEX: z.string().optional(),
   DISCORD_CHANNEL_HEALTH: z.string().optional(),
+  DISCORD_CHANNEL_WELCOME: z.string().optional(),
+  DISCORD_CHANNEL_AUDIT_LOG: z.string().optional(),
+  DISCORD_CHANNEL_MOD_LOG: z.string().optional(),
+  DISCORD_CHANNEL_GITHUB: z.string().optional(),
 
   HTTP_PORT: z.coerce.number().int().positive().default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),
   WEBHOOK_SECRET: z.string().min(16),
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
 
   SONARR_URL: z.string().url().optional(),
   SONARR_API_KEY: z.string().optional(),

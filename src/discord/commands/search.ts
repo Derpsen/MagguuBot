@@ -5,6 +5,7 @@ import { searchSonarr } from '../../services/sonarr.js';
 import type { SlashCommand } from './index.js';
 
 export const searchCommand: SlashCommand = {
+  category: 'downloads',
   data: new SlashCommandBuilder()
     .setName('search')
     .setDescription('Search Radarr (movies) or Sonarr (TV)')

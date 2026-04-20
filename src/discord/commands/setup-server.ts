@@ -11,13 +11,16 @@ import {
 import {
   buildAnnouncementsEmbed,
   buildApprovalsChannelEmbed,
+  buildAuditLogChannelEmbed,
   buildBotCommandsChannelEmbed,
   buildBotHelpEmbed,
   buildFailuresChannelEmbed,
   buildGeneralChatEmbed,
+  buildGithubChannelEmbed,
   buildGrabsChannelEmbed,
   buildHealthChannelEmbed,
   buildImportsChannelEmbed,
+  buildModLogChannelEmbed,
   buildNewOnPlexChannelEmbed,
   buildRequestsChannelEmbed,
   buildRolePickerButtons,
@@ -113,9 +116,23 @@ const STRUCTURE: CategoryPlan[] = [
       { key: 'general' as const, name: '💤 AFK', kind: 'voice' },
     ],
   },
+  {
+    name: '🛡️ MOD',
+    channels: [
+      { key: 'rules' as const, name: 'mod-log', topic: 'Alle Mod-Actions.', readOnly: true },
+      { key: 'rules' as const, name: 'audit-log', topic: 'Server-Events (joins/leaves/role-changes).', readOnly: true },
+    ],
+  },
+  {
+    name: '🔨 DEV',
+    channels: [
+      { key: 'rules' as const, name: 'github', topic: 'GitHub-Webhook-Feed (Pushes, Runs, Releases, PRs).', readOnly: true },
+    ],
+  },
 ];
 
 export const setupServerCommand: SlashCommand = {
+  category: 'admin',
   data: new SlashCommandBuilder()
     .setName('setup-server')
     .setDescription('Scaffold the MagguuBot Discord channels + roles (idempotent)')
@@ -208,6 +225,8 @@ export const setupServerCommand: SlashCommand = {
       }
     }
 
+    await sortServerStructure(interaction.guild);
+
     logger.info({ created: created.length, skipped: skipped.length }, 'server setup completed');
     const summary = [
       `**Created (${created.length})**`,
@@ -251,6 +270,12 @@ function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): vo
     refs.general = channelId;
   } else if (plan.name === 'bot-commands') {
     refs.botCommands = channelId;
+  } else if (plan.name === 'mod-log') {
+    refs.modLog = channelId;
+  } else if (plan.name === 'audit-log') {
+    refs.auditLog = channelId;
+  } else if (plan.name === 'github') {
+    refs.github = channelId;
   }
 }
 
@@ -286,8 +311,45 @@ function welcomeEmbedFor(plan: ChannelPlan, refs: ChannelRefs): EmbedBuilder | n
       return buildBotCommandsChannelEmbed();
     case 'spoiler-zone':
       return buildSpoilerChannelEmbed();
+    case 'mod-log':
+      return buildModLogChannelEmbed();
+    case 'audit-log':
+      return buildAuditLogChannelEmbed();
+    case 'github':
+      return buildGithubChannelEmbed();
     default:
       return null;
+  }
+}
+
+async function sortServerStructure(guild: Guild): Promise<void> {
+  for (let catIdx = 0; catIdx < STRUCTURE.length; catIdx++) {
+    const catPlan = STRUCTURE[catIdx];
+    if (!catPlan) continue;
+    const category = guild.channels.cache.find(
+      (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === catPlan.name,
+    );
+    if (!category) continue;
+    await category
+      .setPosition(catIdx)
+      .catch((err: unknown) => logger.warn({ err, name: catPlan.name }, 'category sort failed'));
+
+    for (let chIdx = 0; chIdx < catPlan.channels.length; chIdx++) {
+      const ch = catPlan.channels[chIdx];
+      if (!ch) continue;
+      const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
+      const channel = guild.channels.cache.find(
+        (c) =>
+          c.name === ch.name &&
+          c.parentId === category.id &&
+          c.type === type &&
+          'setPosition' in c,
+      );
+      if (!channel || !('setPosition' in channel)) continue;
+      await channel
+        .setPosition(chIdx)
+        .catch((err: unknown) => logger.warn({ err, name: ch.name }, 'channel sort failed'));
+    }
   }
 }
 
