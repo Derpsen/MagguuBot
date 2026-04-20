@@ -55,7 +55,6 @@ authRouter.get('/login', (c) => {
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('scope', 'identify');
   authUrl.searchParams.set('state', state);
-  authUrl.searchParams.set('prompt', 'none');
 
   return c.redirect(authUrl.toString());
 });
@@ -67,15 +66,35 @@ authRouter.get('/callback', async (c) => {
 
   const code = c.req.query('code');
   const state = c.req.query('state');
+  const error = c.req.query('error');
+  const errorDesc = c.req.query('error_description');
   const storedState = getCookie(c, STATE_COOKIE);
   const next = getCookie(c, NEXT_COOKIE) ?? '/';
 
   deleteCookie(c, STATE_COOKIE, { path: '/' });
   deleteCookie(c, NEXT_COOKIE, { path: '/' });
 
-  if (!code || !state || !storedState || state !== storedState) {
-    logger.warn({ hasCode: !!code, stateOk: state === storedState }, 'oauth callback: bad state');
-    return c.text('OAuth state mismatch.', 400);
+  if (error) {
+    logger.warn({ error, errorDesc }, 'oauth callback: discord returned error');
+    return c.text(`Discord OAuth error: ${error}${errorDesc ? ` — ${errorDesc}` : ''}`, 400);
+  }
+
+  if (!code) {
+    logger.warn('oauth callback: missing code param');
+    return c.text('OAuth callback missing code — try logging in again.', 400);
+  }
+
+  if (!storedState) {
+    logger.warn('oauth callback: state cookie missing');
+    return c.text(
+      'OAuth state cookie missing. Cookies enabled? Third-party cookie policies? Try incognito.',
+      400,
+    );
+  }
+
+  if (state !== storedState) {
+    logger.warn({ stateOk: false }, 'oauth callback: state mismatch');
+    return c.text('OAuth state mismatch — try logging in again.', 400);
   }
 
   const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
