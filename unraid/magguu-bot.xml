@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>magguu-bot</Name>
+  <Name>MagguuBot</Name>
   <Repository>ghcr.io/derpsen/magguu-bot:latest</Repository>
   <Registry>https://ghcr.io/derpsen/magguu-bot</Registry>
   <Branch>
@@ -13,7 +13,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Derpsen/MagguuBot/issues</Support>
   <Project>https://github.com/Derpsen/MagguuBot</Project>
-  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd). Receives webhooks and posts styled embeds into categorized Discord channels. Slash commands: /queue (live Sonarr+Radarr+SABnzbd queue), /search, /setup-server (scaffolds categories, channels, roles). Seerr approve/decline buttons built in. Runs as a single container; stores an append-only SQLite activity log in /app/data.</Overview>
+  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd) with moderation, XP/leveling, reminders, welcome/audit, and a GitHub webhook feed. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Single container, runs headless with an append-only activity log under /app/data.</Overview>
   <Category>Tools: MediaApp:Other Network:Messenger</Category>
   <WebUI>http://[IP]:[PORT:3000]/healthz</WebUI>
   <TemplateURL/>
@@ -26,9 +26,9 @@
   <DonateLink/>
   <Requires/>
 
-  <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="HTTP port that receives webhooks from *arr services. Only expose to LAN. Containers on the same Docker network reach it via http://magguu-bot:3000 without any port mapping." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="HTTP port that receives webhooks from *arr services + SABnzbd + GitHub. Only expose to LAN. Containers on the same Docker network reach it via http://MagguuBot:3000 without any port mapping." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
 
-  <Config Name="AppData" Target="/app/data" Default="/mnt/user/appdata/magguu-bot" Mode="rw" Description="SQLite database + WAL files. Persists across container rebuilds." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/magguu-bot</Config>
+  <Config Name="AppData" Target="/app/data" Default="/mnt/user/appdata/magguu-bot" Mode="rw" Description="SQLite database + WAL files. Persists channel config, warnings, reminders, XP, webhook history across container rebuilds." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/magguu-bot</Config>
 
   <Config Name="DISCORD_TOKEN" Target="DISCORD_TOKEN" Default="" Mode="" Description="Bot token from Discord Developer Portal (Applications -&gt; your app -&gt; Bot -&gt; Reset Token). Treat as a password." Type="Variable" Display="always" Required="true" Mask="true"/>
 
@@ -36,33 +36,11 @@
 
   <Config Name="DISCORD_GUILD_ID" Target="DISCORD_GUILD_ID" Default="" Mode="" Description="Your Discord server ID. Enable Developer Mode in Discord, right-click the server icon, Copy Server ID." Type="Variable" Display="always" Required="true" Mask="false"/>
 
-  <Config Name="WEBHOOK_SECRET" Target="WEBHOOK_SECRET" Default="" Mode="" Description="Shared secret required in X-Magguu-Token header on every webhook. Generate with: openssl rand -hex 32 (minimum 16 chars)." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="WEBHOOK_SECRET" Target="WEBHOOK_SECRET" Default="" Mode="" Description="Shared secret required in X-Magguu-Token header on every /webhook/* call. Generate: openssl rand -hex 32 (minimum 16 chars)." Type="Variable" Display="always" Required="true" Mask="true"/>
 
-  <Config Name="DISCORD_CHANNEL_GRABS" Target="DISCORD_CHANNEL_GRABS" Default="" Mode="" Description="Channel ID for Sonarr/Radarr grab events. Leave empty on first boot, run /setup-server, then fill in from Discord (right-click channel -&gt; Copy Channel ID)." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="GITHUB_WEBHOOK_SECRET" Target="GITHUB_WEBHOOK_SECRET" Default="" Mode="" Description="HMAC secret for the /webhook/github endpoint. Set the same value in each GitHub repo's Settings -&gt; Webhooks -&gt; Secret. Generate: openssl rand -hex 32. Leave empty to disable the GitHub feed." Type="Variable" Display="always" Required="false" Mask="true"/>
 
-  <Config Name="DISCORD_CHANNEL_IMPORTS" Target="DISCORD_CHANNEL_IMPORTS" Default="" Mode="" Description="Channel ID for completed imports (Sonarr/Radarr Download events + SABnzbd complete)." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_FAILURES" Target="DISCORD_CHANNEL_FAILURES" Default="" Mode="" Description="Channel ID for ManualInteractionRequired / DownloadFailure / SABnzbd failed events." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_REQUESTS" Target="DISCORD_CHANNEL_REQUESTS" Default="" Mode="" Description="Channel ID for approved/declined Seerr request notifications." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_APPROVALS" Target="DISCORD_CHANNEL_APPROVALS" Default="" Mode="" Description="Channel ID for pending Seerr requests with Approve/Decline buttons. Admin-only channel recommended." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_NEW_ON_PLEX" Target="DISCORD_CHANNEL_NEW_ON_PLEX" Default="" Mode="" Description="Channel ID for Tautulli recently-added notifications." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_HEALTH" Target="DISCORD_CHANNEL_HEALTH" Default="" Mode="" Description="Channel ID for health warnings/errors from Sonarr/Radarr/SABnzbd." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_WELCOME" Target="DISCORD_CHANNEL_WELCOME" Default="" Mode="" Description="Channel ID where the bot greets new members with a rich welcome embed + @mention." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_AUDIT_LOG" Target="DISCORD_CHANNEL_AUDIT_LOG" Default="" Mode="" Description="Channel ID for server-wide audit events (joins, leaves, role changes). Read-only recommended." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_MOD_LOG" Target="DISCORD_CHANNEL_MOD_LOG" Default="" Mode="" Description="Channel ID for moderation actions (warn/timeout/kick/ban/purge). Admin-only channel recommended." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="DISCORD_CHANNEL_GITHUB" Target="DISCORD_CHANNEL_GITHUB" Default="" Mode="" Description="Channel ID for the GitHub webhook feed (pushes, workflow runs, releases, pull requests)." Type="Variable" Display="always" Required="false" Mask="false"/>
-
-  <Config Name="GITHUB_WEBHOOK_SECRET" Target="GITHUB_WEBHOOK_SECRET" Default="" Mode="" Description="HMAC shared secret configured in every GitHub repo's Settings -&gt; Webhooks -&gt; Secret. Generate: openssl rand -hex 32. Leave empty to disable /webhook/github." Type="Variable" Display="always" Required="false" Mask="true"/>
-
-  <Config Name="SONARR_URL" Target="SONARR_URL" Default="http://sonarr:8989" Mode="" Description="Sonarr base URL. Use http://sonarr:8989 if Sonarr is on the same Docker network, otherwise http://UNRAID-IP:8989" Type="Variable" Display="always" Required="false" Mask="false">http://sonarr:8989</Config>
+  <Config Name="SONARR_URL" Target="SONARR_URL" Default="http://sonarr:8989" Mode="" Description="Sonarr base URL. http://sonarr:8989 works when both containers share a Docker network, otherwise http://UNRAID-IP:8989." Type="Variable" Display="always" Required="false" Mask="false">http://sonarr:8989</Config>
 
   <Config Name="SONARR_API_KEY" Target="SONARR_API_KEY" Default="" Mode="" Description="Sonarr API key from Settings -&gt; General. Required for /queue and /search show." Type="Variable" Display="always" Required="false" Mask="true"/>
 
@@ -70,11 +48,11 @@
 
   <Config Name="RADARR_API_KEY" Target="RADARR_API_KEY" Default="" Mode="" Description="Radarr API key from Settings -&gt; General." Type="Variable" Display="always" Required="false" Mask="true"/>
 
-  <Config Name="SEERR_URL" Target="SEERR_URL" Default="http://seerr:5055" Mode="" Description="Jellyseerr/Overseerr base URL. Required for Seerr approve/decline buttons." Type="Variable" Display="always" Required="false" Mask="false">http://seerr:5055</Config>
+  <Config Name="SEERR_URL" Target="SEERR_URL" Default="http://seerr:5055" Mode="" Description="Jellyseerr / Overseerr base URL. Required for Seerr approve/decline buttons." Type="Variable" Display="always" Required="false" Mask="false">http://seerr:5055</Config>
 
   <Config Name="SEERR_API_KEY" Target="SEERR_API_KEY" Default="" Mode="" Description="Seerr API key from Settings -&gt; General." Type="Variable" Display="always" Required="false" Mask="true"/>
 
-  <Config Name="SAB_URL" Target="SAB_URL" Default="http://sabnzbd:8080" Mode="" Description="SABnzbd base URL. Used by /queue to fetch the live slot list." Type="Variable" Display="always" Required="false" Mask="false">http://sabnzbd:8080</Config>
+  <Config Name="SAB_URL" Target="SAB_URL" Default="http://sabnzbd:8080" Mode="" Description="SABnzbd base URL. Used by /queue for the live slot list." Type="Variable" Display="always" Required="false" Mask="false">http://sabnzbd:8080</Config>
 
   <Config Name="SAB_API_KEY" Target="SAB_API_KEY" Default="" Mode="" Description="SABnzbd API key from Config -&gt; General -&gt; Security." Type="Variable" Display="always" Required="false" Mask="true"/>
 
