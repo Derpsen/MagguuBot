@@ -26,12 +26,8 @@ const schema = z.object({
   RADARR_API_KEY: z.string().optional(),
   SEERR_URL: z.string().url().optional(),
   SEERR_API_KEY: z.string().optional(),
-  TAUTULLI_URL: z.string().url().optional(),
-  TAUTULLI_API_KEY: z.string().optional(),
   SAB_URL: z.string().url().optional(),
   SAB_API_KEY: z.string().optional(),
-
-  TMDB_API_KEY: z.string().optional(),
 
   DATABASE_PATH: z.string().default('./data/bot.db'),
 });

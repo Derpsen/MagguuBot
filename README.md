@@ -143,8 +143,7 @@ src/
 │   ├── sonarr.ts
 │   ├── radarr.ts
 │   ├── seerr.ts
-│   ├── sabnzbd.ts
-│   └── tmdb.ts
+│   └── sabnzbd.ts
 └── utils/
     └── logger.ts                   # pino
 

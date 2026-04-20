@@ -2,7 +2,7 @@
   "name": "magguu-bot",
   "version": "0.1.0",
   "private": true,
-  "description": "Discord bot for MagguuUI homelab stack (Sonarr, Radarr, Seerr, Tautulli, Unraid).",
+  "description": "Discord bot for the download side of a media homelab (Sonarr, Radarr, Seerr, Tautulli, SABnzbd).",
   "type": "module",
   "engines": {
     "node": ">=22"
