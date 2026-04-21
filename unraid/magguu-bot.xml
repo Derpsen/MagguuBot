@@ -13,7 +13,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Derpsen/MagguuBot/issues</Support>
   <Project>https://github.com/Derpsen/MagguuBot</Project>
-  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Maintainerr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, and a GitHub webhook feed. Ships with an optional embedded admin dashboard (Discord OAuth2 login, warnings/XP/webhook views) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Single container, runs headless with an append-only activity log under /app/data.</Overview>
+  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Maintainerr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, a GitHub webhook feed, and an optional WoW Blue-Tracker RSS channel (Retail + PTR only). Slash commands include /queue, /arr-status, /calendar, /search, /db-backup, /purge. Ships with an embedded admin dashboard (Discord OAuth2, warnings/XP/webhook views, filterable) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Role-gated channels: Newcomer sees only Info/Chat, Plex-User/Regular/VIP unlock MEDIA + DOWNLOADS. Single container, runs headless with an append-only activity log under /app/data.</Overview>
   <Category>Tools: MediaApp:Other Network:Messenger</Category>
   <WebUI>http://[IP]:[PORT:3000]/healthz</WebUI>
   <TemplateURL/>
@@ -63,6 +63,8 @@
   <Config Name="SAB_URL" Target="SAB_URL" Default="http://sabnzbd:8080" Mode="" Description="SABnzbd base URL. Used by /queue for the live slot list." Type="Variable" Display="always" Required="false" Mask="false">http://sabnzbd:8080</Config>
 
   <Config Name="SAB_API_KEY" Target="SAB_API_KEY" Default="" Mode="" Description="SABnzbd API key from Config -&gt; General -&gt; Security." Type="Variable" Display="always" Required="false" Mask="true"/>
+
+  <Config Name="WOW_BLUE_TRACKER_URL" Target="WOW_BLUE_TRACKER_URL" Default="https://www.wowhead.com/blue-tracker?rss" Mode="" Description="RSS feed URL for the WoW Blue-Tracker channel. Recommended: https://www.wowhead.com/blue-tracker?rss (dedupe for EU+US duplicates is built in). Alternative: https://www.bluetracker.gg/rss/wow/. Leave empty to disable the Blue-Tracker feature entirely. Filters out Classic/SoD/Wrath/Cata/Hardcore by keyword — only Retail + PTR are posted." Type="Variable" Display="always" Required="false" Mask="false">https://www.wowhead.com/blue-tracker?rss</Config>
 
   <Config Name="LOG_LEVEL" Target="LOG_LEVEL" Default="info" Mode="" Description="Log level: trace | debug | info | warn | error | fatal" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
 
