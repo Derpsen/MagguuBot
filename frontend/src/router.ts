@@ -16,6 +16,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/scheduled', name: 'scheduled', component: () => import('./pages/Scheduled.vue') },
   { path: '/tickets', name: 'tickets', component: () => import('./pages/Tickets.vue') },
   { path: '/reputation', name: 'reputation', component: () => import('./pages/Reputation.vue') },
+  { path: '/rss', name: 'rss', component: () => import('./pages/RssFeeds.vue') },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

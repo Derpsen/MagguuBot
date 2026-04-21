@@ -9,6 +9,7 @@ import { runBlueTrackerTick } from './blue-tracker.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
+import { runRssFeedTick } from './rss-manager.js';
 import { updateStatsChannels } from './stats-channels.js';
 
 const REMINDER_TICK_MS = 30_000;
@@ -17,6 +18,7 @@ const ANNOUNCE_TICK_MS = 30_000;
 const BLUE_TRACKER_TICK_MS = 15 * 60_000;
 const TOPICS_TICK_MS = 5 * 60_000;
 const COUNTDOWN_TICK_MS = 60_000;
+const RSS_TICK_MS = 15 * 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
@@ -24,6 +26,7 @@ let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
 let topicsTimer: NodeJS.Timeout | null = null;
 let countdownTimer: NodeJS.Timeout | null = null;
+let rssTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   remindersTimer = setInterval(() => {
@@ -52,12 +55,17 @@ export function startScheduler(): void {
     void tickCountdowns().catch((err) => logger.error({ err }, 'countdown tick failed'));
   }, COUNTDOWN_TICK_MS);
 
+  rssTimer = setInterval(() => {
+    void runRssFeedTick().catch((err) => logger.error({ err }, 'rss feed tick failed'));
+  }, RSS_TICK_MS);
+
   setImmediate(() => {
     void processDueReminders().catch((err) => logger.error({ err }, 'reminder boot tick failed'));
     void updateStatsChannels().catch((err) => logger.error({ err }, 'stats boot tick failed'));
     void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce boot tick failed'));
     void updateChannelTopics().catch((err) => logger.error({ err }, 'topics boot tick failed'));
     void tickCountdowns().catch((err) => logger.error({ err }, 'countdown boot tick failed'));
+    void runRssFeedTick().catch((err) => logger.error({ err }, 'rss boot tick failed'));
     if (config.WOW_BLUE_TRACKER_URL) {
       void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker boot tick failed'));
     }
@@ -70,6 +78,7 @@ export function startScheduler(): void {
       announceMs: ANNOUNCE_TICK_MS,
       topicsMs: TOPICS_TICK_MS,
       countdownMs: COUNTDOWN_TICK_MS,
+      rssMs: RSS_TICK_MS,
       blueTrackerMs: config.WOW_BLUE_TRACKER_URL ? BLUE_TRACKER_TICK_MS : 'disabled',
     },
     'scheduler started',
@@ -83,12 +92,14 @@ export function stopScheduler(): void {
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
   if (topicsTimer) clearInterval(topicsTimer);
   if (countdownTimer) clearInterval(countdownTimer);
+  if (rssTimer) clearInterval(rssTimer);
   remindersTimer = null;
   statsTimer = null;
   announceTimer = null;
   blueTrackerTimer = null;
   topicsTimer = null;
   countdownTimer = null;
+  rssTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {

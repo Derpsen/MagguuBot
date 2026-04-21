@@ -26,6 +26,8 @@ const schema = z.object({
 
   WOW_BLUE_TRACKER_URL: z.string().url().optional(),
 
+  OPENAI_API_KEY: z.string().optional(),
+
   STARBOARD_THRESHOLD: z.coerce.number().int().positive().default(3),
   STARBOARD_EMOJI: z.string().default('⭐'),
   AUTOMOD_INVITE_FILTER: z.coerce.boolean().default(true),

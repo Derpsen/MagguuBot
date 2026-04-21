@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Save, Star, Shield, UserPlus } from 'lucide-vue-next';
+import { Save, Star, Shield, UserPlus, Sparkles } from 'lucide-vue-next';
 import { api } from '../lib/api';
 import { useToast } from '../composables/useToast';
 
@@ -17,6 +17,8 @@ interface Settings {
   automodMentionThreshold: number;
   automodExternalLinkFilter: boolean;
   autoRoleId: string | null;
+  aiModerationEnabled: boolean;
+  aiModerationThreshold: number;
 }
 
 interface Role {
@@ -203,6 +205,41 @@ onMounted(load);
             <div>
               <div class="text-sm font-medium text-white">Externe-Link-Filter</div>
               <div class="text-xs text-slate-500">Löscht Nachrichten mit Links außerhalb Discord-Domains.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center gap-3">
+          <Sparkles class="h-5 w-5 text-violet-400" />
+          <h2 class="text-lg font-semibold text-white">AI-Moderation</h2>
+        </div>
+        <div class="mt-4 space-y-4">
+          <label class="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              v-model="settings.aiModerationEnabled"
+              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+            />
+            <div class="flex-1">
+              <div class="text-sm font-medium text-white">OpenAI Moderation aktiv</div>
+              <div class="text-xs text-slate-500">
+                Prüft Nachrichten auf Hate/Harassment/Violence via OpenAI Moderation API (kostenlos, keine Tokens verbraucht).
+                Braucht <code>OPENAI_API_KEY</code> im Container. Staff/Mods werden umgangen. Nur Text &gt; 8 Zeichen.
+              </div>
+              <div class="mt-2 flex items-center gap-2 text-xs">
+                <span class="text-slate-400">Score-Threshold:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  v-model.number="settings.aiModerationThreshold"
+                  class="w-20 rounded border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-none"
+                />
+                <span class="text-slate-400">(0.0-1.0, default 0.7 = streng. Niedriger = aggressiver.)</span>
+              </div>
             </div>
           </label>
         </div>

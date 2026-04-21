@@ -50,6 +50,24 @@ export const welcomeMessages = sqliteTable('welcome_messages', {
     .$defaultFn(() => new Date()),
 });
 
+export const rssFeeds = sqliteTable('rss_feeds', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  channelId: text('channel_id').notNull(),
+  excludeKeywords: text('exclude_keywords'),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  seenGuids: text('seen_guids'),
+  lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type RssFeed = typeof rssFeeds.$inferSelect;
+
 export const countdowns = sqliteTable('countdowns', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guildId: text('guild_id').notNull(),

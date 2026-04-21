@@ -1,4 +1,5 @@
 import { logger } from '../../utils/logger.js';
+import { runAiModeration } from '../ai-automod.js';
 import { runAutomod } from '../automod.js';
 import { runAutoresponder } from '../autoresponder.js';
 import { scheduleStickyRepost } from '../sticky.js';
@@ -17,6 +18,13 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
       if (deleted) return;
     } catch (err) {
       logger.error({ err, userId: message.author.id }, 'automod failed');
+    }
+
+    try {
+      const deleted = await runAiModeration(message);
+      if (deleted) return;
+    } catch (err) {
+      logger.error({ err, userId: message.author.id }, 'ai-moderation failed');
     }
 
     try {

@@ -75,6 +75,21 @@ function ensureSchema(): void {
       PRIMARY KEY (guild_id, plan_name)
     );
 
+    CREATE TABLE IF NOT EXISTS rss_feeds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      exclude_keywords TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      seen_guids TEXT,
+      last_run_at INTEGER,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_rss_feeds_enabled ON rss_feeds(guild_id, enabled);
+
     CREATE TABLE IF NOT EXISTS countdowns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,

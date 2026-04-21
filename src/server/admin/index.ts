@@ -10,6 +10,7 @@ import {
   reminders,
   reputation,
   rolePanels,
+  rssFeeds,
   scheduledAnnouncements,
   seerrRequests,
   starboardPosts,
@@ -186,6 +187,85 @@ adminRouter.get('/webhooks', (c) => {
   );
 });
 
+// ─── RSS feeds ───────────────────────────────────────────────────────────────
+
+const rssFeedInput = z.object({
+  name: z.string().min(1).max(60),
+  url: z.string().url().max(500),
+  channelId: z.string().min(1).max(30),
+  excludeKeywords: z.array(z.string().min(1).max(60)).max(30).optional(),
+  enabled: z.boolean().optional(),
+});
+
+adminRouter.get('/rss', (c) => {
+  const rows = db
+    .select()
+    .from(rssFeeds)
+    .where(eq(rssFeeds.guildId, config.DISCORD_GUILD_ID))
+    .all();
+  return c.json(
+    rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      url: r.url,
+      channelId: r.channelId,
+      excludeKeywords: r.excludeKeywords ? JSON.parse(r.excludeKeywords) : [],
+      enabled: r.enabled,
+      lastRunAt: r.lastRunAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  );
+});
+
+adminRouter.post('/rss', async (c) => {
+  const session = getSession(c);
+  const body = await c.req.json().catch(() => null);
+  const parsed = rssFeedInput.safeParse(body);
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid input' }, 400);
+  const row = db
+    .insert(rssFeeds)
+    .values({
+      guildId: config.DISCORD_GUILD_ID,
+      name: parsed.data.name,
+      url: parsed.data.url,
+      channelId: parsed.data.channelId,
+      excludeKeywords: parsed.data.excludeKeywords ? JSON.stringify(parsed.data.excludeKeywords) : null,
+      enabled: parsed.data.enabled ?? true,
+      createdBy: session.userId,
+    })
+    .returning({ id: rssFeeds.id })
+    .get();
+  return c.json({ ok: true, id: row?.id });
+});
+
+adminRouter.patch('/rss/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const body = await c.req.json().catch(() => null);
+  const parsed = rssFeedInput.partial().safeParse(body);
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid input' }, 400);
+  const update: Partial<typeof rssFeeds.$inferInsert> = {};
+  if (parsed.data.name !== undefined) update.name = parsed.data.name;
+  if (parsed.data.url !== undefined) update.url = parsed.data.url;
+  if (parsed.data.channelId !== undefined) update.channelId = parsed.data.channelId;
+  if (parsed.data.excludeKeywords !== undefined) {
+    update.excludeKeywords = parsed.data.excludeKeywords.length > 0
+      ? JSON.stringify(parsed.data.excludeKeywords)
+      : null;
+  }
+  if (parsed.data.enabled !== undefined) update.enabled = parsed.data.enabled;
+  if (Object.keys(update).length === 0) return c.json({ ok: true });
+  db.update(rssFeeds).set(update).where(eq(rssFeeds.id, id)).run();
+  return c.json({ ok: true });
+});
+
+adminRouter.delete('/rss/:id', (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  db.delete(rssFeeds).where(eq(rssFeeds.id, id)).run();
+  return c.json({ ok: true });
+});
+
 adminRouter.delete('/webhooks', (c) => {
   const scope = c.req.query('scope') ?? 'all';
   let result: { changes: number };
@@ -213,6 +293,8 @@ const settingsSchema = z.object({
   automodMentionThreshold: z.number().int().min(1).max(100).optional(),
   automodExternalLinkFilter: z.boolean().optional(),
   autoRoleId: z.string().nullable().optional(),
+  aiModerationEnabled: z.boolean().optional(),
+  aiModerationThreshold: z.number().min(0).max(1).optional(),
 });
 
 adminRouter.get('/settings', (c) => c.json(getAllSettings()));
@@ -233,6 +315,8 @@ adminRouter.put('/settings', async (c) => {
   if (data.automodMentionThreshold !== undefined) setSetting('automodMentionThreshold', data.automodMentionThreshold);
   if (data.automodExternalLinkFilter !== undefined) setSetting('automodExternalLinkFilter', data.automodExternalLinkFilter);
   if (data.autoRoleId !== undefined) setSetting('autoRoleId', data.autoRoleId);
+  if (data.aiModerationEnabled !== undefined) setSetting('aiModerationEnabled', data.aiModerationEnabled);
+  if (data.aiModerationThreshold !== undefined) setSetting('aiModerationThreshold', data.aiModerationThreshold);
 
   logger.info({ keys: Object.keys(data), by: getSession(c).userId }, 'settings updated via dashboard');
   return c.json({ ok: true, settings: getAllSettings() });

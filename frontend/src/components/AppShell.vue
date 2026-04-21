@@ -15,6 +15,7 @@ import {
   Calendar,
   Ticket,
   Heart,
+  Rss,
   Settings as SettingsIcon,
   LogOut,
   ChevronsLeft,
@@ -77,6 +78,7 @@ const sections: NavSection[] = [
     items: [
       { name: 'channels', label: 'Channels', icon: Hash, to: '/channels' },
       { name: 'webhooks', label: 'Webhooks', icon: Webhook, to: '/webhooks' },
+      { name: 'rss', label: 'RSS Feeds', icon: Rss, to: '/rss' },
       { name: 'settings', label: 'Settings', icon: SettingsIcon, to: '/settings' },
     ],
   },
