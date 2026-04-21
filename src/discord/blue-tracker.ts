@@ -67,14 +67,33 @@ export async function runBlueTrackerTick(): Promise<void> {
     return;
   }
 
-  const fresh = items.filter((i) => !seen.has(i.guid)).reverse().slice(0, MAX_POST_PER_RUN);
+  const postedTitles = new Set<string>();
+  const fresh: RssItem[] = [];
+  for (const item of [...items].reverse()) {
+    if (seen.has(item.guid)) continue;
+    const normTitle = normalizeTitle(item.title);
+    if (normTitle && (seen.has(`title:${normTitle}`) || postedTitles.has(normTitle))) continue;
+    fresh.push(item);
+    if (normTitle) postedTitles.add(normTitle);
+    if (fresh.length >= MAX_POST_PER_RUN) break;
+  }
 
   for (const item of fresh) {
     await postOne(item, channelId);
     seen.add(item.guid);
+    const normTitle = normalizeTitle(item.title);
+    if (normTitle) seen.add(`title:${normTitle}`);
   }
 
   saveSeen(trimSeen(seen));
+}
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/^\[(eu|us|kr|tw|cn)\]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 async function postOne(item: RssItem, channelId: string): Promise<void> {
