@@ -23,6 +23,7 @@
     "better-sqlite3": "^11.7.0",
     "discord.js": "^14.16.3",
     "drizzle-orm": "^0.36.4",
+    "fast-xml-parser": "^5.7.1",
     "hono": "^4.6.12",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",

@@ -5,16 +5,22 @@ import { db } from '../db/client.js';
 import { reminders, scheduledAnnouncements } from '../db/schema.js';
 import { Colors, truncate } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { runBlueTrackerTick } from './blue-tracker.js';
+import { updateChannelTopics } from './channel-topics.js';
 import { getClient } from './client.js';
 import { updateStatsChannels } from './stats-channels.js';
 
 const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
 const ANNOUNCE_TICK_MS = 30_000;
+const BLUE_TRACKER_TICK_MS = 15 * 60_000;
+const TOPICS_TICK_MS = 5 * 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
+let blueTrackerTimer: NodeJS.Timeout | null = null;
+let topicsTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   remindersTimer = setInterval(() => {
@@ -29,14 +35,34 @@ export function startScheduler(): void {
     void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce tick failed'));
   }, ANNOUNCE_TICK_MS);
 
+  if (config.WOW_BLUE_TRACKER_URL) {
+    blueTrackerTimer = setInterval(() => {
+      void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker tick failed'));
+    }, BLUE_TRACKER_TICK_MS);
+  }
+
+  topicsTimer = setInterval(() => {
+    void updateChannelTopics().catch((err) => logger.error({ err }, 'topics tick failed'));
+  }, TOPICS_TICK_MS);
+
   setImmediate(() => {
     void processDueReminders().catch((err) => logger.error({ err }, 'reminder boot tick failed'));
     void updateStatsChannels().catch((err) => logger.error({ err }, 'stats boot tick failed'));
     void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce boot tick failed'));
+    void updateChannelTopics().catch((err) => logger.error({ err }, 'topics boot tick failed'));
+    if (config.WOW_BLUE_TRACKER_URL) {
+      void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker boot tick failed'));
+    }
   });
 
   logger.info(
-    { reminderMs: REMINDER_TICK_MS, statsMs: STATS_TICK_MS, announceMs: ANNOUNCE_TICK_MS },
+    {
+      reminderMs: REMINDER_TICK_MS,
+      statsMs: STATS_TICK_MS,
+      announceMs: ANNOUNCE_TICK_MS,
+      topicsMs: TOPICS_TICK_MS,
+      blueTrackerMs: config.WOW_BLUE_TRACKER_URL ? BLUE_TRACKER_TICK_MS : 'disabled',
+    },
     'scheduler started',
   );
 }
@@ -45,9 +71,13 @@ export function stopScheduler(): void {
   if (remindersTimer) clearInterval(remindersTimer);
   if (statsTimer) clearInterval(statsTimer);
   if (announceTimer) clearInterval(announceTimer);
+  if (blueTrackerTimer) clearInterval(blueTrackerTimer);
+  if (topicsTimer) clearInterval(topicsTimer);
   remindersTimer = null;
   statsTimer = null;
   announceTimer = null;
+  blueTrackerTimer = null;
+  topicsTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {

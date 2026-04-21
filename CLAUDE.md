@@ -84,11 +84,12 @@ npm run db:push      # drizzle-kit sync
 |---|---|
 | Sonarr/Radarr Grab | `DISCORD_CHANNEL_GRABS` |
 | Sonarr/Radarr Download import, SAB complete | `DISCORD_CHANNEL_IMPORTS` |
-| Sonarr/Radarr DownloadFailure/ManualInteraction, SAB failed | `DISCORD_CHANNEL_FAILURES` |
+| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `DISCORD_CHANNEL_FAILURES` |
 | Seerr MEDIA_PENDING (with Approve/Decline buttons) | `DISCORD_CHANNEL_APPROVALS` (falls back to `REQUESTS`) |
-| Seerr approved/declined | `DISCORD_CHANNEL_REQUESTS` |
+| Seerr approved/declined/available/failed/deleted | `DISCORD_CHANNEL_REQUESTS` |
 | Tautulli recently_added | `DISCORD_CHANNEL_NEW_ON_PLEX` |
-| Sonarr/Radarr/SAB health + warnings | `DISCORD_CHANNEL_HEALTH` |
+| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `DISCORD_CHANNEL_MAINTAINERR` |
+| Sonarr/Radarr/SAB health + warnings + ApplicationUpdate | `DISCORD_CHANNEL_HEALTH` |
 | Member join welcome embed | `DISCORD_CHANNEL_WELCOME` |
 | Member join/leave + role changes | `DISCORD_CHANNEL_AUDIT_LOG` |
 | Moderation actions (warn/timeout/kick/ban/purge) | `DISCORD_CHANNEL_MOD_LOG` |
@@ -96,14 +97,14 @@ npm run db:push      # drizzle-kit sync
 
 ## Slash commands (categorized)
 
-- **Downloads**: `/queue`, `/search movie|show`
+- **Downloads**: `/queue`, `/arr-status`, `/search movie|show`
 - **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge` (gated by Discord perms)
 - **Utility**: `/help`, `/announce`, `/poll`
 - **Admin**: `/setup-server` (Administrator-only)
 
 ## GitHub webhook
 
-`/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), and `ping`. Anything else is logged + ignored.
+`/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), `issues` (`opened`/`closed`/`reopened`), and `ping`. Anything else is logged + ignored.
 
 ## Discord intents
 

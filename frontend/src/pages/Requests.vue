@@ -8,7 +8,7 @@ interface SeerrRequest {
   seerrRequestId: number;
   mediaType: 'movie' | 'tv';
   title: string;
-  status: 'pending' | 'approved' | 'declined';
+  status: 'pending' | 'approved' | 'declined' | 'available' | 'failed' | 'deleted';
   requestedBy: string | null;
   createdAt: string;
 }
@@ -21,6 +21,9 @@ const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-400',
   approved: 'bg-green-500/20 text-green-400',
   declined: 'bg-red-500/20 text-red-400',
+  available: 'bg-emerald-500/20 text-emerald-400',
+  failed: 'bg-red-500/20 text-red-400',
+  deleted: 'bg-slate-500/20 text-slate-400',
 };
 
 async function load(): Promise<void> {

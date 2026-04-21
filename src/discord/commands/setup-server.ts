@@ -3,6 +3,8 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  type ActionRowBuilder,
+  type ButtonBuilder,
   type CategoryChannel,
   type EmbedBuilder,
   type Guild,
@@ -13,6 +15,7 @@ import {
   buildAnnouncementsEmbed,
   buildApprovalsChannelEmbed,
   buildAuditLogChannelEmbed,
+  buildBlueTrackerChannelEmbed,
   buildBotCommandsChannelEmbed,
   buildBotHelpEmbed,
   buildFailuresChannelEmbed,
@@ -34,6 +37,10 @@ import {
   buildWelcomeHeroEmbed,
   type ChannelRefs,
 } from '../../embeds/welcome.js';
+import { and, eq } from 'drizzle-orm';
+import { config } from '../../config.js';
+import { db } from '../../db/client.js';
+import { welcomeMessages } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
 import { saveChannel, type ChannelKey } from '../channel-store.js';
 import type { SlashCommand } from './index.js';
@@ -47,6 +54,7 @@ interface ChannelPlan {
   kind?: ChannelKind;
   readOnly?: boolean;
   adminOnly?: boolean;
+  allowedRoles?: string[];
 }
 
 interface CategoryPlan {
@@ -54,6 +62,8 @@ interface CategoryPlan {
   oldNames?: string[];
   channels: ChannelPlan[];
 }
+
+const PLEX_ROLES = ['Plex-User', 'Regular', 'VIP'] as const;
 
 interface RolePlan {
   name: string;
@@ -94,26 +104,81 @@ const STRUCTURE: CategoryPlan[] = [
     ],
   },
   {
+    name: '🎮 WOW',
+    channels: [
+      {
+        name: '📰・blue-tracker',
+        topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
+        readOnly: true,
+      },
+    ],
+  },
+  {
     name: '🎬 MEDIA',
     channels: [
-      { name: '📝・anfragen', oldNames: ['requests'], topic: 'Film / Serie requesten.' },
+      {
+        name: '📝・anfragen',
+        oldNames: ['requests'],
+        topic: 'Film / Serie requesten.',
+        allowedRoles: [...PLEX_ROLES],
+      },
       { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
-      { name: '✨・neu-auf-plex', oldNames: ['new-on-plex'], topic: 'Recently added (Tautulli).', readOnly: true },
-      { name: '🎬・aktivität', oldNames: ['plex-activity'], topic: 'Wer schaut gerade was (Tautulli playback).', readOnly: true },
-      { name: '🗑️・gelöscht', oldNames: ['maintainerr'], topic: 'Maintainerr — was aus Plex entfernt wurde.', readOnly: true },
+      {
+        name: '✨・neu-auf-plex',
+        oldNames: ['new-on-plex'],
+        topic: 'Recently added (Tautulli).',
+        readOnly: true,
+        allowedRoles: [...PLEX_ROLES],
+      },
+      {
+        name: '🎬・aktivität',
+        oldNames: ['plex-activity'],
+        topic: 'Wer schaut gerade was (Tautulli playback).',
+        readOnly: true,
+        allowedRoles: [...PLEX_ROLES],
+      },
+      {
+        name: '🗑️・gelöscht',
+        oldNames: ['maintainerr'],
+        topic: 'Maintainerr + Sonarr/Radarr — was aus Plex entfernt wurde.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ROLES],
+      },
     ],
   },
   {
     name: '📥 DOWNLOADS',
     channels: [
-      { name: '📥・grabs', oldNames: ['grabs'], topic: 'Sonarr / Radarr / SAB grabs.', readOnly: true },
-      { name: '✅・imports', oldNames: ['imports'], topic: 'Erfolgreich importierte Files.', readOnly: true },
+      {
+        name: '📥・grabs',
+        oldNames: ['grabs'],
+        topic: 'Sonarr / Radarr / SAB grabs.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ROLES],
+      },
+      {
+        name: '✅・imports',
+        oldNames: ['imports'],
+        topic: 'Erfolgreich importierte Files.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ROLES],
+      },
       { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
   },
   {
     name: '🔧 STATUS',
-    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health.', readOnly: true, adminOnly: true }],
+    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health + Updates.', readOnly: true, adminOnly: true }],
+  },
+  {
+    name: '🎮 WOW',
+    channels: [
+      {
+        name: '📰・blue-tracker',
+        topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
+        readOnly: true,
+      },
+    ],
   },
   {
     name: '💬 CHAT',
@@ -187,6 +252,7 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '📋・audit-log': 'auditLog',
   '🔨・github': 'github',
   '⭐・starboard': 'starboard',
+  '📰・blue-tracker': 'blueTracker',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -204,6 +270,7 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'modLog',
   'github',
   'starboard',
+  'blueTracker',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -228,6 +295,7 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '📋・audit-log': () => buildAuditLogChannelEmbed(),
   '🔨・github': () => buildGithubChannelEmbed(),
   '⭐・starboard': () => buildStarboardChannelEmbed(),
+  '📰・blue-tracker': () => buildBlueTrackerChannelEmbed(),
 };
 
 export const setupServerCommand: SlashCommand = {
@@ -289,21 +357,18 @@ export const setupServerCommand: SlashCommand = {
     }
 
     let embedsPosted = 0;
-    const botUserId = interaction.client.user?.id;
+    let embedsUpdated = 0;
     for (const { plan, channel } of freshTextChannels) {
       const builder = WELCOME_BUILDERS[plan.name];
       if (!builder) continue;
       try {
-        if (botUserId && (await hasWelcomeEmbed(channel, botUserId, plan.name))) continue;
         const embed = builder(refs);
-        if (plan.name === '🎭・rollen') {
-          await channel.send({ embeds: [embed], components: [buildRolePickerButtons()] });
-        } else {
-          await channel.send({ embeds: [embed] });
-        }
-        embedsPosted++;
+        const components = plan.name === '🎭・rollen' ? [buildRolePickerButtons()] : undefined;
+        const result = await upsertWelcomeEmbed(channel, plan.name, embed, components);
+        if (result === 'created') embedsPosted++;
+        else if (result === 'updated') embedsUpdated++;
       } catch (err) {
-        logger.warn({ err, channel: plan.name }, 'welcome embed post failed');
+        logger.warn({ err, channel: plan.name }, 'welcome embed upsert failed');
       }
     }
 
@@ -318,6 +383,7 @@ export const setupServerCommand: SlashCommand = {
     if (created.length) lines.push(`**✨ Created (${created.length})**\n${created.slice(0, 20).join('\n')}`);
     if (renamed.length) lines.push(`**🔁 Renamed (${renamed.length})**\n${renamed.slice(0, 20).join('\n')}`);
     if (embedsPosted) lines.push(`**💬 Welcome-Embeds gepostet:** ${embedsPosted}`);
+    if (embedsUpdated) lines.push(`**✏️ Welcome-Embeds editiert:** ${embedsUpdated}`);
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
 
     await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
@@ -434,27 +500,38 @@ async function applyChannelPermissions(
 ): Promise<void> {
   if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) return;
 
+  const gatedToRoles = plan.adminOnly
+    ? [...STAFF_ROLE_NAMES]
+    : plan.allowedRoles && plan.allowedRoles.length > 0
+      ? [...new Set([...plan.allowedRoles, ...STAFF_ROLE_NAMES])]
+      : null;
+
   try {
-    if (plan.adminOnly) {
+    if (gatedToRoles) {
       await channel.permissionOverwrites.edit(guild.roles.everyone, {
         ViewChannel: false,
         SendMessages: false,
       });
-      for (const name of STAFF_ROLE_NAMES) {
+      for (const name of gatedToRoles) {
         const role = guild.roles.cache.find((r) => r.name === name);
-        if (role) {
-          await channel.permissionOverwrites.edit(role, {
-            ViewChannel: true,
-            SendMessages: !plan.readOnly,
-            ReadMessageHistory: true,
-            ManageMessages: true,
-          });
-        }
+        if (!role) continue;
+        const isStaff = STAFF_ROLE_NAMES.includes(name as (typeof STAFF_ROLE_NAMES)[number]);
+        await channel.permissionOverwrites.edit(role, {
+          ViewChannel: true,
+          SendMessages: !plan.readOnly,
+          ReadMessageHistory: true,
+          ManageMessages: isStaff ? true : null,
+        });
       }
     } else if (plan.readOnly) {
       await channel.permissionOverwrites.edit(guild.roles.everyone, {
         SendMessages: false,
         ViewChannel: true,
+      });
+    } else {
+      await channel.permissionOverwrites.edit(guild.roles.everyone, {
+        SendMessages: null,
+        ViewChannel: null,
       });
     }
 
@@ -495,23 +572,51 @@ async function applyBotCategoryPermissions(
   }
 }
 
-async function hasWelcomeEmbed(
+async function upsertWelcomeEmbed(
   channel: TextChannel,
-  botUserId: string,
   planName: string,
-): Promise<boolean> {
-  const builder = WELCOME_BUILDERS[planName];
-  if (!builder) return true;
-  const expectedTitle = builder({}).data.title;
-  if (!expectedTitle) return true;
-  try {
-    const messages = await channel.messages.fetch({ limit: 50 });
-    return messages.some(
-      (msg) => msg.author.id === botUserId && msg.embeds.some((e) => e.title === expectedTitle),
-    );
-  } catch {
-    return false;
+  embed: EmbedBuilder,
+  components: ActionRowBuilder<ButtonBuilder>[] | undefined,
+): Promise<'created' | 'updated' | 'noop'> {
+  const existing = db
+    .select()
+    .from(welcomeMessages)
+    .where(and(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID), eq(welcomeMessages.planName, planName)))
+    .get();
+
+  if (existing) {
+    try {
+      const message = await channel.messages.fetch(existing.messageId);
+      await message.edit({ embeds: [embed], components: components ?? [] });
+      db.update(welcomeMessages)
+        .set({ channelId: channel.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID),
+            eq(welcomeMessages.planName, planName),
+          ),
+        )
+        .run();
+      return 'updated';
+    } catch {
+      logger.debug({ planName, messageId: existing.messageId }, 'stored welcome message gone, re-posting');
+    }
   }
+
+  const message = await channel.send({ embeds: [embed], components });
+  db.insert(welcomeMessages)
+    .values({
+      guildId: config.DISCORD_GUILD_ID,
+      planName,
+      channelId: channel.id,
+      messageId: message.id,
+    })
+    .onConflictDoUpdate({
+      target: [welcomeMessages.guildId, welcomeMessages.planName],
+      set: { channelId: channel.id, messageId: message.id, updatedAt: new Date() },
+    })
+    .run();
+  return 'created';
 }
 
 async function sortServerStructure(guild: Guild): Promise<void> {

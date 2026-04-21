@@ -22,6 +22,7 @@ export interface ChannelRefs {
   starboard?: string;
   plexActivity?: string;
   maintainerr?: string;
+  blueTracker?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -119,6 +120,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
         name: '📥 Downloads',
         value: [
           '`/queue` — Sonarr+Radarr+SAB live queue',
+          '`/arr-status` — Service-Health + Disk-Space + Versionen',
           '`/search movie <query>` — Radarr-Lookup',
           '`/search show <query>` — Sonarr-Lookup',
         ].join('\n'),
@@ -164,7 +166,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  20 Commands, 4 Kategorien' })
+    .setFooter({ text: 'MagguuBot  ·  /help für die volle Liste' })
     .setTimestamp(new Date());
 }
 
@@ -249,6 +251,7 @@ export function buildRequestsChannelEmbed(r: ChannelRefs): EmbedBuilder {
           `**2.** Release-Grab → ${m(r.grabs, 'grabs')}`,
           `**3.** Import fertig → ${m(r.imports, 'imports')}`,
           `**4.** Auf Plex verfügbar → ${m(r.newOnPlex, 'new-on-plex')}`,
+          `**5.** Status-Update (🎉 available / 💥 failed / 🗑️ deleted) landet hier in diesem Channel`,
         ].join('\n'),
       },
     )
@@ -320,18 +323,21 @@ export function buildImportsChannelEmbed(): EmbedBuilder {
 export function buildFailuresChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.danger)
-    .setTitle('⚠️ Failures')
-    .setDescription('Hier landen Downloads/Imports die **manuellen Eingriff** brauchen.')
+    .setTitle('⚠️ Failures & Issues')
+    .setDescription('Alles was **admin-Aufmerksamkeit** braucht — Download-Probleme UND User-gemeldete Plex-Issues.')
     .addFields(
-      { name: '`DownloadFailure`', value: 'SAB oder qBit hat nicht fertiggebracht', inline: true },
-      { name: '`ManualInteractionRequired`', value: 'Sonarr/Radarr können Release nicht importieren', inline: true },
-      { name: '`SAB failed`', value: 'Post-Processing crashed / par2 failed', inline: true },
+      { name: '`DownloadFailure`', value: 'SAB/qBit hat abgebrochen', inline: true },
+      { name: '`ImportFailure`', value: 'Download ok, aber Import in die Library gescheitert', inline: true },
+      { name: '`ManualInteractionRequired`', value: 'Sonarr/Radarr brauchen manuellen Import-Entscheid', inline: true },
+      { name: '`SAB failed`', value: 'Post-Processing / par2 crashed', inline: true },
+      { name: '🐛 Seerr Issues', value: 'User meldet Playback-Problem (Video/Audio/Subs) — inkl. Comments', inline: true },
       {
         name: 'Troubleshoot-Schritte',
         value: [
           '1. `/queue` — was hängt gerade?',
-          '2. Logs: `docker logs sabnzbd --tail 100`',
-          '3. Re-queue in Sonarr/Radarr via Activity → failed → Search again',
+          '2. `/arr-status` — Service-Health auf einen Blick',
+          '3. Logs: `docker logs sabnzbd --tail 100`',
+          '4. Re-queue in Sonarr/Radarr via Activity → failed → Search again',
         ].join('\n'),
       },
     )
@@ -341,17 +347,20 @@ export function buildFailuresChannelEmbed(): EmbedBuilder {
 export function buildHealthChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.muted)
-    .setTitle('🩺 Service-Health')
+    .setTitle('🩺 Service-Health & Updates')
     .setDescription(
       [
-        'Sonarr, Radarr und SABnzbd melden hier Warnungen:',
+        'Sonarr, Radarr und SABnzbd melden hier Warnungen + Versions-Updates:',
         '',
         '• Indexer offline / rate-limited',
         '• Disk space low',
         '• Download-Client unreachable',
         '• System-config-Mismatch',
+        '• 🔄 Neue *arr-Version installiert (ApplicationUpdate)',
         '',
         '**🟡 Warning** → 24h beobachten · **🔴 Error** → sofort fixen · **🟢 Restored** → self-healed',
+        '',
+        '_Live-Snapshot jederzeit mit `/arr-status`._',
       ].join('\n'),
     )
     .setFooter({ text: 'MagguuBot  ·  stack health' });
@@ -440,10 +449,11 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
       { name: '✅❌ Workflow-Run', value: 'CI-Status + Link zum Failed-Log', inline: true },
       { name: '🏷️ Release', value: 'Neue Tags + Release-Notes', inline: true },
       { name: '🟢🔴🟣 Pull-Request', value: 'opened / closed / merged', inline: true },
+      { name: '🐛 Issues', value: 'opened / closed / reopened (inkl. Body + Labels)', inline: true },
       {
         name: 'Setup per Repo',
         value:
-          'GitHub → Repo → Settings → Webhooks → Add → URL `<bot-url>/webhook/github` · Content-Type `application/json` · Secret = `GITHUB_WEBHOOK_SECRET` · Events: Push, Workflow runs, Releases, Pull requests',
+          'GitHub → Repo → Settings → Webhooks → Add → URL `<bot-url>/webhook/github` · Content-Type `application/json` · Secret = `GITHUB_WEBHOOK_SECRET` · Events: Push, Workflow runs, Releases, Pull requests, **Issues**',
       },
     )
     .setFooter({ text: 'MagguuBot  ·  GitHub activity' });
@@ -471,22 +481,28 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
 
 export function buildMaintainerrChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(Colors.danger)
-    .setTitle('🗑️ Maintainerr')
-    .setDescription(
-      'Was Maintainerr aus Plex entfernt — und was bald entfernt wird, falls keiner es wieder anschaut.',
-    )
+    .setColor(Colors.muted)
+    .setTitle('🗑️ Gelöscht — Library Cleanup')
+    .setDescription('Alles was aus der Library entfernt wurde — durch Maintainerr-Regel oder manuell in Sonarr/Radarr.')
     .addFields(
-      { name: '🗓️ About to handle', value: 'Medien kommen in die Delete-Queue', inline: true },
-      { name: '🗑️ Handled / Deleted', value: 'Medien wurden entfernt', inline: true },
-      { name: '↩️ Removed from collection', value: 'Rule-Check greift nicht mehr', inline: true },
+      { name: '🧹 Maintainerr Handled', value: 'Regel hat Medien gelöscht', inline: true },
+      { name: '🗓️ Maintainerr Pending', value: 'kommt bald in die Delete-Queue', inline: true },
+      { name: '↩️ Rule gone', value: 'Check greift nicht mehr', inline: true },
+      { name: '🎬 Radarr MovieDelete', value: 'Film aus Radarr entfernt', inline: true },
+      { name: '📺 Sonarr SeriesDelete', value: 'Serie komplett entfernt', inline: true },
+      { name: '🗂️ File-Deletes', value: 'Einzelne Episode/Movie-Files weg', inline: true },
       {
         name: 'Setup in Maintainerr',
         value:
           'Maintainerr → **Settings → Notifications → Add Agent** · Agent `Discord` · Webhook URL `http://<unraid-ip>:3000/webhook/maintainerr` · Types: alle sechs ✅ · Speichern + Test-Connection',
       },
+      {
+        name: 'Setup in Sonarr/Radarr',
+        value:
+          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅',
+      },
     )
-    .setFooter({ text: 'MagguuBot · Maintainerr cleanup feed' });
+    .setFooter({ text: 'MagguuBot · library cleanup feed' });
 }
 
 export function buildStarboardChannelEmbed(): EmbedBuilder {
@@ -507,6 +523,27 @@ export function buildStarboardChannelEmbed(): EmbedBuilder {
       { name: '🧹 Aufräumen', value: 'Bei 0 Sternen wird der Eintrag gelöscht', inline: true },
     )
     .setFooter({ text: 'MagguuBot  ·  highlights curated by you' });
+}
+
+export function buildBlueTrackerChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(0x148ae3)
+    .setTitle('📰 WoW Blue-Tracker')
+    .setDescription(
+      [
+        'Automatischer Feed der aktuellen **Blizzard Blue-Posts** — nur Retail + PTR.',
+        '',
+        'Class Tunings, Hotfixes, Balance-Changes, offizielle Ankündigungen der Community-Manager.',
+        '',
+        '_Classic / SoD / Wrath / Cataclysm werden gefiltert — nur die Live-Version interessiert uns._',
+      ].join('\n'),
+    )
+    .addFields(
+      { name: '⏱ Poll-Intervall', value: '15 Minuten', inline: true },
+      { name: '🔵 Quelle', value: 'WoW-Forum Blue-Tracker (RSS)', inline: true },
+      { name: '🎯 Scope', value: 'Retail + PTR only', inline: true },
+    )
+    .setFooter({ text: 'MagguuBot  ·  Blue-Tracker' });
 }
 
 export function buildSpoilerChannelEmbed(): EmbedBuilder {

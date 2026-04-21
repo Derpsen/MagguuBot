@@ -134,3 +134,42 @@ export function buildPullRequestEmbed(i: PullRequestEmbedInput): EmbedBuilder {
     .setFooter({ text: `GitHub  ·  pull request  ·  ${i.state}${i.merged ? ' (merged)' : ''}` })
     .setTimestamp(new Date());
 }
+
+export interface IssueEmbedInput {
+  repo: Repo;
+  action: 'opened' | 'closed' | 'reopened';
+  number: number;
+  title: string;
+  body?: string;
+  author: string;
+  url: string;
+  labels?: { name: string; color?: string }[];
+}
+
+export function buildIssueEmbed(i: IssueEmbedInput): EmbedBuilder {
+  const icon = i.action === 'opened' ? '🟢' : i.action === 'closed' ? '🔴' : '🟡';
+  const color =
+    i.action === 'opened' ? Colors.success : i.action === 'closed' ? Colors.muted : Colors.warn;
+
+  const e = new EmbedBuilder()
+    .setColor(color)
+    .setAuthor({ name: i.repo.full_name, url: i.repo.html_url })
+    .setTitle(`${icon}  Issue #${i.number} ${i.action}`)
+    .setURL(i.url)
+    .setDescription(`**${truncate(i.title, 200)}**\n_by ${i.author}_`)
+    .setFooter({ text: `GitHub  ·  issue  ·  ${i.action}` })
+    .setTimestamp(new Date());
+
+  if (i.action === 'opened' && i.body) {
+    e.addFields({ name: 'Body', value: truncate(i.body, 800) });
+  }
+  if (i.labels?.length) {
+    e.addFields({
+      name: 'Labels',
+      value: i.labels.map((l) => `\`${l.name}\``).join(' '),
+      inline: true,
+    });
+  }
+
+  return e;
+}

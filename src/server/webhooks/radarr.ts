@@ -1,20 +1,49 @@
 import { Hono } from 'hono';
 import { getChannel } from '../../discord/channel-store.js';
-import { buildFailureEmbed, buildGrabEmbed, buildHealthEmbed, buildImportEmbed } from '../../embeds/arr.js';
+import {
+  buildAppUpdateEmbed,
+  buildDeleteEmbed,
+  buildFailureEmbed,
+  buildGrabEmbed,
+  buildHealthEmbed,
+  buildImportEmbed,
+} from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 
+interface RadarrMovieFile {
+  quality?: string;
+  size?: number;
+  releaseGroup?: string;
+  path?: string;
+}
+
 interface RadarrPayload {
   eventType: string;
-  movie?: { title: string; year?: number; images?: { coverType: string; remoteUrl?: string }[] };
+  movie?: {
+    title: string;
+    year?: number;
+    path?: string;
+    images?: { coverType: string; remoteUrl?: string }[];
+  };
   remoteMovie?: { title?: string; year?: number };
-  release?: { quality?: string; size?: number; releaseGroup?: string; releaseTitle?: string; indexer?: string };
-  movieFile?: { quality?: string; size?: number; releaseGroup?: string };
+  release?: {
+    quality?: string;
+    size?: number;
+    releaseGroup?: string;
+    releaseTitle?: string;
+    indexer?: string;
+  };
+  movieFile?: RadarrMovieFile;
+  deletedFiles?: boolean;
+  downloadClient?: string;
   isUpgrade?: boolean;
   level?: 'ok' | 'warning' | 'error';
   message?: string;
   type?: string;
   instanceName?: string;
+  previousVersion?: string;
+  newVersion?: string;
 }
 
 export const radarrWebhook = new Hono().post('/', async (c) => {
@@ -69,7 +98,8 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       break;
     }
     case 'ManualInteractionRequired':
-    case 'DownloadFailure': {
+    case 'DownloadFailure':
+    case 'ImportFailure': {
       await postEmbed({
         channelId: getChannel('failures'),
         embed: buildFailureEmbed({
@@ -77,6 +107,60 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
           title,
           reason: body.message,
           eventType: body.eventType,
+          downloadClient: body.downloadClient,
+          releaseTitle: body.release?.releaseTitle,
+          quality: body.release?.quality ?? body.movieFile?.quality,
+        }),
+        source: 'radarr',
+        eventType: body.eventType,
+        payload: body,
+      });
+      break;
+    }
+    case 'MovieDelete': {
+      await postEmbed({
+        channelId: getChannel('maintainerr'),
+        embed: buildDeleteEmbed({
+          service: 'radarr',
+          kind: 'movie',
+          title,
+          year,
+          posterUrl: poster,
+          deletedFiles: body.deletedFiles,
+        }),
+        source: 'radarr',
+        eventType: body.eventType,
+        payload: body,
+      });
+      break;
+    }
+    case 'MovieFileDelete': {
+      await postEmbed({
+        channelId: getChannel('maintainerr'),
+        embed: buildDeleteEmbed({
+          service: 'radarr',
+          kind: 'movieFile',
+          title,
+          year,
+          posterUrl: poster,
+          quality: body.movieFile?.quality,
+          size: body.movieFile?.size,
+          reason: body.message,
+        }),
+        source: 'radarr',
+        eventType: body.eventType,
+        payload: body,
+      });
+      break;
+    }
+    case 'ApplicationUpdate': {
+      await postEmbed({
+        channelId: getChannel('health'),
+        embed: buildAppUpdateEmbed({
+          service: 'radarr',
+          previousVersion: body.previousVersion,
+          newVersion: body.newVersion,
+          message: body.message,
         }),
         source: 'radarr',
         eventType: body.eventType,
@@ -100,6 +184,10 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       });
       break;
     }
+    case 'Rename':
+    case 'MovieAdded':
+      logger.debug({ eventType: body.eventType }, 'radarr event skipped (low signal)');
+      break;
     default:
       logger.debug({ eventType: body.eventType }, 'radarr event ignored');
   }

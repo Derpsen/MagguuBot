@@ -16,6 +16,7 @@ sqlite.pragma('foreign_keys = ON');
 ensureSchema();
 
 export const db = drizzle(sqlite, { schema });
+export const sqliteHandle = sqlite;
 
 function ensureSchema(): void {
   sqlite.exec(`
@@ -63,6 +64,15 @@ function ensureSchema(): void {
       channel_id TEXT NOT NULL,
       updated_at INTEGER NOT NULL,
       PRIMARY KEY (guild_id, key)
+    );
+
+    CREATE TABLE IF NOT EXISTS welcome_messages (
+      guild_id TEXT NOT NULL,
+      plan_name TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, plan_name)
     );
 
     CREATE TABLE IF NOT EXISTS reminders (

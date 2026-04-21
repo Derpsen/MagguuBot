@@ -7,15 +7,23 @@ import type { BotEvent } from './types.js';
 
 async function applyAutoRole(member: GuildMember): Promise<void> {
   if (member.user.bot) return;
-  const roleId = getSetting('autoRoleId');
-  if (!roleId) return;
-  const role = member.guild.roles.cache.get(roleId);
-  if (!role) {
-    logger.warn({ roleId }, 'auto-role configured but role not found');
-    return;
+
+  const explicitId = getSetting('autoRoleId');
+  if (explicitId) {
+    const role = member.guild.roles.cache.get(explicitId);
+    if (role) {
+      await member.roles.add(role, 'auto-role on join');
+      logger.info({ userId: member.id, roleId: explicitId, mode: 'explicit' }, 'auto-role applied');
+      return;
+    }
+    logger.warn({ roleId: explicitId }, 'configured auto-role not found, falling back');
   }
-  await member.roles.add(role, 'auto-role on join');
-  logger.info({ userId: member.id, roleId }, 'auto-role applied');
+
+  const newcomer = member.guild.roles.cache.find((r) => r.name === 'Newcomer');
+  if (newcomer) {
+    await member.roles.add(newcomer, 'auto-role (Newcomer fallback)');
+    logger.info({ userId: member.id, mode: 'newcomer-fallback' }, 'auto-role applied');
+  }
 }
 
 export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
@@ -65,16 +73,21 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
 };
 
 function buildWelcomeEmbed(username: string, memberCount: number): EmbedBuilder {
+  const requestsId = getChannel('requests');
+  const requestsRef = requestsId ? `<#${requestsId}>` : '**#anfragen**';
+
   return new EmbedBuilder()
     .setColor(Colors.brand)
     .setTitle(`Willkommen, ${username}! 🎉`)
     .setDescription(
       [
-        'Schön dass du da bist.',
+        'Schön dass du da bist — du startest als **Newcomer**.',
         '',
-        '**📜 Les die Regeln** in <#rules-placeholder>',
-        '**🎭 Hol dir Rollen** in <#roles-placeholder>',
-        '**📝 Request Filme / Serien** in <#requests-placeholder>',
+        '**📜 Les die Regeln** → **#📜・regeln**',
+        '**🎭 Hol dir Rollen** → **#🎭・rollen**',
+        `**📝 Film / Serie requesten** → ${requestsRef} (wird mit Plex-User-Rolle freigeschaltet)`,
+        '',
+        '_Plex-Channels siehst du sobald ein Admin dir die `Plex-User` Rolle gibt oder du durch Aktivität zum `Regular` aufsteigst._',
       ].join('\n'),
     )
     .setFooter({ text: `Member #${memberCount}  ·  MagguuBot` })

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { config } from '../../config.js';
 import { getChannel } from '../../discord/channel-store.js';
 import {
+  buildIssueEmbed,
   buildPullRequestEmbed,
   buildPushEmbed,
   buildReleaseEmbed,
@@ -73,6 +74,20 @@ interface PingPayload {
   zen: string;
   hook_id: number;
   repository?: { full_name: string };
+}
+
+interface IssuePayload {
+  action: string;
+  issue: {
+    number: number;
+    title: string;
+    body?: string;
+    html_url: string;
+    state: string;
+    user: { login: string };
+    labels?: { name: string; color?: string }[];
+  };
+  repository: { full_name: string; html_url: string };
 }
 
 export const githubWebhook = new Hono().post('/', async (c) => {
@@ -192,6 +207,30 @@ export const githubWebhook = new Hono().post('/', async (c) => {
         url: p.pull_request.html_url,
         merged: p.pull_request.merged,
         state: p.pull_request.state,
+      }),
+    });
+    return c.json({ ok: true });
+  }
+
+  if (eventName === 'issues') {
+    const p = body as IssuePayload;
+    if (!['opened', 'closed', 'reopened'].includes(p.action)) {
+      return c.json({ ok: true, skipped: 'ignored action' });
+    }
+    await postEmbed({
+      channelId,
+      source: 'github',
+      eventType: `issues.${p.action}`,
+      payload: p,
+      embed: buildIssueEmbed({
+        repo: p.repository,
+        action: p.action as 'opened' | 'closed' | 'reopened',
+        number: p.issue.number,
+        title: p.issue.title,
+        body: p.issue.body,
+        author: p.issue.user.login,
+        url: p.issue.html_url,
+        labels: p.issue.labels,
       }),
     });
     return c.json({ ok: true });

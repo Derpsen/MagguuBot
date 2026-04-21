@@ -22,7 +22,9 @@ export const seerrRequests = sqliteTable('seerr_requests', {
   mediaType: text('media_type', { enum: ['movie', 'tv'] }).notNull(),
   tmdbId: integer('tmdb_id'),
   title: text('title').notNull(),
-  status: text('status', { enum: ['pending', 'approved', 'declined'] }).notNull(),
+  status: text('status', {
+    enum: ['pending', 'approved', 'declined', 'available', 'failed', 'deleted'],
+  }).notNull(),
   requestedBy: text('requested_by'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
@@ -33,6 +35,16 @@ export const channelConfig = sqliteTable('channel_config', {
   guildId: text('guild_id').notNull(),
   key: text('key').notNull(),
   channelId: text('channel_id').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const welcomeMessages = sqliteTable('welcome_messages', {
+  guildId: text('guild_id').notNull(),
+  planName: text('plan_name').notNull(),
+  channelId: text('channel_id').notNull(),
+  messageId: text('message_id').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),
