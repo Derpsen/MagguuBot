@@ -3,6 +3,7 @@ import { announceCommand } from './announce.js';
 import { arrStatusCommand } from './arr-status.js';
 import { avatarCommand } from './avatar.js';
 import { calendarCommand } from './calendar.js';
+import { countdownCommand } from './countdown.js';
 import { banCommand, unbanCommand } from './ban.js';
 import { botinfoCommand } from './botinfo.js';
 import { cleanupServerCommand } from './cleanup-server.js';
@@ -10,6 +11,7 @@ import { dbBackupCommand } from './db-backup.js';
 import { helpCommand } from './help.js';
 import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
+import { plexTopCommand } from './plex-top.js';
 import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
 import { purgeUserCommand } from './purge-user.js';
@@ -42,6 +44,7 @@ const all: SlashCommand[] = [
   queueCommand,
   arrStatusCommand,
   calendarCommand,
+  plexTopCommand,
   searchCommand,
   setupServerCommand,
   cleanupServerCommand,
@@ -56,6 +59,7 @@ const all: SlashCommand[] = [
   helpCommand,
   announceCommand,
   pollCommand,
+  countdownCommand,
   remindmeCommand,
   rankCommand,
   leaderboardCommand,

@@ -64,6 +64,10 @@
 
   <Config Name="SAB_API_KEY" Target="SAB_API_KEY" Default="" Mode="" Description="SABnzbd API key from Config -&gt; General -&gt; Security." Type="Variable" Display="always" Required="false" Mask="true"/>
 
+  <Config Name="TAUTULLI_URL" Target="TAUTULLI_URL" Default="http://tautulli:8181" Mode="" Description="Tautulli base URL. Required for /plex-top (Top Filme/Serien/User). Playback-Notifications laufen weiterhin über den Webhook-Agent und brauchen das nicht." Type="Variable" Display="always" Required="false" Mask="false">http://tautulli:8181</Config>
+
+  <Config Name="TAUTULLI_API_KEY" Target="TAUTULLI_API_KEY" Default="" Mode="" Description="Tautulli API key from Settings -&gt; Web Interface -&gt; API." Type="Variable" Display="always" Required="false" Mask="true"/>
+
   <Config Name="WOW_BLUE_TRACKER_URL" Target="WOW_BLUE_TRACKER_URL" Default="https://www.wowhead.com/blue-tracker?rss" Mode="" Description="RSS feed URL for the WoW Blue-Tracker channel. Recommended: https://www.wowhead.com/blue-tracker?rss (dedupe for EU+US duplicates is built in). Alternative: https://www.bluetracker.gg/rss/wow/. Leave empty to disable the Blue-Tracker feature entirely. Filters out Classic/SoD/Wrath/Cata/Hardcore by keyword — only Retail + PTR are posted." Type="Variable" Display="always" Required="false" Mask="false">https://www.wowhead.com/blue-tracker?rss</Config>
 
   <Config Name="LOG_LEVEL" Target="LOG_LEVEL" Default="info" Mode="" Description="Log level: trace | debug | info | warn | error | fatal" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>

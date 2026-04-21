@@ -55,6 +55,8 @@ const schema = z.object({
   SEERR_API_KEY: z.string().optional(),
   SAB_URL: z.string().url().optional(),
   SAB_API_KEY: z.string().optional(),
+  TAUTULLI_URL: z.string().url().optional(),
+  TAUTULLI_API_KEY: z.string().optional(),
 
   DATABASE_PATH: z.string().default('./data/bot.db'),
 });
