@@ -64,6 +64,7 @@ interface CategoryPlan {
 }
 
 const PLEX_ROLES = ['Plex-User', 'Regular', 'VIP'] as const;
+const TRUSTED_ROLES = ['Regular', 'VIP', 'Plex-User'] as const;
 
 interface RolePlan {
   name: string;
@@ -115,6 +116,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📰・blue-tracker',
         topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
         readOnly: true,
+        allowedRoles: [...TRUSTED_ROLES],
       },
     ],
   },
@@ -189,8 +191,18 @@ const STRUCTURE: CategoryPlan[] = [
     name: '💬 CHAT',
     channels: [
       { name: '💬・chat', oldNames: ['general'], topic: 'Labern + Smalltalk.' },
-      { name: '⌨️・bot-befehle', oldNames: ['bot-commands'], topic: 'Für /queue, /search etc.' },
-      { name: '🔇・spoiler-zone', oldNames: ['spoiler-zone'], topic: 'Spoiler erlaubt.' },
+      {
+        name: '⌨️・bot-befehle',
+        oldNames: ['bot-commands'],
+        topic: 'Für /queue, /search etc. — Regular+.',
+        allowedRoles: [...TRUSTED_ROLES],
+      },
+      {
+        name: '🔇・spoiler-zone',
+        oldNames: ['spoiler-zone'],
+        topic: 'Spoiler erlaubt — Regular+.',
+        allowedRoles: [...TRUSTED_ROLES],
+      },
     ],
   },
   {
@@ -210,12 +222,26 @@ const STRUCTURE: CategoryPlan[] = [
   },
   {
     name: '🔨 DEV',
-    channels: [{ name: '🔨・github', oldNames: ['github'], topic: 'GitHub-Webhook-Feed.', readOnly: true }],
+    channels: [
+      {
+        name: '🔨・github',
+        oldNames: ['github'],
+        topic: 'GitHub-Webhook-Feed — Regular+.',
+        readOnly: true,
+        allowedRoles: [...TRUSTED_ROLES],
+      },
+    ],
   },
   {
     name: '⭐ HIGHLIGHTS',
     channels: [
-      { name: '⭐・starboard', oldNames: ['starboard'], topic: 'Nachrichten mit 3+ ⭐ landen hier.', readOnly: true },
+      {
+        name: '⭐・starboard',
+        oldNames: ['starboard'],
+        topic: 'Nachrichten mit 3+ ⭐ landen hier — Regular+.',
+        readOnly: true,
+        allowedRoles: [...TRUSTED_ROLES],
+      },
     ],
   },
 ];
@@ -593,6 +619,7 @@ async function upsertWelcomeEmbed(
     try {
       const message = await channel.messages.fetch(existing.messageId);
       await message.edit({ embeds: [embed], components: components ?? [] });
+      await ensurePinned(message);
       db.update(welcomeMessages)
         .set({ channelId: channel.id, updatedAt: new Date() })
         .where(
@@ -609,6 +636,7 @@ async function upsertWelcomeEmbed(
   }
 
   const message = await channel.send({ embeds: [embed], components });
+  await ensurePinned(message);
   db.insert(welcomeMessages)
     .values({
       guildId: config.DISCORD_GUILD_ID,
@@ -622,6 +650,29 @@ async function upsertWelcomeEmbed(
     })
     .run();
   return 'created';
+}
+
+async function ensurePinned(message: import('discord.js').Message): Promise<void> {
+  if (message.pinned) return;
+  try {
+    await message.pin('auto-pin welcome embed');
+    await deletePinNotification(message);
+  } catch (err) {
+    logger.debug({ err, messageId: message.id }, 'pin failed — likely 50-pin-limit or missing ManageMessages');
+  }
+}
+
+async function deletePinNotification(pinnedMessage: import('discord.js').Message): Promise<void> {
+  try {
+    const { MessageType } = await import('discord.js');
+    const recent = await pinnedMessage.channel.messages.fetch({ limit: 5, after: pinnedMessage.id });
+    const notification = recent.find(
+      (m) => m.type === MessageType.ChannelPinnedMessage && m.reference?.messageId === pinnedMessage.id,
+    );
+    if (notification) await notification.delete();
+  } catch {
+    /* notification cleanup is best-effort */
+  }
 }
 
 async function sortServerStructure(guild: Guild): Promise<void> {
