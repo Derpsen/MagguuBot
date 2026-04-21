@@ -12,6 +12,7 @@ import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
 import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
+import { purgeUserCommand } from './purge-user.js';
 import { queueCommand } from './queue.js';
 import { rankCommand } from './rank.js';
 import { autoresponderCommand } from './autoresponder.js';
@@ -50,6 +51,7 @@ const all: SlashCommand[] = [
   banCommand,
   unbanCommand,
   purgeCommand,
+  purgeUserCommand,
   helpCommand,
   announceCommand,
   pollCommand,
