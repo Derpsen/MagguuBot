@@ -53,6 +53,12 @@ interface SonarrPayload {
   newVersion?: string;
 }
 
+function is4kQuality(q: string | undefined): boolean {
+  if (!q) return false;
+  const l = q.toLowerCase();
+  return l.includes('2160') || l.includes('4k') || l.includes('uhd');
+}
+
 export const sonarrWebhook = new Hono().post('/', async (c) => {
   const body = await c.req.json<SonarrPayload>();
   logger.debug({ eventType: body.eventType }, 'sonarr webhook received');
@@ -69,6 +75,9 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       return c.json({ ok: true, test: true });
     }
     case 'Grab': {
+      const quality = body.release?.quality;
+      const pingRoles = ['ping-series'];
+      if (is4kQuality(quality)) pingRoles.push('ping-4k');
       await postEmbed({
         channelId: getChannel('grabs'),
         embed: buildGrabEmbed({
@@ -77,7 +86,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           year: body.series?.year,
           posterUrl: poster,
           episode: commonEpisode,
-          quality: body.release?.quality,
+          quality,
           size: body.release?.size,
           releaseGroup: body.release?.releaseGroup,
           releaseTitle: body.release?.releaseTitle,
@@ -86,6 +95,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
         source: 'sonarr',
         eventType: body.eventType,
         payload: body,
+        pingRoles,
       });
       break;
     }

@@ -184,6 +184,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
         url: p.release.html_url,
         prerelease: p.release.prerelease,
       }),
+      pingRoles: p.release.prerelease ? [] : ['ping-github'],
     });
     return c.json({ ok: true });
   }

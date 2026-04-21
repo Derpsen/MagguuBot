@@ -82,6 +82,11 @@ const ROLES: RolePlan[] = [
   { name: 'ping-movies', color: 0xffc230, mentionable: true },
   { name: 'ping-series', color: 0x35c5f4, mentionable: true },
   { name: 'ping-4k', color: 0x22c55e, mentionable: true },
+  { name: 'ping-anime', color: 0xec4899, mentionable: true },
+  { name: 'ping-wow-tuning', color: 0x148ae3, mentionable: true },
+  { name: 'ping-wow-ptr', color: 0x8b5cf6, mentionable: true },
+  { name: 'ping-announcements', color: 0xf59e0b, mentionable: true },
+  { name: 'ping-github', color: 0x64748b, mentionable: true },
 ];
 
 const STRUCTURE: CategoryPlan[] = [
@@ -363,7 +368,7 @@ export const setupServerCommand: SlashCommand = {
       if (!builder) continue;
       try {
         const embed = builder(refs);
-        const components = plan.name === '🎭・rollen' ? [buildRolePickerButtons()] : undefined;
+        const components = plan.name === '🎭・rollen' ? buildRolePickerButtons() : undefined;
         const result = await upsertWelcomeEmbed(channel, plan.name, embed, components);
         if (result === 'created') embedsPosted++;
         else if (result === 'updated') embedsUpdated++;

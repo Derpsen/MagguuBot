@@ -1,7 +1,16 @@
 import { MessageFlags, type ButtonInteraction, type GuildMember } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 
-const TOGGLEABLE = new Set(['ping-movies', 'ping-series', 'ping-4k']);
+const TOGGLEABLE = new Set([
+  'ping-movies',
+  'ping-series',
+  'ping-4k',
+  'ping-anime',
+  'ping-wow-tuning',
+  'ping-wow-ptr',
+  'ping-announcements',
+  'ping-github',
+]);
 
 export async function handleRoleButton(interaction: ButtonInteraction): Promise<void> {
   const [, action, roleName] = interaction.customId.split(':');

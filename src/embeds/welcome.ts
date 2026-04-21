@@ -182,31 +182,69 @@ export function buildRolePickerEmbed(): EmbedBuilder {
       ].join('\n'),
     )
     .addFields(
-      { name: '🎬 Film-Alerts', value: 'Ping bei neuen Movie-Grabs + Imports', inline: true },
-      { name: '📺 Serien-Alerts', value: 'Ping bei neuen Episoden', inline: true },
-      { name: '🔊 4K-Alerts', value: 'Ping nur bei 2160p-Releases', inline: true },
+      {
+        name: '📺 Media',
+        value: [
+          '🎬 **Film-Alerts** — Radarr Grabs',
+          '📺 **Serien-Alerts** — Sonarr Grabs',
+          '🔊 **4K-Alerts** — nur bei 2160p-Releases (zusätzlich)',
+          '🌸 **Anime-Alerts** — Anime-Serien (manuelles Ping)',
+        ].join('\n'),
+        inline: false,
+      },
+      {
+        name: '🎮 World of Warcraft',
+        value: [
+          '⚔️ **Class Tuning** — Balance/Hotfix Blue-Posts',
+          '🧪 **PTR-Alerts** — Public Test Realm Patchnotes',
+        ].join('\n'),
+        inline: false,
+      },
+      {
+        name: '🔔 Meta',
+        value: [
+          '📢 **Announcements** — Server-Broadcasts',
+          '🔨 **GitHub Releases** — neue Bot/Stack-Versionen',
+        ].join('\n'),
+        inline: false,
+      },
     )
     .setFooter({ text: 'MagguuBot  ·  opt-in, opt-out, alles chill' });
 }
 
-export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder> {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-movies')
-      .setLabel('Film-Alerts')
-      .setEmoji('🎬')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-series')
-      .setLabel('Serien-Alerts')
-      .setEmoji('📺')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-4k')
-      .setLabel('4K-Alerts')
-      .setEmoji('🔊')
-      .setStyle(ButtonStyle.Primary),
-  );
+interface ButtonDef {
+  role: string;
+  label: string;
+  emoji: string;
+}
+
+const ROLE_BUTTONS: ButtonDef[] = [
+  { role: 'ping-movies', label: 'Film', emoji: '🎬' },
+  { role: 'ping-series', label: 'Serien', emoji: '📺' },
+  { role: 'ping-4k', label: '4K', emoji: '🔊' },
+  { role: 'ping-anime', label: 'Anime', emoji: '🌸' },
+  { role: 'ping-wow-tuning', label: 'WoW Tuning', emoji: '⚔️' },
+  { role: 'ping-wow-ptr', label: 'WoW PTR', emoji: '🧪' },
+  { role: 'ping-announcements', label: 'Announcements', emoji: '📢' },
+  { role: 'ping-github', label: 'GitHub', emoji: '🔨' },
+];
+
+export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder>[] {
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  for (let i = 0; i < ROLE_BUTTONS.length; i += 4) {
+    const row = new ActionRowBuilder<ButtonBuilder>();
+    for (const def of ROLE_BUTTONS.slice(i, i + 4)) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`role:toggle:${def.role}`)
+          .setLabel(def.label)
+          .setEmoji(def.emoji)
+          .setStyle(ButtonStyle.Secondary),
+      );
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 export function buildAnnouncementsEmbed(): EmbedBuilder {

@@ -1,4 +1,5 @@
 import type { ActionRowBuilder, ButtonBuilder, EmbedBuilder, Message } from 'discord.js';
+import { config } from '../config.js';
 import { getClient } from '../discord/client.js';
 import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
@@ -11,10 +12,11 @@ interface PostArgs {
   source: string;
   eventType: string;
   payload: unknown;
+  pingRoles?: string[];
 }
 
 export async function postEmbed(args: PostArgs): Promise<Message | null> {
-  const { channelId, embed, components, source, eventType, payload } = args;
+  const { channelId, embed, components, source, eventType, payload, pingRoles } = args;
 
   if (!channelId) {
     db.insert(webhookEvents).values({
@@ -34,7 +36,9 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
     if (!channel || !channel.isSendable()) {
       throw new Error(`channel ${channelId} is not sendable`);
     }
-    const message = await channel.send({ embeds: [embed], components });
+
+    const content = buildPingContent(pingRoles, config.DISCORD_GUILD_ID);
+    const message = await channel.send({ content, embeds: [embed], components, allowedMentions: { parse: ['roles'] } });
     db.insert(webhookEvents).values({
       source,
       eventType,
@@ -56,5 +60,20 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
       error,
     }).run();
     return null;
+  }
+}
+
+function buildPingContent(roleNames: string[] | undefined, guildId: string): string | undefined {
+  if (!roleNames?.length) return undefined;
+  try {
+    const guild = getClient().guilds.cache.get(guildId);
+    if (!guild) return undefined;
+    const mentions = roleNames
+      .map((name) => guild.roles.cache.find((r) => r.name === name))
+      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .map((r) => `<@&${r.id}>`);
+    return mentions.length > 0 ? mentions.join(' ') : undefined;
+  } catch {
+    return undefined;
   }
 }

@@ -104,10 +104,19 @@ async function postOne(item: RssItem, channelId: string): Promise<void> {
       source: 'blue-tracker',
       eventType: 'new',
       payload: { guid: item.guid, title: item.title, link: item.link, author: item.author },
+      pingRoles: classifyPings(item),
     });
   } catch (err) {
     logger.warn({ err, guid: item.guid }, 'blue-tracker post failed');
   }
+}
+
+function classifyPings(item: RssItem): string[] {
+  const hay = `${item.title} ${item.description ?? ''}`.toLowerCase();
+  const pings: string[] = [];
+  if (/\b(tuning|hotfix|balance|class changes?)\b/.test(hay)) pings.push('ping-wow-tuning');
+  if (/\b(ptr|public test realm|public test)\b/.test(hay)) pings.push('ping-wow-ptr');
+  return pings;
 }
 
 function loadSeen(): Set<string> {
