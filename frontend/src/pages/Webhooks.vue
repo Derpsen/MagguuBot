@@ -19,9 +19,9 @@ const statusFilter = ref<string>('all');
 const search = ref('');
 
 const STATUS_COLOR: Record<string, string> = {
-  posted: 'bg-green-500/20 text-green-400 ring-1 ring-green-500/30',
-  skipped: 'bg-slate-500/20 text-slate-400 ring-1 ring-slate-500/30',
-  failed: 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30',
+  posted: 'bg-green-500/15 text-green-400 ring-1 ring-green-500/30',
+  skipped: 'bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30',
+  failed: 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30',
 };
 
 const SOURCE_META: Record<string, { emoji: string; color: string; label: string }> = {
@@ -39,16 +39,21 @@ function relativeTime(iso: string): string {
   const now = Date.now();
   const t = new Date(iso).getTime();
   const diffSec = Math.round((now - t) / 1000);
-  if (diffSec < 60) return `${diffSec}s ago`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-  return `${Math.floor(diffSec / 86400)}d ago`;
+  if (diffSec < 60) return `${diffSec}s`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
+  return `${Math.floor(diffSec / 86400)}d`;
+}
+
+function channelHash(id: string | null | undefined): string {
+  if (!id) return '';
+  return `#${id.slice(-5)}`;
 }
 
 const sources = computed(() => {
-  const set = new Set<string>();
-  for (const r of rows.value) set.add(r.source);
-  return Array.from(set).sort();
+  const counts = new Map<string, number>();
+  for (const r of rows.value) counts.set(r.source, (counts.get(r.source) ?? 0) + 1);
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
 });
 
 const filtered = computed(() => {
@@ -73,6 +78,10 @@ async function reload(): Promise<void> {
   loading.value = true;
   rows.value = await api<WebhookEvent[]>('/api/admin/webhooks');
   loading.value = false;
+}
+
+function setSourceFilter(s: string): void {
+  sourceFilter.value = sourceFilter.value === s ? 'all' : s;
 }
 
 onMounted(reload);
@@ -113,18 +122,25 @@ onMounted(reload);
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-2">
-        <select
-          v-model="sourceFilter"
-          class="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
+        <button
+          v-for="[s, count] in sources"
+          :key="s"
+          class="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
+          :class="
+            sourceFilter === s
+              ? 'border-blurple bg-blurple/20 text-white'
+              : 'border-line bg-surface-2 text-slate-300 hover:bg-surface-3'
+          "
+          @click="setSourceFilter(s)"
         >
-          <option value="all">Alle Quellen</option>
-          <option v-for="s in sources" :key="s" :value="s">
-            {{ (SOURCE_META[s]?.emoji ?? '🔔') + ' ' + (SOURCE_META[s]?.label ?? s) }}
-          </option>
-        </select>
+          <span>{{ SOURCE_META[s]?.emoji ?? '🔔' }}</span>
+          <span>{{ SOURCE_META[s]?.label ?? s }}</span>
+          <span class="rounded bg-slate-900/50 px-1 text-[10px] text-slate-400">{{ count }}</span>
+        </button>
+        <div class="flex-1" />
         <select
           v-model="statusFilter"
-          class="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
+          class="rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-slate-200"
         >
           <option value="all">Alle Status</option>
           <option value="posted">posted</option>
@@ -134,34 +150,60 @@ onMounted(reload);
         <input
           v-model="search"
           type="search"
-          placeholder="Event-Type / Source suchen…"
-          class="flex-1 min-w-[200px] rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-500"
+          placeholder="Event-Type suchen…"
+          class="min-w-[180px] rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-500"
         />
       </div>
 
-      <div class="mt-4 card p-0">
+      <div class="mt-4 card p-0 overflow-hidden">
         <div v-if="filtered.length === 0" class="p-8 text-center text-slate-500">
           Keine Events passen zum Filter.
         </div>
         <div v-else>
-          <div v-for="r in filtered" :key="r.id" class="table-row">
-            <div class="flex min-w-0 flex-1 items-center gap-3">
-              <span class="text-lg">{{ SOURCE_META[r.source]?.emoji ?? '🔔' }}</span>
-              <div class="min-w-0">
-                <div class="truncate text-sm font-medium text-white">
-                  <span :class="SOURCE_META[r.source]?.color ?? 'text-slate-300'">{{ SOURCE_META[r.source]?.label ?? r.source }}</span>
-                  <span class="text-slate-500"> · </span>
-                  <span class="text-slate-300">{{ r.eventType }}</span>
-                </div>
-                <div v-if="r.error" class="mt-0.5 text-xs text-red-400 truncate" :title="r.error">{{ r.error }}</div>
-                <div class="text-xs text-slate-500" :title="new Date(r.createdAt).toLocaleString()">
-                  {{ relativeTime(r.createdAt) }}
-                </div>
-              </div>
+          <div
+            v-for="(r, idx) in filtered"
+            :key="r.id"
+            class="flex items-center gap-4 border-b border-line/50 px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-surface-2/60"
+            :class="idx % 2 === 0 ? 'bg-transparent' : 'bg-surface-2/20'"
+          >
+            <span class="w-6 text-center text-base">{{ SOURCE_META[r.source]?.emoji ?? '🔔' }}</span>
+
+            <div class="flex min-w-0 flex-1 items-center gap-2">
+              <span
+                class="font-medium"
+                :class="SOURCE_META[r.source]?.color ?? 'text-slate-300'"
+              >
+                {{ SOURCE_META[r.source]?.label ?? r.source }}
+              </span>
+              <span class="text-slate-600">·</span>
+              <code class="truncate text-slate-300">{{ r.eventType }}</code>
             </div>
-            <span class="rounded-md px-2 py-0.5 text-xs font-medium" :class="STATUS_COLOR[r.status] ?? 'bg-slate-500/20 text-slate-400'">
+
+            <span
+              class="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium"
+              :class="STATUS_COLOR[r.status] ?? 'bg-slate-500/15 text-slate-400'"
+            >
               {{ r.status }}
             </span>
+
+            <span
+              v-if="r.channelId"
+              class="shrink-0 font-mono text-[11px] text-slate-500"
+              :title="`Channel ID ${r.channelId}`"
+            >
+              {{ channelHash(r.channelId) }}
+            </span>
+
+            <span
+              class="w-12 shrink-0 text-right font-mono text-xs text-slate-500"
+              :title="new Date(r.createdAt).toLocaleString()"
+            >
+              {{ relativeTime(r.createdAt) }}
+            </span>
+
+            <div v-if="r.error" class="basis-full pl-10 pt-0.5 text-xs text-red-400/90" :title="r.error">
+              {{ r.error }}
+            </div>
           </div>
         </div>
       </div>
