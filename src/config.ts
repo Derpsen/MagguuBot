@@ -23,8 +23,11 @@ const schema = z.object({
   DISCORD_CHANNEL_PLEX_ACTIVITY: z.string().optional(),
   DISCORD_CHANNEL_MAINTAINERR: z.string().optional(),
   DISCORD_CHANNEL_BLUE_TRACKER: z.string().optional(),
+  DISCORD_CHANNEL_ADDON_UPDATES: z.string().optional(),
+  DISCORD_CHANNEL_FAQ: z.string().optional(),
 
   WOW_BLUE_TRACKER_URL: z.string().url().optional(),
+  ADDON_REPO_FULL_NAMES: z.string().optional(),
 
   OPENAI_API_KEY: z.string().optional(),
 

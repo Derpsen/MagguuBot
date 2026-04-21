@@ -18,7 +18,9 @@ export type ChannelKey =
   | 'modLog'
   | 'github'
   | 'starboard'
-  | 'blueTracker';
+  | 'blueTracker'
+  | 'addonUpdates'
+  | 'faq';
 
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
@@ -36,6 +38,8 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   github: config.DISCORD_CHANNEL_GITHUB,
   starboard: config.DISCORD_CHANNEL_STARBOARD,
   blueTracker: config.DISCORD_CHANNEL_BLUE_TRACKER,
+  addonUpdates: config.DISCORD_CHANNEL_ADDON_UPDATES,
+  faq: config.DISCORD_CHANNEL_FAQ,
 };
 
 export function getChannel(key: ChannelKey): string | undefined {

@@ -12,12 +12,14 @@ import {
   type TextChannel,
 } from 'discord.js';
 import {
+  buildAddonUpdatesChannelEmbed,
   buildAnnouncementsEmbed,
   buildApprovalsChannelEmbed,
   buildAuditLogChannelEmbed,
   buildBlueTrackerChannelEmbed,
   buildBotCommandsChannelEmbed,
   buildBotHelpEmbed,
+  buildFaqChannelEmbed,
   buildFailuresChannelEmbed,
   buildGeneralChatEmbed,
   buildGithubChannelEmbed,
@@ -88,6 +90,9 @@ const ROLES: RolePlan[] = [
   { name: 'ping-wow-ptr', color: 0x8b5cf6, mentionable: true },
   { name: 'ping-announcements', color: 0xf59e0b, mentionable: true },
   { name: 'ping-github', color: 0x64748b, mentionable: true },
+  { name: 'interest-plex', color: 0xe5a00d, mentionable: false },
+  { name: 'interest-wow', color: 0x148ae3, mentionable: false },
+  { name: 'interest-addon', color: 0x7c3aed, mentionable: false },
 ];
 
 const STRUCTURE: CategoryPlan[] = [
@@ -117,7 +122,23 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📰・blue-tracker',
         topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
         readOnly: true,
-        allowedRoles: [...TRUSTED_ROLES],
+        allowedRoles: [...TRUSTED_ROLES, 'interest-wow'],
+      },
+    ],
+  },
+  {
+    name: '🎨 MAGGUU UI',
+    channels: [
+      {
+        name: '🎨・addon-updates',
+        topic: 'MagguuUI-Addon Releases — automatisch aus GitHub.',
+        readOnly: true,
+        allowedRoles: [...TRUSTED_ROLES, 'interest-addon'],
+      },
+      {
+        name: '❓・faq',
+        topic: 'Häufige Fragen — Tag-basiert. `/tag list` zeigt alle.',
+        readOnly: true,
       },
     ],
   },
@@ -128,7 +149,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📝・anfragen',
         oldNames: ['requests'],
         topic: 'Film / Serie requesten.',
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
       { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
       {
@@ -136,21 +157,21 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['new-on-plex'],
         topic: 'Recently added (Tautulli).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
       {
         name: '🎬・aktivität',
         oldNames: ['plex-activity'],
         topic: 'Wer schaut gerade was (Tautulli playback).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
       {
         name: '🗑️・gelöscht',
         oldNames: ['maintainerr'],
         topic: 'Maintainerr + Sonarr/Radarr — was aus Plex entfernt wurde.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
     ],
   },
@@ -162,14 +183,14 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['grabs'],
         topic: 'Sonarr / Radarr / SAB grabs.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
       {
         name: '✅・imports',
         oldNames: ['imports'],
         topic: 'Erfolgreich importierte Files.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES],
+        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
       },
       { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
@@ -285,6 +306,8 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '🔨・github': 'github',
   '⭐・starboard': 'starboard',
   '📰・blue-tracker': 'blueTracker',
+  '🎨・addon-updates': 'addonUpdates',
+  '❓・faq': 'faq',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -303,6 +326,8 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'github',
   'starboard',
   'blueTracker',
+  'addonUpdates',
+  'faq',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -328,6 +353,8 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '🔨・github': () => buildGithubChannelEmbed(),
   '⭐・starboard': () => buildStarboardChannelEmbed(),
   '📰・blue-tracker': () => buildBlueTrackerChannelEmbed(),
+  '🎨・addon-updates': () => buildAddonUpdatesChannelEmbed(),
+  '❓・faq': buildFaqChannelEmbed,
 };
 
 export const setupServerCommand: SlashCommand = {

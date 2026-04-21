@@ -10,6 +10,9 @@ const TOGGLEABLE = new Set([
   'ping-wow-ptr',
   'ping-announcements',
   'ping-github',
+  'interest-plex',
+  'interest-wow',
+  'interest-addon',
 ]);
 
 export async function handleRoleButton(interaction: ButtonInteraction): Promise<void> {

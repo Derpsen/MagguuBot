@@ -23,6 +23,8 @@ export interface ChannelRefs {
   plexActivity?: string;
   maintainerr?: string;
   blueTracker?: string;
+  addonUpdates?: string;
+  faq?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -173,36 +175,43 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
 export function buildRolePickerEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.seerr)
-    .setTitle('🎭 Deine Benachrichtigungen')
+    .setTitle('🎭 Deine Rollen')
     .setDescription(
       [
-        'Wähle wofür du gepingt werden willst. Klick auf einen Button — toggelt an/aus.',
+        'Klick auf einen Button — toggelt die Rolle an/aus.',
         '',
-        '_Rang-Rollen (Newcomer/Regular/VIP) vergibt der Bot automatisch nach Aktivität._',
+        '**🔓 Interessen** (obere Reihe) — schalten Channels frei. Ohne diese siehst du als Newcomer nur das Nötigste.',
+        '',
+        '**🔔 Pings** (untere Reihen) — du wirst benachrichtigt wenn was Relevantes passiert.',
+        '',
+        '_Rang-Rollen (Regular/VIP) vergibt der Bot automatisch nach Aktivität. Plex-User-Rolle vergibt ein Admin manuell für Request-Zugriff._',
       ].join('\n'),
     )
     .addFields(
       {
-        name: '📺 Media',
+        name: '🔓 Interessen — Channels freischalten',
+        value: [
+          '🎬 **Plex-Interesse** — schaltet MEDIA + DOWNLOADS frei',
+          '🎮 **WoW-Interesse** — schaltet blue-tracker frei',
+          '🎨 **Addon-Interesse** — schaltet addon-updates frei',
+        ].join('\n'),
+        inline: false,
+      },
+      {
+        name: '📺 Media-Pings',
         value: [
           '🎬 **Film-Alerts** — Radarr Grabs',
           '📺 **Serien-Alerts** — Sonarr Grabs',
           '🔊 **4K-Alerts** — nur bei 2160p-Releases (zusätzlich)',
-          '🌸 **Anime-Alerts** — Anime-Serien (manuelles Ping)',
+          '🌸 **Anime-Alerts** — manuelles Ping',
         ].join('\n'),
         inline: false,
       },
       {
-        name: '🎮 World of Warcraft',
+        name: '🎮 WoW + Meta-Pings',
         value: [
           '⚔️ **Class Tuning** — Balance/Hotfix Blue-Posts',
           '🧪 **PTR-Alerts** — Public Test Realm Patchnotes',
-        ].join('\n'),
-        inline: false,
-      },
-      {
-        name: '🔔 Meta',
-        value: [
           '📢 **Announcements** — Server-Broadcasts',
           '🔨 **GitHub Releases** — neue Bot/Stack-Versionen',
         ].join('\n'),
@@ -216,9 +225,16 @@ interface ButtonDef {
   role: string;
   label: string;
   emoji: string;
+  style?: ButtonStyle;
 }
 
-const ROLE_BUTTONS: ButtonDef[] = [
+const INTEREST_BUTTONS: ButtonDef[] = [
+  { role: 'interest-plex', label: 'Plex', emoji: '🎬', style: ButtonStyle.Primary },
+  { role: 'interest-wow', label: 'WoW', emoji: '🎮', style: ButtonStyle.Primary },
+  { role: 'interest-addon', label: 'MagguuUI', emoji: '🎨', style: ButtonStyle.Primary },
+];
+
+const PING_BUTTONS: ButtonDef[] = [
   { role: 'ping-movies', label: 'Film', emoji: '🎬' },
   { role: 'ping-series', label: 'Serien', emoji: '📺' },
   { role: 'ping-4k', label: '4K', emoji: '🔊' },
@@ -231,9 +247,22 @@ const ROLE_BUTTONS: ButtonDef[] = [
 
 export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  for (let i = 0; i < ROLE_BUTTONS.length; i += 4) {
+
+  const interestRow = new ActionRowBuilder<ButtonBuilder>();
+  for (const def of INTEREST_BUTTONS) {
+    interestRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`role:toggle:${def.role}`)
+        .setLabel(def.label)
+        .setEmoji(def.emoji)
+        .setStyle(def.style ?? ButtonStyle.Primary),
+    );
+  }
+  rows.push(interestRow);
+
+  for (let i = 0; i < PING_BUTTONS.length; i += 4) {
     const row = new ActionRowBuilder<ButtonBuilder>();
-    for (const def of ROLE_BUTTONS.slice(i, i + 4)) {
+    for (const def of PING_BUTTONS.slice(i, i + 4)) {
       row.addComponents(
         new ButtonBuilder()
           .setCustomId(`role:toggle:${def.role}`)
@@ -561,6 +590,47 @@ export function buildStarboardChannelEmbed(): EmbedBuilder {
       { name: '🧹 Aufräumen', value: 'Bei 0 Sternen wird der Eintrag gelöscht', inline: true },
     )
     .setFooter({ text: 'MagguuBot  ·  highlights curated by you' });
+}
+
+export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.brand)
+    .setTitle('🎨 MagguuUI Addon — Updates')
+    .setDescription(
+      [
+        'Neue Releases vom MagguuUI-Addon landen hier automatisch — mit Versionsnummer, Changelog und Download-Link.',
+        '',
+        '**Wie update ich?**',
+        '• Classic-Art: entpackte Addon-Version ins `Interface/AddOns` verschieben und `/reload` in-game',
+        '• Optional: via CurseForge / WowUp wenn der Release dort gelistet ist',
+        '',
+        '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  addon release feed' });
+}
+
+export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
+  const addonRef = r.addonUpdates ? `<#${r.addonUpdates}>` : '**#🎨・addon-updates**';
+  return new EmbedBuilder()
+    .setColor(Colors.info)
+    .setTitle('❓ FAQ')
+    .setDescription(
+      [
+        'Häufige Fragen rund um MagguuUI (Addon + Homelab-Setup).',
+        '',
+        '**Wie funktioniert das?**',
+        'Admins legen FAQ-Einträge als **Tags** an. Du rufst sie mit `/tag get name:<tagname>` ab.',
+        '',
+        '`/tag list` zeigt dir alle verfügbaren FAQs.',
+      ].join('\n'),
+    )
+    .addFields(
+      { name: '📦 Addon installieren', value: '`/tag get name:install-addon`', inline: true },
+      { name: '🔄 Addon updaten', value: `Release-Feed: ${addonRef}`, inline: true },
+      { name: '🐛 Bug melden', value: 'GitHub Issues im Addon-Repo', inline: true },
+    )
+    .setFooter({ text: 'MagguuBot  ·  tag-driven FAQ · /tag list' });
 }
 
 export function buildBlueTrackerChannelEmbed(): EmbedBuilder {

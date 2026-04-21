@@ -116,7 +116,13 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     return c.json({ ok: false, error: 'invalid JSON' }, 400);
   }
 
-  const channelId = getChannel('github');
+  const addonRepos = parseAddonRepos(config.ADDON_REPO_FULL_NAMES);
+  const resolveChannel = (repo: { full_name: string } | undefined): string | undefined => {
+    if (repo && addonRepos.has(repo.full_name.toLowerCase())) {
+      return getChannel('addonUpdates') ?? getChannel('github');
+    }
+    return getChannel('github');
+  };
 
   if (eventName === 'ping') {
     const p = body as PingPayload;
@@ -128,7 +134,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as PushPayload;
     if (p.commits.length === 0) return c.json({ ok: true, skipped: 'no commits' });
     await postEmbed({
-      channelId,
+      channelId: resolveChannel(p.repository),
       source: 'github',
       eventType: 'push',
       payload: p,
@@ -148,7 +154,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as WorkflowRunPayload;
     if (p.action !== 'completed' || !p.workflow_run.conclusion) return c.json({ ok: true, skipped: 'not completed' });
     await postEmbed({
-      channelId,
+      channelId: resolveChannel(p.repository),
       source: 'github',
       eventType: `workflow_run.${p.workflow_run.conclusion}`,
       payload: p,
@@ -171,7 +177,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as ReleasePayload;
     if (p.action !== 'published' && p.action !== 'released') return c.json({ ok: true, skipped: 'ignored action' });
     await postEmbed({
-      channelId,
+      channelId: resolveChannel(p.repository),
       source: 'github',
       eventType: `release.${p.action}`,
       payload: p,
@@ -195,7 +201,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
     await postEmbed({
-      channelId,
+      channelId: resolveChannel(p.repository),
       source: 'github',
       eventType: `pull_request.${p.action}`,
       payload: p,
@@ -219,7 +225,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
     await postEmbed({
-      channelId,
+      channelId: resolveChannel(p.repository),
       source: 'github',
       eventType: `issues.${p.action}`,
       payload: p,
@@ -240,6 +246,16 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   logger.debug({ eventName }, 'github event ignored');
   return c.json({ ok: true, skipped: eventName });
 });
+
+function parseAddonRepos(raw: string | undefined): Set<string> {
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
 
 function verifySignature(rawBody: string, signatureHeader: string, secret: string): boolean {
   const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
