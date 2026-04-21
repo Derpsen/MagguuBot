@@ -229,9 +229,9 @@ interface ButtonDef {
 }
 
 const INTEREST_BUTTONS: ButtonDef[] = [
-  { role: 'interest-plex', label: 'Plex', emoji: '🎬', style: ButtonStyle.Primary },
-  { role: 'interest-wow', label: 'WoW', emoji: '🎮', style: ButtonStyle.Primary },
-  { role: 'interest-addon', label: 'MagguuUI', emoji: '🎨', style: ButtonStyle.Primary },
+  { role: 'Plex-Fan', label: 'Plex', emoji: '🎬', style: ButtonStyle.Primary },
+  { role: 'WoW-Fan', label: 'WoW', emoji: '🎮', style: ButtonStyle.Primary },
+  { role: 'MagguuUI', label: 'MagguuUI', emoji: '🎨', style: ButtonStyle.Primary },
 ];
 
 const PING_BUTTONS: ButtonDef[] = [

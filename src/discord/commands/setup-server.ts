@@ -73,6 +73,7 @@ interface RolePlan {
   color: number;
   mentionable?: boolean;
   hoist?: boolean;
+  oldNames?: string[];
 }
 
 const ROLES: RolePlan[] = [
@@ -90,9 +91,9 @@ const ROLES: RolePlan[] = [
   { name: 'ping-wow-ptr', color: 0x8b5cf6, mentionable: true },
   { name: 'ping-announcements', color: 0xf59e0b, mentionable: true },
   { name: 'ping-github', color: 0x64748b, mentionable: true },
-  { name: 'interest-plex', color: 0xe5a00d, mentionable: false },
-  { name: 'interest-wow', color: 0x148ae3, mentionable: false },
-  { name: 'interest-addon', color: 0x7c3aed, mentionable: false },
+  { name: 'Plex-Fan', color: 0xe5a00d, mentionable: false, oldNames: ['Plex-Fan'] },
+  { name: 'WoW-Fan', color: 0x148ae3, mentionable: false, oldNames: ['WoW-Fan'] },
+  { name: 'MagguuUI', color: 0x7c3aed, mentionable: false, oldNames: ['MagguuUI'] },
 ];
 
 const STRUCTURE: CategoryPlan[] = [
@@ -122,7 +123,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📰・blue-tracker',
         topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
         readOnly: true,
-        allowedRoles: [...TRUSTED_ROLES, 'interest-wow'],
+        allowedRoles: [...TRUSTED_ROLES, 'WoW-Fan'],
       },
     ],
   },
@@ -133,7 +134,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '🎨・addon-updates',
         topic: 'MagguuUI-Addon Releases — automatisch aus GitHub.',
         readOnly: true,
-        allowedRoles: [...TRUSTED_ROLES, 'interest-addon'],
+        allowedRoles: [...TRUSTED_ROLES, 'MagguuUI'],
       },
       {
         name: '❓・faq',
@@ -149,7 +150,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📝・anfragen',
         oldNames: ['requests'],
         topic: 'Film / Serie requesten.',
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
       { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
       {
@@ -157,21 +158,21 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['new-on-plex'],
         topic: 'Recently added (Tautulli).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
       {
         name: '🎬・aktivität',
         oldNames: ['plex-activity'],
         topic: 'Wer schaut gerade was (Tautulli playback).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
       {
         name: '🗑️・gelöscht',
         oldNames: ['maintainerr'],
         topic: 'Maintainerr + Sonarr/Radarr — was aus Plex entfernt wurde.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
     ],
   },
@@ -183,14 +184,14 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['grabs'],
         topic: 'Sonarr / Radarr / SAB grabs.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
       {
         name: '✅・imports',
         oldNames: ['imports'],
         topic: 'Erfolgreich importierte Files.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'interest-plex'],
+        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
       },
       { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
@@ -380,6 +381,18 @@ export const setupServerCommand: SlashCommand = {
         skipped.push(`role: ${r.name}`);
         continue;
       }
+      const oldRole = r.oldNames
+        ?.map((n) => interaction.guild?.roles.cache.find((x) => x.name === n))
+        .find((x): x is NonNullable<typeof x> => Boolean(x));
+      if (oldRole) {
+        try {
+          await oldRole.setName(r.name, 'setup-server role rename');
+          renamed.push(`role: ${oldRole.name === r.name ? oldRole.name : `${oldRole.name} → ${r.name}`}`);
+          continue;
+        } catch (err) {
+          logger.warn({ err, old: oldRole.name, target: r.name }, 'role rename failed, creating new');
+        }
+      }
       await interaction.guild.roles.create({
         name: r.name,
         color: r.color,
@@ -504,12 +517,25 @@ async function ensureChannel(
   renamed: boolean;
   renamedFrom?: string;
 }> {
-  const existingWithTarget = guild.channels.cache.find(
-    (c) => c.name === plan.name && c.parentId === parent.id && c.type === type,
-  );
-  if (existingWithTarget) {
-    await applyChannelPermissions(existingWithTarget as TextChannel, plan, guild, botUserId);
-    return { channel: existingWithTarget, created: false, renamed: false };
+  const statsPrefix = STATS_CHANNEL_PREFIXES.find((p) => plan.name.startsWith(p));
+  const matchesPlan = (c: { name: string; parentId: string | null; type: ChannelType }): boolean => {
+    if (c.parentId !== parent.id || c.type !== type) return false;
+    if (statsPrefix) return c.name.startsWith(statsPrefix);
+    return c.name === plan.name;
+  };
+
+  const matches = [...guild.channels.cache.filter((c) => matchesPlan(c)).values()];
+  if (matches.length > 0) {
+    const [keep, ...extras] = matches as [GuildBasedChannel, ...GuildBasedChannel[]];
+    for (const dup of extras) {
+      try {
+        await dup.delete('setup-server duplicate stats channel sweep');
+      } catch (err) {
+        logger.warn({ err, name: dup.name }, 'failed to delete duplicate channel');
+      }
+    }
+    await applyChannelPermissions(keep as TextChannel, plan, guild, botUserId);
+    return { channel: keep, created: false, renamed: false };
   }
 
   const oldNames = plan.oldNames ?? [];

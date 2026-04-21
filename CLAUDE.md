@@ -80,35 +80,44 @@ npm run db:push      # drizzle-kit sync
 
 ## Channel mapping (event → channel)
 
-| Event | Channel env var |
+Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel-store.ts` (SQLite-first, env fallback). The persistent keys below match the STRUCTURE plan in `/setup-server`.
+
+| Event | Channel key |
 |---|---|
-| Sonarr/Radarr Grab | `DISCORD_CHANNEL_GRABS` |
-| Sonarr/Radarr Download import, SAB complete | `DISCORD_CHANNEL_IMPORTS` |
-| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `DISCORD_CHANNEL_FAILURES` |
-| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `DISCORD_CHANNEL_APPROVALS` (falls back to `REQUESTS`) |
-| Seerr approved/declined/available/failed/deleted | `DISCORD_CHANNEL_REQUESTS` |
-| Tautulli recently_added | `DISCORD_CHANNEL_NEW_ON_PLEX` |
-| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `DISCORD_CHANNEL_MAINTAINERR` |
-| Sonarr/Radarr/SAB health + warnings + ApplicationUpdate | `DISCORD_CHANNEL_HEALTH` |
-| Member join welcome embed | `DISCORD_CHANNEL_WELCOME` |
-| Member join/leave + role changes | `DISCORD_CHANNEL_AUDIT_LOG` |
-| Moderation actions (warn/timeout/kick/ban/purge) | `DISCORD_CHANNEL_MOD_LOG` |
-| GitHub push/workflow_run/release/pull_request | `DISCORD_CHANNEL_GITHUB` |
+| Sonarr/Radarr Grab | `grabs` |
+| Sonarr/Radarr Download import, SAB complete | `imports` |
+| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `fehler` |
+| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `freigaben` |
+| Seerr approved/declined/available/failed/deleted | `anfragen` |
+| Tautulli recently_added | `neuAufPlex` |
+| Tautulli playback events | `aktivität` |
+| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `gelöscht` |
+| Sonarr/Radarr/SAB health + warnings + ApplicationUpdate | `health` |
+| Member join welcome embed | `welcome` |
+| Member join/leave + role changes | `auditLog` |
+| Moderation actions (warn/timeout/kick/ban/purge) | `modLog` |
+| GitHub events (default) | `github` |
+| GitHub events for repos listed in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
+| WoW Blue-Tracker RSS | `blueTracker` |
+| Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
+| Starboard (⭐ threshold) | `starboard` |
 
-## Slash commands (categorized)
+## Slash commands (32 total, categorized in `/help`)
 
-- **Downloads**: `/queue`, `/arr-status`, `/search movie|show`
-- **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge` (gated by Discord perms)
-- **Utility**: `/help`, `/announce`, `/poll`
-- **Admin**: `/setup-server` (Administrator-only)
+- **Downloads**: `/queue`, `/arr-status`, `/calendar`, `/plex-top`, `/search movie|show`
+- **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge`, `/purge-user`
+- **Utility**: `/help`, `/announce` (with ping-presets), `/poll`, `/countdown create|list|remove`, `/remindme`, `/rank`, `/leaderboard`, `/userinfo`, `/serverinfo`, `/avatar`, `/botinfo`, `/tag get|list|add|edit|delete`, `/rep give|show|leaderboard`
+- **Admin**: `/setup-server`, `/cleanup-server`, `/sticky set|remove|list`, `/db-backup`, `/roles-panel`, `/autoresponder add|list|delete|toggle`, `/schedule-announce`, `/ticket-panel`
 
 ## GitHub webhook
 
 `/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), `issues` (`opened`/`closed`/`reopened`), and `ping`. Anything else is logged + ignored.
 
+Per-repo routing: `ADDON_REPO_FULL_NAMES` (comma-separated `owner/repo`) routes those repos to `addonUpdates`; everything else stays in `github`.
+
 ## Discord intents
 
-`Guilds` (always) + `GuildMembers` (privileged — must be enabled in Dev Portal). `MessageContent` and `Presence` are deliberately off.
+`Guilds` + `GuildMembers` (privileged — must be enabled in Dev Portal) + `GuildMessages` + `GuildMessageReactions` + `GuildVoiceStates`. Partials: `Message`, `Channel`, `Reaction` (for starboard on pre-cache messages). `MessageContent` and `GuildPresences` are deliberately off.
 
 ## References
 
