@@ -612,25 +612,56 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
 
 export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
   const addonRef = r.addonUpdates ? `<#${r.addonUpdates}>` : '**#🎨・addon-updates**';
+  const rolesRef = r.roles ? `<#${r.roles}>` : '**#🎭・rollen**';
   return new EmbedBuilder()
-    .setColor(Colors.info)
-    .setTitle('❓ FAQ')
+    .setColor(Colors.brand)
+    .setAuthor({ name: 'MagguuUI  ·  Addon & Homelab FAQ' })
+    .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'Häufige Fragen rund um MagguuUI (Addon + Homelab-Setup).',
+        'Willkommen in der MagguuUI-Community. Hier findest du alles um das Addon zu installieren, updaten und Feedback zu geben.',
         '',
-        '**Wie funktioniert das?**',
-        'Admins legen FAQ-Einträge als **Tags** an. Du rufst sie mit `/tag get name:<tagname>` ab.',
+        '**📦  Installation**',
+        `1. Neueste Release-ZIP aus ${addonRef} laden`,
+        '2. Datei entpacken → Ordner **`MagguuUI`** kopieren nach:',
+        '   `World of Warcraft/_retail_/Interface/AddOns/`',
+        '3. WoW starten → Character-Select → **AddOns** Button unten links → **MagguuUI ✅** aktivieren',
+        '4. Falls UI nicht erscheint: ingame `/reload` eingeben',
         '',
-        '`/tag list` zeigt dir alle verfügbaren FAQs.',
+        '**🔄  Updaten**',
+        '- Alten `MagguuUI`-Ordner **komplett löschen**, dann neue ZIP rein',
+        '- Nie „über die alte Version kopieren" — lässt verwaiste Dateien zurück',
+        '- Einmal `/reload` nach WoW-Start',
+        '',
+        '**🐛  Bug melden**',
+        '- GitHub Issue öffnen (Link in der README)',
+        '- Oder im Server kurz posten — mit **WoW-Version**, **UI-Scale** und **Repro-Schritten**',
+        '- Screenshots oder `/combatlog`-Output sehr hilfreich',
       ].join('\n'),
     )
     .addFields(
-      { name: '📦 Addon installieren', value: '`/tag get name:install-addon`', inline: true },
-      { name: '🔄 Addon updaten', value: `Release-Feed: ${addonRef}`, inline: true },
-      { name: '🐛 Bug melden', value: 'GitHub Issues im Addon-Repo', inline: true },
+      {
+        name: '❓  Häufige Fragen',
+        value: [
+          '`UI zu groß/klein?` → `/run SetCVar("uiScale", 0.85)` (0.7–1.0)',
+          '`Classic-Support?` → Nein, nur Retail + PTR',
+          '`ElvUI-Konflikt?` → Ja, eines von beiden nutzen',
+          '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
+        ].join('\n'),
+        inline: false,
+      },
+      {
+        name: '🔔  Updates abonnieren',
+        value: `Button **🎨 MagguuUI** in ${rolesRef} klicken — macht den Channel für dich sichtbar. Plus **🔨 GitHub** für Release-Pings.`,
+        inline: false,
+      },
+      {
+        name: '📝  Weitere FAQ',
+        value: '`/tag list` zeigt alle serverweiten FAQ-Einträge. `/tag get name:<tag>` ruft einen ab. Admins erweitern via `/tag add`.',
+        inline: false,
+      },
     )
-    .setFooter({ text: 'MagguuBot  ·  tag-driven FAQ · /tag list' });
+    .setFooter({ text: 'MagguuUI  ·  Community-driven FAQ' });
 }
 
 export function buildBlueTrackerChannelEmbed(): EmbedBuilder {

@@ -11,6 +11,16 @@ interface ArrCommon {
   releaseTitle?: string;
 }
 
+function qualityBadge(q: string | undefined): string {
+  if (!q) return '—';
+  const l = q.toLowerCase();
+  if (l.includes('2160') || l.includes('4k') || l.includes('uhd')) return `💎 ${q}`;
+  if (l.includes('1080')) return `🔷 ${q}`;
+  if (l.includes('720')) return `🟢 ${q}`;
+  if (l.includes('480') || l.includes('sd')) return `⚪ ${q}`;
+  return q;
+}
+
 export interface GrabEmbedInput extends ArrCommon {
   title: string;
   year?: number | string;
@@ -37,7 +47,7 @@ export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: i.quality, inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
   if (i.indexer) fields.push({ name: 'Indexer', value: i.indexer, inline: true });
   if (i.releaseGroup) fields.push({ name: 'Release Group', value: i.releaseGroup, inline: true });
@@ -76,7 +86,7 @@ export function buildImportEmbed(i: ImportEmbedInput): EmbedBuilder {
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: i.quality, inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
   if (i.releaseGroup) fields.push({ name: 'Release Group', value: i.releaseGroup, inline: true });
   if (fields.length) e.addFields(fields);
@@ -119,7 +129,7 @@ export function buildFailureEmbed(i: FailureEmbedInput): EmbedBuilder {
     .setTimestamp(new Date());
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: i.quality, inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
   if (i.downloadClient) fields.push({ name: 'Download client', value: i.downloadClient, inline: true });
   if (i.releaseTitle) fields.push({ name: 'Release', value: `\`${truncate(i.releaseTitle, 1000)}\``, inline: false });
   if (fields.length) e.addFields(fields);
@@ -197,7 +207,7 @@ export function buildDeleteEmbed(i: DeleteEmbedInput): EmbedBuilder {
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: i.quality, inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
   if (i.reason) fields.push({ name: 'Grund', value: truncate(i.reason, 1000), inline: false });
   if (fields.length) e.addFields(fields);
