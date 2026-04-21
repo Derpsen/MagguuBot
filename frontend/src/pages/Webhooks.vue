@@ -84,6 +84,29 @@ function setSourceFilter(s: string): void {
   sourceFilter.value = sourceFilter.value === s ? 'all' : s;
 }
 
+const clearMenuOpen = ref(false);
+const clearing = ref(false);
+
+async function clearEvents(scope: 'all' | 'failed' | 'skipped'): Promise<void> {
+  const label = scope === 'all' ? 'ALLE' : scope === 'failed' ? 'alle FAILED' : 'alle SKIPPED';
+  if (!confirm(`${label} Webhook-Events wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) {
+    clearMenuOpen.value = false;
+    return;
+  }
+  clearing.value = true;
+  try {
+    const res = await api<{ ok: boolean; deleted: number }>(
+      `/api/admin/webhooks?scope=${scope}`,
+      { method: 'DELETE' },
+    );
+    clearMenuOpen.value = false;
+    await reload();
+    alert(`${res.deleted} Event${res.deleted === 1 ? '' : 's'} gelöscht.`);
+  } finally {
+    clearing.value = false;
+  }
+}
+
 onMounted(reload);
 </script>
 
@@ -94,9 +117,43 @@ onMounted(reload);
         <h1 class="text-2xl font-semibold text-white">Webhooks</h1>
         <p class="mt-1 text-sm text-slate-400">Die letzten 100 eingehenden Events.</p>
       </div>
-      <button class="btn-secondary" :disabled="loading" @click="reload">
-        {{ loading ? 'Lade…' : 'Reload' }}
-      </button>
+      <div class="flex items-center gap-2">
+        <div class="relative">
+          <button
+            class="btn-secondary"
+            :disabled="clearing || rows.length === 0"
+            @click="clearMenuOpen = !clearMenuOpen"
+          >
+            {{ clearing ? 'Lösche…' : 'Clear ▾' }}
+          </button>
+          <div
+            v-if="clearMenuOpen"
+            class="absolute right-0 top-full z-10 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-surface-2 shadow-lg"
+          >
+            <button
+              class="block w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10"
+              @click="clearEvents('all')"
+            >
+              Alle Events löschen
+            </button>
+            <button
+              class="block w-full border-t border-line px-4 py-2 text-left text-sm text-slate-200 hover:bg-surface-3"
+              @click="clearEvents('failed')"
+            >
+              Nur <span class="text-red-400">failed</span> löschen
+            </button>
+            <button
+              class="block w-full border-t border-line px-4 py-2 text-left text-sm text-slate-200 hover:bg-surface-3"
+              @click="clearEvents('skipped')"
+            >
+              Nur <span class="text-slate-400">skipped</span> löschen
+            </button>
+          </div>
+        </div>
+        <button class="btn-secondary" :disabled="loading" @click="reload">
+          {{ loading ? 'Lade…' : 'Reload' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading && rows.length === 0" class="mt-8 text-slate-500">Lade…</div>

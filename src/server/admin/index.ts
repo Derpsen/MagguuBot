@@ -186,6 +186,20 @@ adminRouter.get('/webhooks', (c) => {
   );
 });
 
+adminRouter.delete('/webhooks', (c) => {
+  const scope = c.req.query('scope') ?? 'all';
+  let result: { changes: number };
+  if (scope === 'failed') {
+    result = db.delete(webhookEvents).where(eq(webhookEvents.status, 'failed')).run();
+  } else if (scope === 'skipped') {
+    result = db.delete(webhookEvents).where(eq(webhookEvents.status, 'skipped')).run();
+  } else {
+    result = db.delete(webhookEvents).run();
+  }
+  logger.info({ scope, deleted: result.changes }, 'webhook events cleared via dashboard');
+  return c.json({ ok: true, deleted: result.changes });
+});
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 const settingsSchema = z.object({
