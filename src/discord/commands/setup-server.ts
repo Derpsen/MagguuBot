@@ -65,7 +65,9 @@ interface CategoryPlan {
   channels: ChannelPlan[];
 }
 
-const PLEX_ROLES = ['Plex-User', 'Regular', 'VIP'] as const;
+const PLEX_ACCESS = ['Plex-User', 'Plex-Fan'] as const;
+const WOW_ACCESS = ['WoW-Fan'] as const;
+const ADDON_ACCESS = ['MagguuUI'] as const;
 const TRUSTED_ROLES = ['Regular', 'VIP', 'Plex-User'] as const;
 
 interface RolePlan {
@@ -123,7 +125,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📰・blue-tracker',
         topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
         readOnly: true,
-        allowedRoles: [...TRUSTED_ROLES, 'WoW-Fan'],
+        allowedRoles: [...WOW_ACCESS],
       },
     ],
   },
@@ -134,12 +136,13 @@ const STRUCTURE: CategoryPlan[] = [
         name: '🎨・addon-updates',
         topic: 'MagguuUI-Addon Releases — automatisch aus GitHub.',
         readOnly: true,
-        allowedRoles: [...TRUSTED_ROLES, 'MagguuUI'],
+        allowedRoles: [...ADDON_ACCESS],
       },
       {
         name: '❓・faq',
         topic: 'Häufige Fragen — Tag-basiert. `/tag list` zeigt alle.',
         readOnly: true,
+        allowedRoles: [...ADDON_ACCESS],
       },
     ],
   },
@@ -150,7 +153,7 @@ const STRUCTURE: CategoryPlan[] = [
         name: '📝・anfragen',
         oldNames: ['requests'],
         topic: 'Film / Serie requesten.',
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
       { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
       {
@@ -158,21 +161,21 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['new-on-plex'],
         topic: 'Recently added (Tautulli).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
       {
         name: '🎬・aktivität',
         oldNames: ['plex-activity'],
         topic: 'Wer schaut gerade was (Tautulli playback).',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
       {
         name: '🗑️・gelöscht',
         oldNames: ['maintainerr'],
         topic: 'Maintainerr + Sonarr/Radarr — was aus Plex entfernt wurde.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
     ],
   },
@@ -184,14 +187,14 @@ const STRUCTURE: CategoryPlan[] = [
         oldNames: ['grabs'],
         topic: 'Sonarr / Radarr / SAB grabs.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
       {
         name: '✅・imports',
         oldNames: ['imports'],
         topic: 'Erfolgreich importierte Files.',
         readOnly: true,
-        allowedRoles: [...PLEX_ROLES, 'Plex-Fan'],
+        allowedRoles: [...PLEX_ACCESS],
       },
       { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
@@ -199,16 +202,6 @@ const STRUCTURE: CategoryPlan[] = [
   {
     name: '🔧 STATUS',
     channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health + Updates.', readOnly: true, adminOnly: true }],
-  },
-  {
-    name: '🎮 WOW',
-    channels: [
-      {
-        name: '📰・blue-tracker',
-        topic: 'Blizzard Blue-Posts — Retail + PTR (kein Classic). Class Tunings, Hotfixes, Balance.',
-        readOnly: true,
-      },
-    ],
   },
   {
     name: '💬 CHAT',
