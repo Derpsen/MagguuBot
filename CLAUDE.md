@@ -49,7 +49,11 @@ npm run db:push      # drizzle-kit sync
 
 **Slash commands are per-guild** — registered to `DISCORD_GUILD_ID` on every boot via `REST.put(Routes.applicationGuildCommands)`. Instant update, no 1h global cache. Bot is single-guild by design.
 
-**Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>`. Constant-time compare in `server/app.ts`. Don't downgrade to plain `===`.
+**Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compared in `server/app.ts`), **except**:
+- `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead
+- `/webhook/maintainerr` — optional `?token=<WEBHOOK_SECRET>` query-param (Maintainerr can't set headers); LAN-only by default
+
+`/webhook/*` is rate-limited at 120 req/min/IP. Client IP resolved from `cf-connecting-ip` → `x-forwarded-for` → `x-real-ip` → `unknown`. Don't downgrade the token check to plain `===`.
 
 **Channel IDs are optional** — a webhook without a mapped channel is logged as `skipped` in `webhook_events`, not thrown. First boot ships empty, run `/setup-server`, copy IDs, restart.
 

@@ -53,18 +53,27 @@ export function buildApp(): Hono {
     );
   });
 
+  app.use('/webhook/*', webhookRateLimit());
+
   app.use('/webhook/*', async (c, next) => {
-    if (
-      c.req.path.startsWith('/webhook/github') ||
-      c.req.path.startsWith('/webhook/maintainerr') ||
-      c.req.path.startsWith('/webhook/tautulli')
-    ) {
+    if (c.req.path.startsWith('/webhook/github')) {
       await next();
       return;
     }
+
+    if (c.req.path.startsWith('/webhook/maintainerr')) {
+      const queryToken = c.req.query('token');
+      if (queryToken && !constantTimeEquals(queryToken, config.WEBHOOK_SECRET)) {
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook bad token');
+        return c.json({ ok: false, error: 'unauthorized' }, 401);
+      }
+      await next();
+      return;
+    }
+
     const token = c.req.header('x-magguu-token');
     if (!token || !constantTimeEquals(token, config.WEBHOOK_SECRET)) {
-      logger.warn({ path: c.req.path, ip: c.req.header('x-forwarded-for') }, 'webhook auth failed');
+      logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook auth failed');
       return c.json({ ok: false, error: 'unauthorized' }, 401);
     }
     await next();
@@ -125,4 +134,44 @@ function constantTimeEquals(a: string, b: string): boolean {
   const bufB = Buffer.from(b);
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
+}
+
+function clientIp(c: import('hono').Context): string {
+  return (
+    c.req.header('cf-connecting-ip') ??
+    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
+    c.req.header('x-real-ip') ??
+    'unknown'
+  );
+}
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 120;
+
+function webhookRateLimit(): (c: import('hono').Context, next: () => Promise<void>) => Promise<Response | void> {
+  const buckets = new Map<string, { count: number; resetAt: number }>();
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, bucket] of buckets) {
+      if (bucket.resetAt <= now) buckets.delete(ip);
+    }
+  }, RATE_WINDOW_MS).unref();
+
+  return async (c, next) => {
+    const ip = clientIp(c);
+    const now = Date.now();
+    const bucket = buckets.get(ip);
+    if (!bucket || bucket.resetAt <= now) {
+      buckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+      await next();
+      return;
+    }
+    bucket.count += 1;
+    if (bucket.count > RATE_MAX) {
+      logger.warn({ ip, path: c.req.path, count: bucket.count }, 'webhook rate limit exceeded');
+      return c.json({ ok: false, error: 'rate limit exceeded' }, 429);
+    }
+    await next();
+  };
 }
