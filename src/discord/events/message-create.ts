@@ -1,6 +1,7 @@
 import { logger } from '../../utils/logger.js';
 import { runAutomod } from '../automod.js';
 import { runAutoresponder } from '../autoresponder.js';
+import { scheduleStickyRepost } from '../sticky.js';
 import { grantXp } from '../xp.js';
 import type { BotEvent } from './types.js';
 
@@ -28,6 +29,12 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
       await grantXp(message.member);
     } catch (err) {
       logger.error({ err, userId: message.author.id }, 'grantXp failed');
+    }
+
+    try {
+      scheduleStickyRepost(message);
+    } catch (err) {
+      logger.error({ err, channelId: message.channelId }, 'sticky schedule failed');
     }
   },
 };

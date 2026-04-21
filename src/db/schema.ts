@@ -50,6 +50,20 @@ export const welcomeMessages = sqliteTable('welcome_messages', {
     .$defaultFn(() => new Date()),
 });
 
+export const stickyMessages = sqliteTable('sticky_messages', {
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  content: text('content').notNull(),
+  currentMessageId: text('current_message_id'),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const warnings = sqliteTable('warnings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guildId: text('guild_id').notNull(),

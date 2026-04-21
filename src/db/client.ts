@@ -75,6 +75,17 @@ function ensureSchema(): void {
       PRIMARY KEY (guild_id, plan_name)
     );
 
+    CREATE TABLE IF NOT EXISTS sticky_messages (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      current_message_id TEXT,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
+    );
+
     CREATE TABLE IF NOT EXISTS reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,

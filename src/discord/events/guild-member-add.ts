@@ -47,6 +47,8 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
         }
       }
 
+      await sendWelcomeDM(member);
+
       const auditChannelId = getChannel('auditLog');
       if (auditChannelId) {
         const channel = await member.guild.channels.fetch(auditChannelId).catch(() => null);
@@ -71,6 +73,34 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
     }
   },
 };
+
+async function sendWelcomeDM(member: GuildMember): Promise<void> {
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(Colors.brand)
+      .setTitle(`Willkommen auf ${member.guild.name}! 🎉`)
+      .setDescription(
+        [
+          `Hey ${member.user.username}, schön dass du da bist.`,
+          '',
+          '**So kommst du rein:**',
+          '• Checke die **#📜・regeln** — kurze Liste, freundlicher Server',
+          '• Im **#🎭・rollen** Channel kannst du dir Ping-Rollen per Button holen',
+          '• Als **Newcomer** siehst du erstmal nur die Basics — durch Aktivität (ab Level 2) wirst du automatisch zu **Regular** promoted und siehst mehr',
+          '• Für Plex-Zugriff (Film/Serie requesten) → frag einen Admin nach der `Plex-User` Rolle',
+          '',
+          '_Diese DM kommt nur einmal. Fragen? Schreib direkt in den Chat._',
+        ].join('\n'),
+      )
+      .setFooter({ text: `MagguuBot  ·  automatische Begrüßung` })
+      .setTimestamp(new Date());
+    await member.send({ embeds: [embed] });
+    logger.info({ userId: member.id }, 'welcome DM sent');
+  } catch (err) {
+    // User might have DMs disabled — expected, log-only
+    logger.debug({ err, userId: member.id }, 'welcome DM blocked by user privacy');
+  }
+}
 
 function buildWelcomeEmbed(username: string, memberCount: number): EmbedBuilder {
   const requestsId = getChannel('requests');

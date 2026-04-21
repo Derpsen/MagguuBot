@@ -12,6 +12,13 @@ const TARGETS: StatsTarget[] = [
   { prefix: '👥 Mitglieder: ', compute: (g) => String(g.memberCount) },
   { prefix: '📈 Boosts: ', compute: (g) => String(g.premiumSubscriptionCount ?? 0) },
   {
+    prefix: '🎙 In Voice: ',
+    compute: (g) => {
+      const inVoice = g.voiceStates.cache.filter((s) => s.channelId !== null && !s.member?.user.bot).size;
+      return String(inVoice);
+    },
+  },
+  {
     prefix: '🤖 Bot-Uptime: ',
     compute: () => {
       const s = Math.floor(process.uptime());
