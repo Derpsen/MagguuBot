@@ -163,46 +163,50 @@ onMounted(reload);
           <div
             v-for="(r, idx) in filtered"
             :key="r.id"
-            class="flex items-center gap-4 border-b border-line/50 px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-surface-2/60"
+            class="border-b border-line/50 px-4 py-2 text-sm transition-colors last:border-0 hover:bg-surface-2/60"
             :class="idx % 2 === 0 ? 'bg-transparent' : 'bg-surface-2/20'"
           >
-            <span class="w-6 text-center text-base">{{ SOURCE_META[r.source]?.emoji ?? '🔔' }}</span>
+            <div class="flex items-center gap-3">
+              <span class="w-5 shrink-0 text-center text-base">{{ SOURCE_META[r.source]?.emoji ?? '🔔' }}</span>
 
-            <div class="flex min-w-0 flex-1 items-center gap-2">
               <span
-                class="font-medium"
+                class="shrink-0 font-medium"
                 :class="SOURCE_META[r.source]?.color ?? 'text-slate-300'"
               >
                 {{ SOURCE_META[r.source]?.label ?? r.source }}
               </span>
-              <span class="text-slate-600">·</span>
-              <code class="truncate text-slate-300">{{ r.eventType }}</code>
+              <span class="shrink-0 text-slate-600">·</span>
+              <code class="min-w-0 flex-1 truncate text-slate-300">{{ r.eventType }}</code>
+
+              <span
+                class="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium"
+                :class="STATUS_COLOR[r.status] ?? 'bg-slate-500/15 text-slate-400'"
+              >
+                {{ r.status }}
+              </span>
+
+              <span
+                v-if="r.channelId"
+                class="hidden shrink-0 font-mono text-[11px] text-slate-500 sm:inline"
+                :title="`Channel ID ${r.channelId}`"
+              >
+                {{ channelHash(r.channelId) }}
+              </span>
+
+              <span
+                class="w-12 shrink-0 text-right font-mono text-xs text-slate-500"
+                :title="new Date(r.createdAt).toLocaleString()"
+              >
+                {{ relativeTime(r.createdAt) }}
+              </span>
             </div>
 
-            <span
-              class="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium"
-              :class="STATUS_COLOR[r.status] ?? 'bg-slate-500/15 text-slate-400'"
+            <div
+              v-if="r.error"
+              class="mt-1 pl-8 text-xs text-red-400/90 truncate"
+              :title="r.error"
             >
-              {{ r.status }}
-            </span>
-
-            <span
-              v-if="r.channelId"
-              class="shrink-0 font-mono text-[11px] text-slate-500"
-              :title="`Channel ID ${r.channelId}`"
-            >
-              {{ channelHash(r.channelId) }}
-            </span>
-
-            <span
-              class="w-12 shrink-0 text-right font-mono text-xs text-slate-500"
-              :title="new Date(r.createdAt).toLocaleString()"
-            >
-              {{ relativeTime(r.createdAt) }}
-            </span>
-
-            <div v-if="r.error" class="basis-full pl-10 pt-0.5 text-xs text-red-400/90" :title="r.error">
-              {{ r.error }}
+              ↳ {{ r.error }}
             </div>
           </div>
         </div>
