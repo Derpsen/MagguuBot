@@ -34,3 +34,38 @@ export async function approveSeerrRequest(requestId: number): Promise<void> {
 export async function declineSeerrRequest(requestId: number): Promise<void> {
   await seerrFetch(`/api/v1/request/${requestId}/decline`, { method: 'POST' });
 }
+
+export interface SeerrStatus {
+  version?: string;
+  commitTag?: string;
+  updateAvailable?: boolean;
+}
+
+export interface SeerrRequestCount {
+  total: number;
+  movie: number;
+  tv: number;
+  pending: number;
+  approved: number;
+  declined: number;
+  processing: number;
+  available: number;
+}
+
+export async function getSeerrStatus(): Promise<SeerrStatus | null> {
+  if (!config.SEERR_URL || !config.SEERR_API_KEY) return null;
+  try {
+    return await seerrFetch<SeerrStatus>('/api/v1/status');
+  } catch {
+    return null;
+  }
+}
+
+export async function getSeerrRequestCount(): Promise<SeerrRequestCount | null> {
+  if (!config.SEERR_URL || !config.SEERR_API_KEY) return null;
+  try {
+    return await seerrFetch<SeerrRequestCount>('/api/v1/request/count');
+  } catch {
+    return null;
+  }
+}

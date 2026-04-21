@@ -1,9 +1,12 @@
 import type { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { announceCommand } from './announce.js';
+import { arrStatusCommand } from './arr-status.js';
 import { avatarCommand } from './avatar.js';
+import { calendarCommand } from './calendar.js';
 import { banCommand, unbanCommand } from './ban.js';
 import { botinfoCommand } from './botinfo.js';
 import { cleanupServerCommand } from './cleanup-server.js';
+import { dbBackupCommand } from './db-backup.js';
 import { helpCommand } from './help.js';
 import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
@@ -35,9 +38,12 @@ export interface SlashCommand {
 
 const all: SlashCommand[] = [
   queueCommand,
+  arrStatusCommand,
+  calendarCommand,
   searchCommand,
   setupServerCommand,
   cleanupServerCommand,
+  dbBackupCommand,
   warnCommand,
   timeoutCommand,
   kickCommand,

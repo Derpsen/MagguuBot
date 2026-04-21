@@ -45,3 +45,11 @@ async function sabFetch<T>(mode: string, extra: Record<string, string> = {}): Pr
 export async function getSabQueue(): Promise<SabQueueResponse | null> {
   return sabFetch<SabQueueResponse>('queue', { limit: '20' });
 }
+
+export interface SabVersion {
+  version: string;
+}
+
+export async function getSabVersion(): Promise<SabVersion | null> {
+  return sabFetch<SabVersion>('version');
+}

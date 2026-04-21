@@ -44,3 +44,53 @@ export async function searchSonarr(query: string): Promise<SonarrSeries[]> {
   if (!sonarr) return [];
   return sonarr.get<SonarrSeries[]>(`/api/v3/series/lookup?term=${encodeURIComponent(query)}`);
 }
+
+export interface ArrSystemStatus {
+  version: string;
+  branch?: string;
+  startTime?: string;
+}
+
+export interface ArrHealthIssue {
+  source?: string;
+  type?: 'ok' | 'warning' | 'error';
+  message?: string;
+}
+
+export interface ArrDiskSpace {
+  path: string;
+  label?: string;
+  freeSpace: number;
+  totalSpace: number;
+}
+
+export async function getSonarrStatus(): Promise<ArrSystemStatus | null> {
+  if (!sonarr) return null;
+  return sonarr.get<ArrSystemStatus>('/api/v3/system/status');
+}
+
+export async function getSonarrHealth(): Promise<ArrHealthIssue[]> {
+  if (!sonarr) return [];
+  return sonarr.get<ArrHealthIssue[]>('/api/v3/health');
+}
+
+export async function getSonarrDiskSpace(): Promise<ArrDiskSpace[]> {
+  if (!sonarr) return [];
+  return sonarr.get<ArrDiskSpace[]>('/api/v3/diskspace');
+}
+
+export interface SonarrCalendarEntry {
+  id: number;
+  title: string;
+  airDateUtc: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  hasFile: boolean;
+  series?: { title: string; year?: number };
+}
+
+export async function getSonarrCalendar(startIso: string, endIso: string): Promise<SonarrCalendarEntry[]> {
+  if (!sonarr) return [];
+  const q = `start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}&includeSeries=true`;
+  return sonarr.get<SonarrCalendarEntry[]>(`/api/v3/calendar?${q}`);
+}

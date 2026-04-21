@@ -2,7 +2,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
+import { sql } from 'drizzle-orm';
 import { config } from '../config.js';
+import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import { adminRouter } from './admin/index.js';
 import { authRouter } from './auth/oauth.js';
@@ -31,7 +33,25 @@ const MIME_TYPES: Record<string, string> = {
 export function buildApp(): Hono {
   const app = new Hono();
 
-  app.get('/healthz', (c) => c.json({ ok: true, uptime: process.uptime() }));
+  app.get('/healthz', (c) => {
+    let dbOk = false;
+    try {
+      db.run(sql`SELECT 1`);
+      dbOk = true;
+    } catch (err) {
+      logger.warn({ err }, 'healthz db check failed');
+    }
+    const ok = dbOk;
+    return c.json(
+      {
+        ok,
+        uptime: Math.floor(process.uptime()),
+        db: dbOk ? 'ok' : 'fail',
+        timestamp: new Date().toISOString(),
+      },
+      ok ? 200 : 503,
+    );
+  });
 
   app.use('/webhook/*', async (c, next) => {
     if (
