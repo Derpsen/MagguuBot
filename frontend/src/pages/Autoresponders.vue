@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette } from 'lucide-vue-next';
+import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check, Bot } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 type MatchType = 'substring' | 'word' | 'regex';
@@ -26,6 +26,19 @@ const formMatch = ref<MatchType>('substring');
 const formAutoDelete = ref(0);
 const formAsEmbed = ref(false);
 const formError = ref<string | null>(null);
+const copiedId = ref<number | null>(null);
+
+async function copyResponse(r: Autoresponder): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(r.response);
+    copiedId.value = r.id;
+    setTimeout(() => {
+      if (copiedId.value === r.id) copiedId.value = null;
+    }, 1500);
+  } catch {
+    // clipboard blocked (e.g. http) — silent fail
+  }
+}
 const saving = ref(false);
 
 const PATTERN_MAX = 200;
@@ -304,9 +317,23 @@ onMounted(load);
               <div class="text-[11px] text-slate-400">farbiges Karten-Design mit Footer</div>
             </button>
           </div>
-          <div v-if="formAsEmbed && formResponse" class="mt-3 rounded-lg border-l-4 border-blurple bg-surface-2 p-3">
-            <p class="whitespace-pre-wrap break-words text-sm text-slate-200">{{ formResponse }}</p>
-            <p class="mt-2 text-[11px] text-slate-500">Auto-Reply · {{ formPattern || '—' }}</p>
+          <div v-if="formAsEmbed" class="mt-3">
+            <p class="mb-2 text-[11px] uppercase tracking-wider text-slate-500">Vorschau</p>
+            <div class="flex items-start gap-2 rounded-lg bg-[#2b2d31] p-3">
+              <div class="h-10 w-1 shrink-0 rounded-full bg-blurple" />
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5">
+                  <div class="flex h-5 w-5 items-center justify-center rounded-full bg-blurple text-white">
+                    <Bot class="h-3 w-3" />
+                  </div>
+                  <span class="text-xs font-semibold text-white">MagguuBot</span>
+                </div>
+                <p class="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-100">
+                  {{ formResponse || 'Dein Text erscheint hier.' }}
+                </p>
+                <p class="mt-2 text-[11px] text-slate-500">heute um {{ new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }}</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -418,16 +445,35 @@ onMounted(load);
               </span>
             </div>
 
-            <div
-              class="mt-2 rounded-lg px-3 py-2"
-              :class="
-                r.asEmbed
-                  ? 'border-l-4 border-blurple bg-surface-2'
-                  : 'flex gap-2 border border-line bg-surface-2/50'
-              "
-            >
-              <span v-if="!r.asEmbed" class="shrink-0 text-slate-500">→</span>
-              <p class="whitespace-pre-wrap break-words text-sm text-slate-200">{{ r.response }}</p>
+            <div class="relative mt-2">
+              <button
+                class="absolute top-1.5 right-1.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md bg-surface-3/80 text-slate-400 opacity-0 transition-all hover:bg-surface-3 hover:text-white group-hover:opacity-100"
+                :title="copiedId === r.id ? 'Kopiert!' : 'Response kopieren'"
+                @click="copyResponse(r)"
+              >
+                <Check v-if="copiedId === r.id" class="h-3.5 w-3.5 text-emerald-400" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+
+              <!-- Embed mode: Discord-style card -->
+              <div v-if="r.asEmbed" class="flex items-start gap-2 rounded-lg bg-[#2b2d31] p-3 pr-10">
+                <div class="h-auto w-1 shrink-0 self-stretch rounded-full bg-blurple" />
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5">
+                    <div class="flex h-5 w-5 items-center justify-center rounded-full bg-blurple text-white">
+                      <Bot class="h-3 w-3" />
+                    </div>
+                    <span class="text-xs font-semibold text-white">MagguuBot</span>
+                  </div>
+                  <p class="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-100">{{ r.response }}</p>
+                </div>
+              </div>
+
+              <!-- Plain mode -->
+              <div v-else class="flex gap-2 rounded-lg border border-line bg-surface-2/50 px-3 py-2 pr-10">
+                <span class="shrink-0 text-slate-500">→</span>
+                <p class="whitespace-pre-wrap break-words text-sm text-slate-200">{{ r.response }}</p>
+              </div>
             </div>
           </div>
 

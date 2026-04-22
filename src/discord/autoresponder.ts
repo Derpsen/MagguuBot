@@ -67,7 +67,7 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
   for (const { rule, regex } of rules) {
     if (!regex.test(message.content)) continue;
     try {
-      const reply = await message.reply(buildReplyOptions(rule));
+      const reply = await message.reply(buildReplyOptions(message, rule));
       if (rule.autoDeleteSeconds && rule.autoDeleteSeconds > 0) {
         scheduleDelete(message, reply, rule.autoDeleteSeconds);
       }
@@ -79,13 +79,17 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
   return false;
 }
 
-function buildReplyOptions(rule: Autoresponder): MessageReplyOptions {
+function buildReplyOptions(message: Message, rule: Autoresponder): MessageReplyOptions {
   const base: MessageReplyOptions = { allowedMentions: { parse: [], repliedUser: false } };
   if (rule.asEmbed) {
+    const botUser = message.client.user;
     const embed = new EmbedBuilder()
       .setDescription(rule.response.slice(0, 4096))
       .setColor(Colors.brand)
-      .setFooter({ text: `Auto-Reply · ${rule.pattern}`.slice(0, 2048) });
+      .setTimestamp(new Date());
+    if (botUser) {
+      embed.setAuthor({ name: botUser.displayName, iconURL: botUser.displayAvatarURL({ size: 64 }) });
+    }
     return { ...base, embeds: [embed] };
   }
   return { ...base, content: rule.response };
