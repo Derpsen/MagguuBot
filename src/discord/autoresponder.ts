@@ -66,14 +66,24 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
   for (const { rule, regex } of rules) {
     if (!regex.test(message.content)) continue;
     try {
-      await message.reply({
+      const reply = await message.reply({
         content: rule.response,
         allowedMentions: { parse: [], repliedUser: false },
       });
+      if (rule.autoDeleteSeconds && rule.autoDeleteSeconds > 0) {
+        scheduleDelete(message, reply, rule.autoDeleteSeconds);
+      }
       return true;
     } catch (err) {
       logger.warn({ err, ruleId: rule.id }, 'autoresponder reply failed');
     }
   }
   return false;
+}
+
+function scheduleDelete(trigger: Message, reply: Message, seconds: number): void {
+  setTimeout(() => {
+    void reply.delete().catch((err) => logger.debug({ err }, 'autoresponder reply delete failed'));
+    void trigger.delete().catch((err) => logger.debug({ err }, 'autoresponder trigger delete failed'));
+  }, seconds * 1000);
 }

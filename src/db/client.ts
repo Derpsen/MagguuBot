@@ -14,9 +14,23 @@ sqlite.pragma('busy_timeout = 5000');
 sqlite.pragma('foreign_keys = ON');
 
 ensureSchema();
+runMigrations();
 
 export const db = drizzle(sqlite, { schema });
 export const sqliteHandle = sqlite;
+
+function addColumnIfMissing(table: string, column: string, type: string): void {
+  try {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch (err) {
+    if (err instanceof Error && /duplicate column/i.test(err.message)) return;
+    throw err;
+  }
+}
+
+function runMigrations(): void {
+  addColumnIfMissing('autoresponders', 'auto_delete_seconds', 'INTEGER');
+}
 
 function ensureSchema(): void {
   sqlite.exec(`
@@ -186,6 +200,7 @@ function ensureSchema(): void {
       response TEXT NOT NULL,
       match_type TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
+      auto_delete_seconds INTEGER,
       created_by TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );

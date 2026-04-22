@@ -622,15 +622,19 @@ adminRouter.get('/autoresponders', (c) => {
       response: r.response,
       matchType: r.matchType,
       enabled: r.enabled,
+      autoDeleteSeconds: r.autoDeleteSeconds,
       createdAt: r.createdAt.toISOString(),
     })),
   );
 });
 
+const AUTO_DELETE_MAX = 3600;
+
 const autoresponderSchema = z.object({
   pattern: z.string().min(1).max(200),
   response: z.string().min(1).max(1500),
   matchType: z.enum(['substring', 'word', 'regex']),
+  autoDeleteSeconds: z.number().int().min(0).max(AUTO_DELETE_MAX).nullable().optional(),
 });
 
 adminRouter.post('/autoresponders', async (c) => {
@@ -645,6 +649,7 @@ adminRouter.post('/autoresponders', async (c) => {
     }
   }
 
+  const ads = parsed.data.autoDeleteSeconds;
   const inserted = db
     .insert(autoresponders)
     .values({
@@ -653,6 +658,7 @@ adminRouter.post('/autoresponders', async (c) => {
       response: parsed.data.response,
       matchType: parsed.data.matchType,
       enabled: true,
+      autoDeleteSeconds: ads && ads > 0 ? ads : null,
       createdBy: getSession(c).userId,
     })
     .returning({ id: autoresponders.id })
@@ -667,6 +673,7 @@ const autoresponderPatchSchema = z.object({
   response: z.string().min(1).max(1500).optional(),
   matchType: z.enum(['substring', 'word', 'regex']).optional(),
   enabled: z.boolean().optional(),
+  autoDeleteSeconds: z.number().int().min(0).max(AUTO_DELETE_MAX).nullable().optional(),
 });
 
 adminRouter.patch('/autoresponders/:id', async (c) => {
@@ -686,8 +693,11 @@ adminRouter.patch('/autoresponders/:id', async (c) => {
     }
   }
 
+  const updates = { ...patch };
+  if (updates.autoDeleteSeconds === 0) updates.autoDeleteSeconds = null;
+
   db.update(autoresponders)
-    .set(patch)
+    .set(updates)
     .where(and(eq(autoresponders.guildId, config.DISCORD_GUILD_ID), eq(autoresponders.id, id)))
     .run();
   invalidateAutoresponderCache();

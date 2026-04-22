@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles } from 'lucide-vue-next';
+import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 type MatchType = 'substring' | 'word' | 'regex';
@@ -11,6 +11,7 @@ interface Autoresponder {
   response: string;
   matchType: MatchType;
   enabled: boolean;
+  autoDeleteSeconds: number | null;
   createdAt: string;
 }
 
@@ -21,11 +22,27 @@ const editingId = ref<number | null>(null);
 const formPattern = ref('');
 const formResponse = ref('');
 const formMatch = ref<MatchType>('substring');
+const formAutoDelete = ref(0);
 const formError = ref<string | null>(null);
 const saving = ref(false);
 
 const PATTERN_MAX = 200;
 const RESPONSE_MAX = 1500;
+
+const AUTO_DELETE_PRESETS: { value: number; label: string }[] = [
+  { value: 0, label: 'Aus' },
+  { value: 10, label: '10 Sek' },
+  { value: 30, label: '30 Sek' },
+  { value: 60, label: '1 Min' },
+  { value: 300, label: '5 Min' },
+];
+
+function formatAutoDelete(seconds: number | null): string {
+  if (!seconds) return '';
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} Min`;
+  return `${Math.round(seconds / 3600)} Std`;
+}
 
 const MATCH_META: Record<MatchType, { label: string; hint: string; badge: string; icon: typeof Hash }> = {
   substring: {
@@ -60,6 +77,7 @@ function resetForm(): void {
   formPattern.value = '';
   formResponse.value = '';
   formMatch.value = 'substring';
+  formAutoDelete.value = 0;
   formError.value = null;
 }
 
@@ -73,6 +91,7 @@ function openEdit(r: Autoresponder): void {
   formPattern.value = r.pattern;
   formResponse.value = r.response;
   formMatch.value = r.matchType;
+  formAutoDelete.value = r.autoDeleteSeconds ?? 0;
   formError.value = null;
   formOpen.value = true;
 }
@@ -100,6 +119,7 @@ async function save(): Promise<void> {
       pattern: formPattern.value.trim(),
       response: formResponse.value.trim(),
       matchType: formMatch.value,
+      autoDeleteSeconds: formAutoDelete.value > 0 ? formAutoDelete.value : null,
     };
     if (editingId.value === null) {
       await api('/api/admin/autoresponders', { method: 'POST', body: JSON.stringify(payload) });
@@ -245,6 +265,33 @@ onMounted(load);
           />
         </div>
 
+        <!-- Auto-Delete -->
+        <div>
+          <label class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <Timer class="h-3 w-3" />
+            Auto-Löschen (Reply + Trigger-Nachricht)
+          </label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="preset in AUTO_DELETE_PRESETS"
+              :key="preset.value"
+              type="button"
+              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
+              :class="
+                formAutoDelete === preset.value
+                  ? 'border-blurple bg-blurple-soft text-white'
+                  : 'border-line-strong bg-surface-2 text-slate-400 hover:bg-surface-3 hover:text-slate-200'
+              "
+              @click="formAutoDelete = preset.value"
+            >
+              {{ preset.label }}
+            </button>
+          </div>
+          <p v-if="formAutoDelete > 0" class="mt-2 text-[11px] text-slate-500">
+            Nach {{ formatAutoDelete(formAutoDelete) }} werden Bot-Antwort und die Trigger-Nachricht gelöscht.
+          </p>
+        </div>
+
         <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
 
         <div class="flex items-center justify-end gap-2 border-t border-line pt-4">
@@ -312,6 +359,10 @@ onMounted(load);
               <span v-else class="badge-muted">
                 <span class="h-1.5 w-1.5 rounded-full bg-slate-500" />
                 pausiert
+              </span>
+              <span v-if="r.autoDeleteSeconds" class="badge bg-amber-500/15 text-amber-400" :title="`Antwort und Trigger werden nach ${formatAutoDelete(r.autoDeleteSeconds)} gelöscht`">
+                <Timer class="h-3 w-3" />
+                {{ formatAutoDelete(r.autoDeleteSeconds) }}
               </span>
               <span class="ml-auto text-[11px] text-slate-500" :title="new Date(r.createdAt).toLocaleString()">
                 {{ relativeTime(r.createdAt) }}
