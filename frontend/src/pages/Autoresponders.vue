@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer } from 'lucide-vue-next';
+import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 type MatchType = 'substring' | 'word' | 'regex';
@@ -12,6 +12,7 @@ interface Autoresponder {
   matchType: MatchType;
   enabled: boolean;
   autoDeleteSeconds: number | null;
+  asEmbed: boolean;
   createdAt: string;
 }
 
@@ -23,6 +24,7 @@ const formPattern = ref('');
 const formResponse = ref('');
 const formMatch = ref<MatchType>('substring');
 const formAutoDelete = ref(0);
+const formAsEmbed = ref(false);
 const formError = ref<string | null>(null);
 const saving = ref(false);
 
@@ -78,6 +80,7 @@ function resetForm(): void {
   formResponse.value = '';
   formMatch.value = 'substring';
   formAutoDelete.value = 0;
+  formAsEmbed.value = false;
   formError.value = null;
 }
 
@@ -92,6 +95,7 @@ function openEdit(r: Autoresponder): void {
   formResponse.value = r.response;
   formMatch.value = r.matchType;
   formAutoDelete.value = r.autoDeleteSeconds ?? 0;
+  formAsEmbed.value = r.asEmbed;
   formError.value = null;
   formOpen.value = true;
 }
@@ -120,6 +124,7 @@ async function save(): Promise<void> {
       response: formResponse.value.trim(),
       matchType: formMatch.value,
       autoDeleteSeconds: formAutoDelete.value > 0 ? formAutoDelete.value : null,
+      asEmbed: formAsEmbed.value,
     };
     if (editingId.value === null) {
       await api('/api/admin/autoresponders', { method: 'POST', body: JSON.stringify(payload) });
@@ -265,6 +270,46 @@ onMounted(load);
           />
         </div>
 
+        <!-- As Embed -->
+        <div>
+          <label class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <Palette class="h-3 w-3" />
+            Darstellung
+          </label>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors"
+              :class="
+                !formAsEmbed
+                  ? 'border-blurple bg-blurple-soft text-white'
+                  : 'border-line-strong bg-surface-2 text-slate-300 hover:bg-surface-3'
+              "
+              @click="formAsEmbed = false"
+            >
+              <div class="text-sm font-medium">Plain Text</div>
+              <div class="text-[11px] text-slate-400">normale Chat-Antwort</div>
+            </button>
+            <button
+              type="button"
+              class="flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors"
+              :class="
+                formAsEmbed
+                  ? 'border-blurple bg-blurple-soft text-white'
+                  : 'border-line-strong bg-surface-2 text-slate-300 hover:bg-surface-3'
+              "
+              @click="formAsEmbed = true"
+            >
+              <div class="text-sm font-medium">Embed</div>
+              <div class="text-[11px] text-slate-400">farbiges Karten-Design mit Footer</div>
+            </button>
+          </div>
+          <div v-if="formAsEmbed && formResponse" class="mt-3 rounded-lg border-l-4 border-blurple bg-surface-2 p-3">
+            <p class="whitespace-pre-wrap break-words text-sm text-slate-200">{{ formResponse }}</p>
+            <p class="mt-2 text-[11px] text-slate-500">Auto-Reply · {{ formPattern || '—' }}</p>
+          </div>
+        </div>
+
         <!-- Auto-Delete -->
         <div>
           <label class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -364,13 +409,24 @@ onMounted(load);
                 <Timer class="h-3 w-3" />
                 {{ formatAutoDelete(r.autoDeleteSeconds) }}
               </span>
+              <span v-if="r.asEmbed" class="badge bg-violet-500/15 text-violet-300" title="Als Embed gepostet">
+                <Palette class="h-3 w-3" />
+                Embed
+              </span>
               <span class="ml-auto text-[11px] text-slate-500" :title="new Date(r.createdAt).toLocaleString()">
                 {{ relativeTime(r.createdAt) }}
               </span>
             </div>
 
-            <div class="mt-2 flex gap-2 rounded-lg border border-line bg-surface-2/50 px-3 py-2">
-              <span class="shrink-0 text-slate-500">→</span>
+            <div
+              class="mt-2 rounded-lg px-3 py-2"
+              :class="
+                r.asEmbed
+                  ? 'border-l-4 border-blurple bg-surface-2'
+                  : 'flex gap-2 border border-line bg-surface-2/50'
+              "
+            >
+              <span v-if="!r.asEmbed" class="shrink-0 text-slate-500">→</span>
               <p class="whitespace-pre-wrap break-words text-sm text-slate-200">{{ r.response }}</p>
             </div>
           </div>

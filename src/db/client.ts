@@ -30,6 +30,7 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 
 function runMigrations(): void {
   addColumnIfMissing('autoresponders', 'auto_delete_seconds', 'INTEGER');
+  addColumnIfMissing('autoresponders', 'as_embed', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 function ensureSchema(): void {
@@ -201,6 +202,7 @@ function ensureSchema(): void {
       match_type TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
       auto_delete_seconds INTEGER,
+      as_embed INTEGER NOT NULL DEFAULT 0,
       created_by TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );

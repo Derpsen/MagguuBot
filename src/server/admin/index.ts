@@ -623,6 +623,7 @@ adminRouter.get('/autoresponders', (c) => {
       matchType: r.matchType,
       enabled: r.enabled,
       autoDeleteSeconds: r.autoDeleteSeconds,
+      asEmbed: r.asEmbed,
       createdAt: r.createdAt.toISOString(),
     })),
   );
@@ -635,6 +636,7 @@ const autoresponderSchema = z.object({
   response: z.string().min(1).max(1500),
   matchType: z.enum(['substring', 'word', 'regex']),
   autoDeleteSeconds: z.number().int().min(0).max(AUTO_DELETE_MAX).nullable().optional(),
+  asEmbed: z.boolean().optional(),
 });
 
 adminRouter.post('/autoresponders', async (c) => {
@@ -659,6 +661,7 @@ adminRouter.post('/autoresponders', async (c) => {
       matchType: parsed.data.matchType,
       enabled: true,
       autoDeleteSeconds: ads && ads > 0 ? ads : null,
+      asEmbed: parsed.data.asEmbed ?? false,
       createdBy: getSession(c).userId,
     })
     .returning({ id: autoresponders.id })
@@ -674,6 +677,7 @@ const autoresponderPatchSchema = z.object({
   matchType: z.enum(['substring', 'word', 'regex']).optional(),
   enabled: z.boolean().optional(),
   autoDeleteSeconds: z.number().int().min(0).max(AUTO_DELETE_MAX).nullable().optional(),
+  asEmbed: z.boolean().optional(),
 });
 
 adminRouter.patch('/autoresponders/:id', async (c) => {

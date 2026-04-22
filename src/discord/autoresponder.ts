@@ -1,7 +1,8 @@
-import type { Message } from 'discord.js';
+import { EmbedBuilder, type Message, type MessageReplyOptions } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { autoresponders, type Autoresponder } from '../db/schema.js';
+import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 
 interface CachedRule {
@@ -66,10 +67,7 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
   for (const { rule, regex } of rules) {
     if (!regex.test(message.content)) continue;
     try {
-      const reply = await message.reply({
-        content: rule.response,
-        allowedMentions: { parse: [], repliedUser: false },
-      });
+      const reply = await message.reply(buildReplyOptions(rule));
       if (rule.autoDeleteSeconds && rule.autoDeleteSeconds > 0) {
         scheduleDelete(message, reply, rule.autoDeleteSeconds);
       }
@@ -79,6 +77,18 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
     }
   }
   return false;
+}
+
+function buildReplyOptions(rule: Autoresponder): MessageReplyOptions {
+  const base: MessageReplyOptions = { allowedMentions: { parse: [], repliedUser: false } };
+  if (rule.asEmbed) {
+    const embed = new EmbedBuilder()
+      .setDescription(rule.response.slice(0, 4096))
+      .setColor(Colors.brand)
+      .setFooter({ text: `Auto-Reply · ${rule.pattern}`.slice(0, 2048) });
+    return { ...base, embeds: [embed] };
+  }
+  return { ...base, content: rule.response };
 }
 
 function scheduleDelete(trigger: Message, reply: Message, seconds: number): void {

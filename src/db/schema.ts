@@ -205,6 +205,7 @@ export const autoresponders = sqliteTable('autoresponders', {
   matchType: text('match_type', { enum: ['substring', 'word', 'regex'] }).notNull(),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   autoDeleteSeconds: integer('auto_delete_seconds'),
+  asEmbed: integer('as_embed', { mode: 'boolean' }).notNull().default(false),
   createdBy: text('created_by').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
