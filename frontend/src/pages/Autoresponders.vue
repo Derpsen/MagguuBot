@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check, Bot } from 'lucide-vue-next';
+import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 type MatchType = 'substring' | 'word' | 'regex';
@@ -319,19 +319,18 @@ onMounted(load);
           </div>
           <div v-if="formAsEmbed" class="mt-3">
             <p class="mb-2 text-[11px] uppercase tracking-wider text-slate-500">Vorschau</p>
-            <div class="flex items-start gap-2 rounded-lg bg-[#2b2d31] p-3">
-              <div class="h-10 w-1 shrink-0 rounded-full bg-blurple" />
+            <div class="flex items-start gap-3 rounded-lg bg-[#2b2d31] p-3">
+              <div class="w-1 shrink-0 self-stretch rounded-full bg-blurple" />
               <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-1.5">
-                  <div class="flex h-5 w-5 items-center justify-center rounded-full bg-blurple text-white">
-                    <Bot class="h-3 w-3" />
-                  </div>
-                  <span class="text-xs font-semibold text-white">MagguuBot</span>
-                </div>
-                <p class="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-100">
+                <p class="whitespace-pre-wrap break-words text-sm text-slate-100">
                   {{ formResponse || 'Dein Text erscheint hier.' }}
                 </p>
-                <p class="mt-2 text-[11px] text-slate-500">heute um {{ new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }}</p>
+                <p class="mt-2 text-[11px] text-slate-500">
+                  heute um {{ new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }}
+                </p>
+                <div class="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#4e5058] px-2.5 py-1 text-xs font-medium text-white">
+                  📋 Kopieren
+                </div>
               </div>
             </div>
           </div>
@@ -456,17 +455,9 @@ onMounted(load);
               </button>
 
               <!-- Embed mode: Discord-style card -->
-              <div v-if="r.asEmbed" class="flex items-start gap-2 rounded-lg bg-[#2b2d31] p-3 pr-10">
-                <div class="h-auto w-1 shrink-0 self-stretch rounded-full bg-blurple" />
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5">
-                    <div class="flex h-5 w-5 items-center justify-center rounded-full bg-blurple text-white">
-                      <Bot class="h-3 w-3" />
-                    </div>
-                    <span class="text-xs font-semibold text-white">MagguuBot</span>
-                  </div>
-                  <p class="mt-1.5 whitespace-pre-wrap break-words text-sm text-slate-100">{{ r.response }}</p>
-                </div>
+              <div v-if="r.asEmbed" class="flex items-start gap-3 rounded-lg bg-[#2b2d31] p-3 pr-10">
+                <div class="w-1 shrink-0 self-stretch rounded-full bg-blurple" />
+                <p class="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-100">{{ r.response }}</p>
               </div>
 
               <!-- Plain mode -->
