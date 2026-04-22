@@ -4,6 +4,8 @@ import type { RssItem } from '../services/rss.js';
 import { truncate } from './colors.js';
 
 const BLIZZARD_BLUE = 0x148ae3;
+const SOFT_WORD_CAP = 180;
+const HARD_CHAR_CAP = 3800;
 
 interface PostType {
   emoji: string;
@@ -49,7 +51,7 @@ export function buildBlueTrackerEmbed(item: RssItem, enriched?: EnrichedBluePost
     .setTimestamp(item.pubDate ?? new Date());
 
   if (item.link) e.setURL(item.link);
-  if (body) e.setDescription(truncate(body, 4000));
+  if (body) e.setDescription(shortenBody(body, item.link));
   if (enriched?.firstImage) e.setImage(enriched.firstImage);
 
   if (item.categories?.length) {
@@ -62,6 +64,43 @@ export function buildBlueTrackerEmbed(item: RssItem, enriched?: EnrichedBluePost
 
   e.setFooter({ text: `MagguuBot  ·  WoW Blue-Tracker${post ? `  ·  ${post.label}` : ''}` });
   return e;
+}
+
+function shortenBody(body: string, link: string | undefined): string {
+  const words = body.split(/\s+/).filter(Boolean);
+  const needsSoftCut = words.length > SOFT_WORD_CAP;
+  const needsHardCut = body.length > HARD_CHAR_CAP;
+  if (!needsSoftCut && !needsHardCut) return truncate(body, 4000);
+
+  const charCap = needsSoftCut ? estimateCharCap(words) : HARD_CHAR_CAP;
+  const cutAt = findBreakpoint(body, charCap);
+  const shortened = body.slice(0, cutAt).trimEnd();
+  const tail = link ? `\n\n**[→ Weiterlesen auf bluetracker.gg](${link})**` : '\n\n…';
+  return truncate(shortened, 4000 - tail.length) + tail;
+}
+
+function estimateCharCap(words: string[]): number {
+  let chars = 0;
+  for (let i = 0; i < SOFT_WORD_CAP && i < words.length; i++) {
+    const word = words[i];
+    chars += (word?.length ?? 0) + 1;
+  }
+  return chars;
+}
+
+function findBreakpoint(body: string, softLimit: number): number {
+  if (body.length <= softLimit) return body.length;
+  const windowStart = Math.max(0, softLimit - 300);
+  const slice = body.slice(windowStart, softLimit + 200);
+  const paraIdx = slice.lastIndexOf('\n\n');
+  if (paraIdx >= 0) return windowStart + paraIdx;
+  const sentenceMatch = slice.match(/[.!?]\s+[A-ZÄÖÜ]/g);
+  if (sentenceMatch) {
+    const lastSentence = slice.lastIndexOf(sentenceMatch[sentenceMatch.length - 1]!);
+    if (lastSentence >= 0) return windowStart + lastSentence + 1;
+  }
+  const spaceIdx = body.lastIndexOf(' ', softLimit);
+  return spaceIdx > 0 ? spaceIdx : softLimit;
 }
 
 function stripHtml(s: string): string {
