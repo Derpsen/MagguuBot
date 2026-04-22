@@ -121,7 +121,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` (comma-separated `owner/repo`) routes 
 
 ## Discord intents
 
-`Guilds` + `GuildMembers` (privileged — must be enabled in Dev Portal) + `GuildMessages` + `GuildMessageReactions` + `GuildVoiceStates`. Partials: `Message`, `Channel`, `Reaction` (for starboard on pre-cache messages). `MessageContent` and `GuildPresences` are deliberately off.
+`Guilds` + `GuildMembers` (privileged — must be enabled in Dev Portal) + `GuildMessages` + `GuildMessageReactions` + `GuildVoiceStates` + `MessageContent` (privileged — required for autoresponders; must be enabled in Dev Portal). Partials: `Message`, `Channel`, `Reaction` (for starboard on pre-cache messages). `GuildPresences` is deliberately off.
 
 ## References
 

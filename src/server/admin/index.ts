@@ -662,15 +662,32 @@ adminRouter.post('/autoresponders', async (c) => {
   return c.json({ ok: true, id: inserted?.id });
 });
 
+const autoresponderPatchSchema = z.object({
+  pattern: z.string().min(1).max(200).optional(),
+  response: z.string().min(1).max(1500).optional(),
+  matchType: z.enum(['substring', 'word', 'regex']).optional(),
+  enabled: z.boolean().optional(),
+});
+
 adminRouter.patch('/autoresponders/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
-  const body = await c.req.json().catch(() => ({}));
-  const enabled = typeof body.enabled === 'boolean' ? body.enabled : undefined;
-  if (enabled === undefined) return c.json({ ok: false, error: 'enabled required' }, 400);
+  const parsed = autoresponderPatchSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
+
+  const patch = parsed.data;
+  if (Object.keys(patch).length === 0) return c.json({ ok: false, error: 'no fields' }, 400);
+
+  if (patch.matchType === 'regex' && patch.pattern !== undefined) {
+    try {
+      new RegExp(patch.pattern, 'i');
+    } catch {
+      return c.json({ ok: false, error: 'invalid regex' }, 400);
+    }
+  }
 
   db.update(autoresponders)
-    .set({ enabled })
+    .set(patch)
     .where(and(eq(autoresponders.guildId, config.DISCORD_GUILD_ID), eq(autoresponders.id, id)))
     .run();
   invalidateAutoresponderCache();

@@ -21,8 +21,9 @@ function escapeRegex(str: string): string {
 function compile(rule: Autoresponder): RegExp | null {
   try {
     if (rule.matchType === 'regex') return new RegExp(rule.pattern, 'i');
-    if (rule.matchType === 'word') return new RegExp(`\\b${escapeRegex(rule.pattern)}\\b`, 'i');
-    return new RegExp(escapeRegex(rule.pattern), 'i');
+    const escaped = escapeRegex(rule.pattern);
+    if (rule.matchType === 'word') return new RegExp(`(?<!\\w)${escaped}(?!\\w)`, 'i');
+    return new RegExp(escaped, 'i');
   } catch {
     return null;
   }
