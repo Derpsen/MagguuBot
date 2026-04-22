@@ -322,17 +322,20 @@ onMounted(load);
             <div class="flex items-start gap-3 rounded-lg bg-[#2b2d31] p-3">
               <div class="w-1 shrink-0 self-stretch rounded-full bg-blurple" />
               <div class="min-w-0 flex-1">
-                <p class="whitespace-pre-wrap break-words text-sm text-slate-100">
-                  {{ formResponse || 'Dein Text erscheint hier.' }}
-                </p>
+                <div class="group/code relative rounded-md bg-[#1e1f22] p-3">
+                  <pre class="mono whitespace-pre-wrap break-words text-xs text-slate-200">{{ formResponse || 'Dein Text erscheint hier.' }}</pre>
+                  <div class="pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded bg-[#2b2d31] text-slate-400 opacity-60">
+                    <Copy class="h-3 w-3" />
+                  </div>
+                </div>
                 <p class="mt-2 text-[11px] text-slate-500">
                   heute um {{ new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) }}
                 </p>
-                <div class="mt-2 inline-flex items-center gap-1.5 rounded-md bg-[#4e5058] px-2.5 py-1 text-xs font-medium text-white">
-                  📋 Kopieren
-                </div>
               </div>
             </div>
+            <p class="mt-2 text-[11px] text-slate-500">
+              💡 Discord zeigt beim Hovern ein natives Copy-Icon an. Emojis wie <code class="mono">:alliance:</code> rendern im Code-Block <strong>nicht</strong> — wenn dir das wichtig ist, nutze Plain-Text-Mode.
+            </p>
           </div>
         </div>
 
@@ -454,10 +457,12 @@ onMounted(load);
                 <Copy v-else class="h-3.5 w-3.5" />
               </button>
 
-              <!-- Embed mode: Discord-style card -->
+              <!-- Embed mode: Discord-style code-block embed -->
               <div v-if="r.asEmbed" class="flex items-start gap-3 rounded-lg bg-[#2b2d31] p-3 pr-10">
                 <div class="w-1 shrink-0 self-stretch rounded-full bg-blurple" />
-                <p class="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm text-slate-100">{{ r.response }}</p>
+                <div class="min-w-0 flex-1 rounded-md bg-[#1e1f22] p-2.5">
+                  <pre class="mono whitespace-pre-wrap break-words text-xs text-slate-200">{{ r.response }}</pre>
+                </div>
               </div>
 
               <!-- Plain mode -->

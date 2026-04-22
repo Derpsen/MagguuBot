@@ -12,7 +12,6 @@ import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
-import { handleAutoresponderButton } from './interactions/autoresponder-buttons.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
@@ -72,8 +71,6 @@ export async function startDiscord(): Promise<void> {
           await handleRoleButton(interaction);
         } else if (interaction.customId.startsWith('ticket:')) {
           await handleTicketButton(interaction);
-        } else if (interaction.customId.startsWith('autoresp:')) {
-          await handleAutoresponderButton(interaction);
         }
       }
     } catch (err) {

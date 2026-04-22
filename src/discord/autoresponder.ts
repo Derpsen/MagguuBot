@@ -1,11 +1,4 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-  type Message,
-  type MessageReplyOptions,
-} from 'discord.js';
+import { EmbedBuilder, type Message, type MessageReplyOptions } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { autoresponders, type Autoresponder } from '../db/schema.js';
@@ -89,18 +82,13 @@ export async function runAutoresponder(message: Message): Promise<boolean> {
 function buildReplyOptions(_message: Message, rule: Autoresponder): MessageReplyOptions {
   const base: MessageReplyOptions = { allowedMentions: { parse: [], repliedUser: false } };
   if (rule.asEmbed) {
+    const safe = rule.response.replace(/```/g, '``​`');
+    const wrapped = `\`\`\`\n${safe}\n\`\`\``;
     const embed = new EmbedBuilder()
-      .setDescription(rule.response.slice(0, 4096))
+      .setDescription(wrapped.slice(0, 4096))
       .setColor(Colors.brand)
       .setTimestamp(new Date());
-    const copyRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`autoresp:copy:${rule.id}`)
-        .setLabel('Kopieren')
-        .setEmoji('📋')
-        .setStyle(ButtonStyle.Secondary),
-    );
-    return { ...base, embeds: [embed], components: [copyRow] };
+    return { ...base, embeds: [embed] };
   }
   return { ...base, content: rule.response };
 }
