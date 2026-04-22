@@ -4,6 +4,7 @@ import { db } from '../db/client.js';
 import { botSettings } from '../db/schema.js';
 import { buildBlueTrackerEmbed } from '../embeds/blue-tracker.js';
 import { postEmbed } from '../server/discord-poster.js';
+import { enrichBluePost, type EnrichedBluePost } from '../services/blue-tracker-enrich.js';
 import { fetchRss, type RssItem } from '../services/rss.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
@@ -11,6 +12,7 @@ import { getChannel } from './channel-store.js';
 const SETTINGS_KEY = 'blueTrackerSeenGuids';
 const MAX_SEEN = 200;
 const MAX_POST_PER_RUN = 5;
+const MIN_BODY_CHARS = 250;
 
 const NON_RETAIL_KEYWORDS = [
   'classic',
@@ -28,6 +30,8 @@ const NON_RETAIL_KEYWORDS = [
 ];
 
 export function isRelevantBluePost(item: RssItem): boolean {
+  if (!/^\[eu\]/i.test(item.title)) return false;
+
   const haystacks: string[] = [];
   if (item.categories) haystacks.push(...item.categories);
   if (item.title) haystacks.push(item.title);
@@ -61,7 +65,7 @@ export async function runBlueTrackerTick(): Promise<void> {
   if (seen.size === 0) {
     saveSeen(new Set(all.map((i) => i.guid).slice(0, MAX_SEEN)));
     logger.info(
-      { total: all.length, retailOnly: items.length },
+      { total: all.length, eu: items.length },
       'blue-tracker bootstrapped, not posting historical items',
     );
     return;
@@ -79,7 +83,20 @@ export async function runBlueTrackerTick(): Promise<void> {
   }
 
   for (const item of fresh) {
-    await postOne(item, channelId);
+    const enriched = item.link ? await enrichBluePost(item.link) : null;
+    const body = enriched?.body ?? item.description ?? '';
+    if (body.length < MIN_BODY_CHARS) {
+      logger.info(
+        { guid: item.guid, title: item.title, bodyLen: body.length, enriched: Boolean(enriched) },
+        'blue-tracker: skipping short post',
+      );
+      seen.add(item.guid);
+      const normTitle = normalizeTitle(item.title);
+      if (normTitle) seen.add(`title:${normTitle}`);
+      continue;
+    }
+
+    await postOne(item, enriched, channelId);
     seen.add(item.guid);
     const normTitle = normalizeTitle(item.title);
     if (normTitle) seen.add(`title:${normTitle}`);
@@ -96,23 +113,33 @@ function normalizeTitle(title: string): string {
     .trim();
 }
 
-async function postOne(item: RssItem, channelId: string): Promise<void> {
+async function postOne(
+  item: RssItem,
+  enriched: EnrichedBluePost | null,
+  channelId: string,
+): Promise<void> {
   try {
     await postEmbed({
       channelId,
-      embed: buildBlueTrackerEmbed(item),
+      embed: buildBlueTrackerEmbed(item, enriched),
       source: 'blue-tracker',
       eventType: 'new',
-      payload: { guid: item.guid, title: item.title, link: item.link, author: item.author },
-      pingRoles: classifyPings(item),
+      payload: {
+        guid: item.guid,
+        title: item.title,
+        link: item.link,
+        author: enriched?.author ?? item.author,
+        enriched: Boolean(enriched),
+      },
+      pingRoles: classifyPings(item, enriched),
     });
   } catch (err) {
     logger.warn({ err, guid: item.guid }, 'blue-tracker post failed');
   }
 }
 
-function classifyPings(item: RssItem): string[] {
-  const hay = `${item.title} ${item.description ?? ''}`.toLowerCase();
+function classifyPings(item: RssItem, enriched: EnrichedBluePost | null): string[] {
+  const hay = `${item.title} ${enriched?.body ?? item.description ?? ''}`.toLowerCase();
   const pings: string[] = [];
   if (/\b(tuning|hotfix|balance|class changes?)\b/.test(hay)) pings.push('ping-wow-tuning');
   if (/\b(ptr|public test realm|public test)\b/.test(hay)) pings.push('ping-wow-ptr');

@@ -1,4 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
+import type { EnrichedBluePost } from '../services/blue-tracker-enrich.js';
 import type { RssItem } from '../services/rss.js';
 import { truncate } from './colors.js';
 
@@ -27,22 +28,29 @@ function classifyPost(title: string, description: string): PostType | null {
   return null;
 }
 
-export function buildBlueTrackerEmbed(item: RssItem): EmbedBuilder {
-  const description = stripHtml(item.description ?? '');
-  const author = item.author ? `Blizzard · ${item.author}` : 'Blizzard · Blue-Tracker';
-  const post = classifyPost(item.title, description);
+export function buildBlueTrackerEmbed(item: RssItem, enriched?: EnrichedBluePost | null): EmbedBuilder {
+  const body = enriched?.body ?? stripHtml(item.description ?? '');
+  const authorName = enriched?.author ?? item.author;
+  const displayAuthor = authorName ? `Blizzard · ${authorName}` : 'Blizzard · Blue-Tracker';
+  const post = classifyPost(item.title, body);
 
   const badge = post ? `${post.emoji} ${post.label} · ` : '';
   const color = post?.color ?? BLIZZARD_BLUE;
+  const cleanTitle = item.title.replace(/^\[(eu|us|kr|tw|cn)\]\s*/i, '').trim();
 
   const e = new EmbedBuilder()
     .setColor(color)
-    .setAuthor({ name: author })
-    .setTitle(`🔵  ${badge}${truncate(item.title, 200)}`)
+    .setAuthor(
+      enriched?.avatarUrl
+        ? { name: displayAuthor, iconURL: enriched.avatarUrl }
+        : { name: displayAuthor },
+    )
+    .setTitle(`🔵  ${badge}${truncate(cleanTitle, 200)}`)
     .setTimestamp(item.pubDate ?? new Date());
 
   if (item.link) e.setURL(item.link);
-  if (description) e.setDescription(truncate(description, 2000));
+  if (body) e.setDescription(truncate(body, 4000));
+  if (enriched?.firstImage) e.setImage(enriched.firstImage);
 
   if (item.categories?.length) {
     e.addFields({
