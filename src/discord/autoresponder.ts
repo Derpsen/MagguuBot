@@ -19,7 +19,19 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+const MAX_PATTERN_LEN = 200;
+// Catastrophic backtracking patterns: nested quantifiers, quantifier on group with quantifier inside
+const REDOS_DENYLIST = /(\.\*|\.\+|\w\*|\w\+)\s*[+*]|\(\s*(\.\*|\.\+|\w\*|\w\+)\s*\)[+*]|\([^)]*[+*][^)]*\)[+*]/;
+
 function compile(rule: Autoresponder): RegExp | null {
+  if (rule.pattern.length > MAX_PATTERN_LEN) {
+    logger.warn({ ruleId: rule.id, len: rule.pattern.length }, 'autoresponder pattern too long, skipped');
+    return null;
+  }
+  if (rule.matchType === 'regex' && REDOS_DENYLIST.test(rule.pattern)) {
+    logger.warn({ ruleId: rule.id, pattern: rule.pattern }, 'autoresponder regex rejected: potential ReDoS');
+    return null;
+  }
   try {
     if (rule.matchType === 'regex') return new RegExp(rule.pattern, 'i');
     const escaped = escapeRegex(rule.pattern);

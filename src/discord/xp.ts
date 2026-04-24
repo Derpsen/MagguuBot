@@ -1,5 +1,5 @@
 import type { GuildMember } from 'discord.js';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { userXp } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
@@ -107,7 +107,7 @@ export function getLeaderboard(guildId: string, limit = 10): XpRow[] {
     .select()
     .from(userXp)
     .where(eq(userXp.guildId, guildId))
-    .all()
-    .sort((a, b) => b.xp - a.xp)
-    .slice(0, limit) as XpRow[];
+    .orderBy(desc(userXp.xp))
+    .limit(limit)
+    .all() as XpRow[];
 }

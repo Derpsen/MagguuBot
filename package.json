@@ -5,7 +5,7 @@
   "description": "Discord bot + admin dashboard for a media homelab (Sonarr, Radarr, Seerr, Tautulli, SABnzbd).",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",

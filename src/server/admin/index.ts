@@ -348,6 +348,11 @@ const CHANNEL_KEYS: { key: ChannelKey; label: string; description: string }[] = 
   { key: 'modLog', label: 'Mod Log', description: 'Moderation Actions' },
   { key: 'github', label: 'GitHub', description: 'GitHub Webhook Feed' },
   { key: 'starboard', label: 'Starboard', description: '⭐ Highlights' },
+  { key: 'plexActivity', label: 'Plex Activity', description: 'Tautulli Playback Events' },
+  { key: 'maintainerr', label: 'Maintainerr', description: 'Maintainerr Cleanup Events' },
+  { key: 'blueTracker', label: 'Blue Tracker', description: 'WoW Blue-Tracker RSS' },
+  { key: 'addonUpdates', label: 'Addon Updates', description: 'GitHub Addon-Repo Feed' },
+  { key: 'faq', label: 'FAQ', description: 'FAQ Channel' },
 ];
 
 adminRouter.get('/channels', async (c) => {
@@ -385,6 +390,13 @@ adminRouter.put('/channels/:key', async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = channelUpdateSchema.safeParse(body);
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
+
+  const client = getClient();
+  const guild = client.guilds.cache.get(config.DISCORD_GUILD_ID);
+  const ch = guild?.channels.cache.get(parsed.data.channelId);
+  if (!ch || ch.type !== ChannelType.GuildText) {
+    return c.json({ ok: false, error: 'channel not found or not a text channel' }, 422);
+  }
 
   saveChannel(key, parsed.data.channelId);
   logger.info({ key, channelId: parsed.data.channelId, by: getSession(c).userId }, 'channel remapped via dashboard');

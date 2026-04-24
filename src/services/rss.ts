@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
+import { lookup } from 'node:dns/promises';
 import { logger } from '../utils/logger.js';
 
 export interface RssItem {
@@ -39,7 +40,44 @@ const parser = new XMLParser({
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+function isPrivateIp(ip: string): boolean {
+  // IPv4 private ranges + loopback
+  const v4 = /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+  if (v4) return true;
+  // IPv6 loopback, unique-local (fc00::/7), link-local (fe80::/10)
+  const lower = ip.toLowerCase();
+  if (lower === '::1') return true;
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
+  if (lower.startsWith('fe8') || lower.startsWith('fe9') || lower.startsWith('fea') || lower.startsWith('feb')) return true;
+  return false;
+}
+
+async function assertSafeUrl(url: string): Promise<void> {
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`blocked protocol: ${parsed.protocol}`);
+  }
+  const hostname = parsed.hostname;
+  // Reject bare IPs that are already in private ranges
+  if (/^[\d.]+$/.test(hostname) || hostname.includes(':')) {
+    if (isPrivateIp(hostname)) throw new Error(`blocked private IP: ${hostname}`);
+    return;
+  }
+  const result = await lookup(hostname, { all: true }).catch(() => {
+    throw new Error(`DNS lookup failed: ${hostname}`);
+  });
+  for (const { address } of result) {
+    if (isPrivateIp(address)) throw new Error(`blocked: ${hostname} resolves to private IP ${address}`);
+  }
+}
+
 export async function fetchRss(url: string): Promise<RssItem[]> {
+  try {
+    await assertSafeUrl(url);
+  } catch (err) {
+    logger.warn({ url, err }, 'rss fetch blocked by SSRF guard');
+    return [];
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   try {

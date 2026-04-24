@@ -86,7 +86,7 @@ async function sendWelcomeDM(member: GuildMember): Promise<void> {
           '**So kommst du rein:**',
           '• Checke die **#📜・regeln** — kurze Liste, freundlicher Server',
           '• Im **#🎭・rollen** Channel kannst du dir Ping-Rollen per Button holen',
-          '• Als **Newcomer** siehst du erstmal nur die Basics — durch Aktivität (ab Level 2) wirst du automatisch zu **Regular** promoted und siehst mehr',
+          '• Klicke auf die Interest-Buttons in **#🎭・rollen** um weitere Channels freizuschalten',
           '• Für Plex-Zugriff (Film/Serie requesten) → frag einen Admin nach der `Plex-User` Rolle',
           '',
           '_Diese DM kommt nur einmal. Fragen? Schreib direkt in den Chat._',
@@ -117,7 +117,7 @@ function buildWelcomeEmbed(username: string, memberCount: number): EmbedBuilder 
         '**🎭 Hol dir Rollen** → **#🎭・rollen**',
         `**📝 Film / Serie requesten** → ${requestsRef} (wird mit Plex-User-Rolle freigeschaltet)`,
         '',
-        '_Plex-Channels siehst du sobald ein Admin dir die `Plex-User` Rolle gibt oder du durch Aktivität zum `Regular` aufsteigst._',
+        '_Plex-Channels siehst du sobald ein Admin dir die `Plex-User` Rolle gibt._',
       ].join('\n'),
     )
     .setFooter({ text: `Member #${memberCount}  ·  MagguuBot` })

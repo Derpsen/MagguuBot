@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const webhookEvents = sqliteTable('webhook_events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -31,24 +31,32 @@ export const seerrRequests = sqliteTable('seerr_requests', {
     .$defaultFn(() => new Date()),
 });
 
-export const channelConfig = sqliteTable('channel_config', {
-  guildId: text('guild_id').notNull(),
-  key: text('key').notNull(),
-  channelId: text('channel_id').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const channelConfig = sqliteTable(
+  'channel_config',
+  {
+    guildId: text('guild_id').notNull(),
+    key: text('key').notNull(),
+    channelId: text('channel_id').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.key] }) }),
+);
 
-export const welcomeMessages = sqliteTable('welcome_messages', {
-  guildId: text('guild_id').notNull(),
-  planName: text('plan_name').notNull(),
-  channelId: text('channel_id').notNull(),
-  messageId: text('message_id').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const welcomeMessages = sqliteTable(
+  'welcome_messages',
+  {
+    guildId: text('guild_id').notNull(),
+    planName: text('plan_name').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.planName] }) }),
+);
 
 export const rssFeeds = sqliteTable('rss_feeds', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -84,19 +92,23 @@ export const countdowns = sqliteTable('countdowns', {
   lastRenderedLabel: text('last_rendered_label'),
 });
 
-export const stickyMessages = sqliteTable('sticky_messages', {
-  guildId: text('guild_id').notNull(),
-  channelId: text('channel_id').notNull(),
-  content: text('content').notNull(),
-  currentMessageId: text('current_message_id'),
-  createdBy: text('created_by').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const stickyMessages = sqliteTable(
+  'sticky_messages',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    content: text('content').notNull(),
+    currentMessageId: text('current_message_id'),
+    createdBy: text('created_by').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.channelId] }) }),
+);
 
 export const warnings = sqliteTable('warnings', {
   id: integer('id').primaryKey({ autoIncrement: true }),

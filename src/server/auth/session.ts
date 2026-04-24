@@ -36,7 +36,9 @@ export function verifySession(value: string): Session | null {
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    return JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session;
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session;
+    if (Date.now() - session.issuedAt > COOKIE_MAX_AGE * 1000) return null;
+    return session;
   } catch {
     return null;
   }

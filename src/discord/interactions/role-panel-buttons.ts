@@ -1,5 +1,21 @@
 import { MessageFlags, type ButtonInteraction, type GuildMember } from 'discord.js';
+import { eq } from 'drizzle-orm';
+
+import { db } from '../../db/client.js';
+import { rolePanels, type RolePanelEntry } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
+
+function panelContainsRole(guildId: string, roleId: string): boolean {
+  const panels = db
+    .select({ roles: rolePanels.roles })
+    .from(rolePanels)
+    .where(eq(rolePanels.guildId, guildId))
+    .all();
+  return panels.some((p) => {
+    const entries = p.roles as RolePanelEntry[];
+    return entries.some((e) => e.roleId === roleId);
+  });
+}
 
 export async function handleRolePanelButton(interaction: ButtonInteraction): Promise<void> {
   const [, action, roleId] = interaction.customId.split(':');
@@ -9,6 +25,11 @@ export async function handleRolePanelButton(interaction: ButtonInteraction): Pro
   }
   if (!interaction.guild || !interaction.member) {
     await interaction.reply({ content: 'Nur in einem Server nutzbar.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  if (!panelContainsRole(interaction.guild.id, roleId)) {
+    await interaction.reply({ content: 'Rolle nicht verfügbar.', flags: MessageFlags.Ephemeral });
     return;
   }
 
