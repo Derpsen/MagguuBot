@@ -10,6 +10,7 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
+import { backfillWelcomePins } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
 import { handleColorButton } from './interactions/color-buttons.js';
@@ -87,6 +88,12 @@ export async function startDiscord(): Promise<void> {
           .catch(() => {});
       }
     }
+  });
+
+  c.once('ready', () => {
+    setTimeout(() => {
+      void backfillWelcomePins().catch((err) => logger.warn({ err }, 'welcome-pin backfill failed'));
+    }, 5000);
   });
 
   await registerCommands();

@@ -48,6 +48,7 @@ import { db } from '../../db/client.js';
 import { welcomeMessages } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
 import { saveChannel, type ChannelKey } from '../channel-store.js';
+import { getClient } from '../client.js';
 import type { SlashCommand } from './index.js';
 
 type ChannelKind = 'text' | 'voice';
@@ -447,6 +448,8 @@ export const setupServerCommand: SlashCommand = {
 
     let embedsPosted = 0;
     let embedsUpdated = 0;
+    let pinsOk = 0;
+    let pinsFailed = 0;
     for (const { plan, channel } of freshTextChannels) {
       const builder = WELCOME_BUILDERS[plan.name];
       if (!builder) continue;
@@ -454,8 +457,10 @@ export const setupServerCommand: SlashCommand = {
         const embed = builder(refs);
         const components = plan.name === '🎭・rollen' ? buildRolePickerButtons() : undefined;
         const result = await upsertWelcomeEmbed(channel, plan.name, embed, components);
-        if (result === 'created') embedsPosted++;
-        else if (result === 'updated') embedsUpdated++;
+        if (result.status === 'created') embedsPosted++;
+        else if (result.status === 'updated') embedsUpdated++;
+        if (result.pinned) pinsOk++;
+        else pinsFailed++;
       } catch (err) {
         logger.warn({ err, channel: plan.name }, 'welcome embed upsert failed');
       }
@@ -468,8 +473,10 @@ export const setupServerCommand: SlashCommand = {
             buildColorRolePickerEmbed(COLOR_ROLES),
             buildColorRoleButtons(COLOR_ROLES),
           );
-          if (result === 'created') embedsPosted++;
-          else if (result === 'updated') embedsUpdated++;
+          if (result.status === 'created') embedsPosted++;
+          else if (result.status === 'updated') embedsUpdated++;
+          if (result.pinned) pinsOk++;
+          else pinsFailed++;
         } catch (err) {
           logger.warn({ err, channel: plan.name }, 'color picker embed upsert failed');
         }
@@ -488,6 +495,11 @@ export const setupServerCommand: SlashCommand = {
     if (renamed.length) lines.push(`**🔁 Renamed (${renamed.length})**\n${renamed.slice(0, 20).join('\n')}`);
     if (embedsPosted) lines.push(`**💬 Welcome-Embeds gepostet:** ${embedsPosted}`);
     if (embedsUpdated) lines.push(`**✏️ Welcome-Embeds editiert:** ${embedsUpdated}`);
+    if (pinsOk || pinsFailed) {
+      lines.push(
+        `**📌 Pinning:** ${pinsOk} ok${pinsFailed ? ` · ⚠️ ${pinsFailed} fehlgeschlagen (siehe Bot-Log — meist fehlende ManageMessages-Permission)` : ''}`,
+      );
+    }
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
 
     await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
@@ -689,12 +701,17 @@ async function applyBotCategoryPermissions(
   }
 }
 
+interface UpsertResult {
+  status: 'created' | 'updated' | 'noop';
+  pinned: boolean;
+}
+
 async function upsertWelcomeEmbed(
   channel: TextChannel,
   planName: string,
   embed: EmbedBuilder,
   components: ActionRowBuilder<ButtonBuilder>[] | undefined,
-): Promise<'created' | 'updated' | 'noop'> {
+): Promise<UpsertResult> {
   const existing = db
     .select()
     .from(welcomeMessages)
@@ -705,7 +722,7 @@ async function upsertWelcomeEmbed(
     try {
       const message = await channel.messages.fetch(existing.messageId);
       await message.edit({ embeds: [embed], components: components ?? [] });
-      await ensurePinned(message);
+      const pinned = await ensurePinned(message);
       db.update(welcomeMessages)
         .set({ channelId: channel.id, updatedAt: new Date() })
         .where(
@@ -715,14 +732,14 @@ async function upsertWelcomeEmbed(
           ),
         )
         .run();
-      return 'updated';
+      return { status: 'updated', pinned };
     } catch {
       logger.debug({ planName, messageId: existing.messageId }, 'stored welcome message gone, re-posting');
     }
   }
 
   const message = await channel.send({ embeds: [embed], components });
-  await ensurePinned(message);
+  const pinned = await ensurePinned(message);
   db.insert(welcomeMessages)
     .values({
       guildId: config.DISCORD_GUILD_ID,
@@ -735,16 +752,78 @@ async function upsertWelcomeEmbed(
       set: { channelId: channel.id, messageId: message.id, updatedAt: new Date() },
     })
     .run();
-  return 'created';
+  return { status: 'created', pinned };
 }
 
-async function ensurePinned(message: import('discord.js').Message): Promise<void> {
-  if (message.pinned) return;
+const MAX_PINS_REACHED_CODE = 30003;
+
+export async function backfillWelcomePins(): Promise<{ checked: number; pinned: number; failed: number }> {
+  const rows = db
+    .select()
+    .from(welcomeMessages)
+    .where(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID))
+    .all();
+
+  let pinned = 0;
+  let failed = 0;
+  for (const row of rows) {
+    try {
+      const channel = (await getClient().channels.fetch(row.channelId).catch(() => null)) as TextChannel | null;
+      if (!channel?.isTextBased()) continue;
+      const message = await channel.messages.fetch(row.messageId).catch(() => null);
+      if (!message) continue;
+      if (message.pinned) continue;
+      const ok = await ensurePinned(message);
+      if (ok) pinned++;
+      else failed++;
+    } catch (err) {
+      logger.debug({ err, planName: row.planName }, 'backfill pin attempt errored');
+      failed++;
+    }
+  }
+
+  if (pinned > 0 || failed > 0) {
+    logger.info({ checked: rows.length, pinned, failed }, 'welcome-pin backfill complete');
+  }
+  return { checked: rows.length, pinned, failed };
+}
+
+async function ensurePinned(message: import('discord.js').Message): Promise<boolean> {
+  if (message.pinned) return true;
   try {
     await message.pin('auto-pin welcome embed');
     await deletePinNotification(message);
+    return true;
   } catch (err) {
-    logger.debug({ err, messageId: message.id }, 'pin failed — likely 50-pin-limit or missing ManageMessages');
+    const isMaxPins =
+      err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === MAX_PINS_REACHED_CODE;
+    if (!isMaxPins) {
+      logger.warn({ err, messageId: message.id, channelId: message.channelId }, 'pin failed (non-50-limit reason)');
+      return false;
+    }
+
+    // 50-pin limit reached — try to make room by unpinning the oldest pin in this channel
+    try {
+      const channel = message.channel;
+      if (!('messages' in channel)) {
+        logger.warn({ messageId: message.id }, 'pin failed — 50-pin limit, channel does not expose messages');
+        return false;
+      }
+      const pins = await channel.messages.fetchPinned();
+      const oldestPin = pins.sort((a, b) => a.createdTimestamp - b.createdTimestamp).first();
+      if (!oldestPin) {
+        logger.warn({ messageId: message.id }, 'pin failed — 50-pin limit, no pins to evict');
+        return false;
+      }
+      await oldestPin.unpin('evicting oldest pin to make room for fresh welcome embed');
+      logger.info({ evicted: oldestPin.id, channelId: message.channelId }, 'pin: evicted oldest to free 50-pin slot');
+      await message.pin('auto-pin welcome embed (after eviction)');
+      await deletePinNotification(message);
+      return true;
+    } catch (evictErr) {
+      logger.warn({ err: evictErr, messageId: message.id }, 'pin retry failed after eviction attempt');
+      return false;
+    }
   }
 }
 
