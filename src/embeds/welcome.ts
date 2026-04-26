@@ -1,18 +1,5 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
-  type APIMessageComponentEmoji,
-} from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { Colors } from './colors.js';
-
-export interface ColorRoleDef {
-  name: string;
-  color: number;
-  emoji: string;
-  label: string;
-}
 
 export interface ChannelRefs {
   welcome?: string;
@@ -248,11 +235,6 @@ export function buildRolePickerEmbed(): EmbedBuilder {
         ].join('\n'),
         inline: false,
       },
-      {
-        name: '🎨 Nickname-Farbe',
-        value: 'Im selben Channel — separate Message mit Color-Buttons direkt unter diesem Embed.',
-        inline: false,
-      },
     )
     .setFooter({ text: 'MagguuBot  ·  opt-in, opt-out, alles chill' });
 }
@@ -280,40 +262,6 @@ const PING_BUTTONS: ButtonDef[] = [
   { role: 'ping-announcements', label: 'Announcements', emoji: '📢' },
   { role: 'ping-github', label: 'GitHub', emoji: '🔨' },
 ];
-
-export function buildColorRoleButtons(colorRoles: ColorRoleDef[]): ActionRowBuilder<ButtonBuilder>[] {
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  for (let i = 0; i < colorRoles.length; i += 5) {
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    for (const c of colorRoles.slice(i, i + 5)) {
-      const emoji: APIMessageComponentEmoji = { name: c.emoji };
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`color:toggle:${c.name}`)
-          .setLabel(c.label)
-          .setEmoji(emoji)
-          .setStyle(ButtonStyle.Secondary),
-      );
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-export function buildColorRolePickerEmbed(colorRoles: ColorRoleDef[]): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.brand)
-    .setTitle('🎨 Nickname-Farbe wählen')
-    .setDescription(
-      [
-        'Klick eine Farbe → wird als Nickname-Farbe gesetzt. Nochmal klicken → wieder default.',
-        '_Nur eine Farbe gleichzeitig — andere werden automatisch entfernt._',
-        '',
-        colorRoles.map((c) => `${c.emoji} **${c.label}**`).join('   '),
-      ].join('\n'),
-    )
-    .setFooter({ text: 'MagguuBot  ·  cosmetic only' });
-}
 
 export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];

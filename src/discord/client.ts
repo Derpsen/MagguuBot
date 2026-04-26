@@ -13,7 +13,6 @@ import { commands } from './commands/index.js';
 import { backfillWelcomePins } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
-import { handleColorButton } from './interactions/color-buttons.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleSuggestionButton } from './interactions/suggestion-buttons.js';
 import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
@@ -76,8 +75,6 @@ export async function startDiscord(): Promise<void> {
           await handleTicketButton(interaction);
         } else if (interaction.customId.startsWith('suggestion:')) {
           await handleSuggestionButton(interaction);
-        } else if (interaction.customId.startsWith('color:')) {
-          await handleColorButton(interaction);
         }
       }
     } catch (err) {

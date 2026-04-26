@@ -34,8 +34,6 @@ import {
   buildRulesEmbed,
   buildMaintainerrChannelEmbed,
   buildPlexActivityChannelEmbed,
-  buildColorRoleButtons,
-  buildColorRolePickerEmbed,
   buildSpoilerChannelEmbed,
   buildStarboardChannelEmbed,
   buildSuggestionsChannelEmbed,
@@ -82,18 +80,20 @@ interface RolePlan {
   oldNames?: string[];
 }
 
-export const COLOR_ROLES: Array<{ name: string; color: number; emoji: string; label: string }> = [
-  { name: 'color-red', color: 0xef4444, emoji: '🔴', label: 'Rot' },
-  { name: 'color-orange', color: 0xf97316, emoji: '🟠', label: 'Orange' },
-  { name: 'color-amber', color: 0xf59e0b, emoji: '🟡', label: 'Gelb' },
-  { name: 'color-green', color: 0x22c55e, emoji: '🟢', label: 'Grün' },
-  { name: 'color-teal', color: 0x14b8a6, emoji: '🩵', label: 'Türkis' },
-  { name: 'color-blue', color: 0x3b82f6, emoji: '🔵', label: 'Blau' },
-  { name: 'color-indigo', color: 0x6366f1, emoji: '💙', label: 'Indigo' },
-  { name: 'color-purple', color: 0xa855f7, emoji: '🟣', label: 'Lila' },
-  { name: 'color-pink', color: 0xec4899, emoji: '💖', label: 'Pink' },
-  { name: 'color-slate', color: 0x64748b, emoji: '⚪', label: 'Grau' },
+const RETIRED_ROLE_NAMES = [
+  'color-red',
+  'color-orange',
+  'color-amber',
+  'color-green',
+  'color-teal',
+  'color-blue',
+  'color-indigo',
+  'color-purple',
+  'color-pink',
+  'color-slate',
 ];
+
+const RETIRED_WELCOME_PLAN_NAMES = ['🎭・rollen-colors'];
 
 const ROLES: RolePlan[] = [
   { name: 'Admin', color: 0xef4444, hoist: true },
@@ -113,9 +113,6 @@ const ROLES: RolePlan[] = [
   { name: 'Plex-Fan', color: 0xe5a00d, mentionable: false, oldNames: ['Plex-Fan'] },
   { name: 'WoW-Fan', color: 0x148ae3, mentionable: false, oldNames: ['WoW-Fan'] },
   { name: 'MagguuUI', color: 0x7c3aed, mentionable: false, oldNames: ['MagguuUI'] },
-  ...COLOR_ROLES.map(
-    (c): RolePlan => ({ name: c.name, color: c.color, mentionable: false, hoist: false }),
-  ),
 ];
 
 const STRUCTURE: CategoryPlan[] = [
@@ -392,6 +389,40 @@ export const setupServerCommand: SlashCommand = {
     const created: string[] = [];
     const skipped: string[] = [];
     const renamed: string[] = [];
+    const removed: string[] = [];
+
+    // ─── Idempotent cleanup of retired surfaces ────────────────────────
+    for (const retiredName of RETIRED_ROLE_NAMES) {
+      const role = interaction.guild.roles.cache.find((x) => x.name === retiredName);
+      if (!role) continue;
+      try {
+        await role.delete('retired role removed by setup-server');
+        removed.push(`role: ${retiredName}`);
+      } catch (err) {
+        logger.warn({ err, role: retiredName }, 'retired role deletion failed (likely above bot)');
+      }
+    }
+    for (const planName of RETIRED_WELCOME_PLAN_NAMES) {
+      const row = db
+        .select()
+        .from(welcomeMessages)
+        .where(and(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID), eq(welcomeMessages.planName, planName)))
+        .get();
+      if (!row) continue;
+      try {
+        const channel = await interaction.guild.channels.fetch(row.channelId).catch(() => null);
+        if (channel && 'messages' in channel) {
+          const msg = await channel.messages.fetch(row.messageId).catch(() => null);
+          await msg?.delete().catch(() => {});
+        }
+      } catch (err) {
+        logger.debug({ err, planName }, 'retired welcome embed delete failed');
+      }
+      db.delete(welcomeMessages)
+        .where(and(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID), eq(welcomeMessages.planName, planName)))
+        .run();
+      removed.push(`welcome embed: ${planName}`);
+    }
 
     for (const r of ROLES) {
       const existing = interaction.guild.roles.cache.find((x) => x.name === r.name);
@@ -465,22 +496,6 @@ export const setupServerCommand: SlashCommand = {
         logger.warn({ err, channel: plan.name }, 'welcome embed upsert failed');
       }
 
-      if (plan.name === '🎭・rollen') {
-        try {
-          const result = await upsertWelcomeEmbed(
-            channel,
-            '🎭・rollen-colors',
-            buildColorRolePickerEmbed(COLOR_ROLES),
-            buildColorRoleButtons(COLOR_ROLES),
-          );
-          if (result.status === 'created') embedsPosted++;
-          else if (result.status === 'updated') embedsUpdated++;
-          if (result.pinned) pinsOk++;
-          else pinsFailed++;
-        } catch (err) {
-          logger.warn({ err, channel: plan.name }, 'color picker embed upsert failed');
-        }
-      }
     }
 
     await sortServerStructure(interaction.guild);
@@ -493,6 +508,7 @@ export const setupServerCommand: SlashCommand = {
     const lines: string[] = [];
     if (created.length) lines.push(`**✨ Created (${created.length})**\n${created.slice(0, 20).join('\n')}`);
     if (renamed.length) lines.push(`**🔁 Renamed (${renamed.length})**\n${renamed.slice(0, 20).join('\n')}`);
+    if (removed.length) lines.push(`**🗑 Removed retired (${removed.length})**\n${removed.slice(0, 20).join('\n')}`);
     if (embedsPosted) lines.push(`**💬 Welcome-Embeds gepostet:** ${embedsPosted}`);
     if (embedsUpdated) lines.push(`**✏️ Welcome-Embeds editiert:** ${embedsUpdated}`);
     if (pinsOk || pinsFailed) {
