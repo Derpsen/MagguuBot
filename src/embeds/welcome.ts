@@ -1,5 +1,18 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  type APIMessageComponentEmoji,
+} from 'discord.js';
 import { Colors } from './colors.js';
+
+export interface ColorRoleDef {
+  name: string;
+  color: number;
+  emoji: string;
+  label: string;
+}
 
 export interface ChannelRefs {
   welcome?: string;
@@ -25,6 +38,7 @@ export interface ChannelRefs {
   blueTracker?: string;
   addonUpdates?: string;
   faq?: string;
+  suggestions?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -116,7 +130,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.info)
     .setTitle('🤖 Bot-Befehle — Quick Reference')
-    .setDescription('Tipp `/` in irgendeinen Channel für Autocomplete. `/help` zeigt die volle Liste.')
+    .setDescription('Tipp `/` in irgendeinen Channel für Autocomplete. `/help` zeigt die volle Liste mit Kategorien.')
     .addFields(
       {
         name: '📥 Downloads',
@@ -125,32 +139,48 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
           '`/arr-status` — Service-Health + Disk-Space + Versionen',
           '`/search movie <query>` — Radarr-Lookup',
           '`/search show <query>` — Sonarr-Lookup',
+          '`/calendar` — kommende Releases',
+          '`/plex-top` — Top Filme/Serien/User aus Tautulli',
         ].join('\n'),
         inline: false,
       },
       {
         name: '🎮 Utility',
         value: [
-          '`/help` — alle Commands',
-          '`/rank` [user] — XP + Level',
+          '`/help` — alle Commands nach Kategorie',
+          '`/rank` [user] — Level + XP-Bar als Karte',
           '`/leaderboard` — Top 10',
+          '`/rep give|show|leaderboard` — Reputation',
           '`/remindme <zeit> <text>` — DM-Reminder',
           '`/poll <frage> <optionen>` — Reaction-Poll',
+          '`/countdown create|list|remove` — Countdown-Embeds',
           '`/userinfo` `/serverinfo` `/avatar` `/botinfo`',
         ].join('\n'),
         inline: false,
       },
       {
         name: '🛡️ Moderation (gated)',
-        value: '`/warn` `/timeout` `/kick` `/ban` `/unban` `/purge` — alles geloggt im Mod-Log',
+        value: [
+          '`/warn` `/timeout` `/kick` `/ban` `/unban`',
+          '`/purge` `/purge-user`',
+          '`/slowmode <seconds>` — Discord-native Channel-Slowmode',
+          '_Alles automatisch im Mod-Log dokumentiert._',
+        ].join('\n'),
         inline: false,
       },
       {
         name: '⚙️ Admin',
         value: [
           '`/announce` — styled Embed in einen Channel',
-          '`/setup-server` — Struktur neu aufbauen/sortieren',
+          '`/setup-server` — Struktur neu aufbauen/sortieren (idempotent)',
           '`/cleanup-server` — Orphan-Channels löschen (mit Confirm)',
+          '`/tag add|edit|delete` — Custom-Text-Antworten',
+          '`/autoresponder` — Pattern-Trigger-Autoreplies',
+          '`/schedule-announce` — geplante Posts (mit Wiederholung)',
+          '`/sticky set|remove` — Sticky-Messages pro Channel',
+          '`/ticket-panel` — Support-Tickets via Button',
+          '`/db-backup` — SQLite-Snapshot',
+          '`/roles-panel create|add|remove` — Self-Service Rollen-Buttons',
         ].join('\n'),
         inline: false,
       },
@@ -164,11 +194,12 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
           `• Neu auf Plex → ${m(r.newOnPlex, 'new-on-plex')}`,
           `• Health → ${m(r.health, 'health')}`,
           `• GitHub → ${m(r.github, 'github')}`,
+          `• Welcome-Card → ${m(r.welcome, 'welcomen')} (gerendertes PNG bei Join)`,
         ].join('\n'),
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  /help für die volle Liste' })
+    .setFooter({ text: 'MagguuBot  ·  /help für die volle Liste mit Kategorien' })
     .setTimestamp(new Date());
 }
 
@@ -217,6 +248,11 @@ export function buildRolePickerEmbed(): EmbedBuilder {
         ].join('\n'),
         inline: false,
       },
+      {
+        name: '🎨 Nickname-Farbe',
+        value: 'Im selben Channel — separate Message mit Color-Buttons direkt unter diesem Embed.',
+        inline: false,
+      },
     )
     .setFooter({ text: 'MagguuBot  ·  opt-in, opt-out, alles chill' });
 }
@@ -244,6 +280,40 @@ const PING_BUTTONS: ButtonDef[] = [
   { role: 'ping-announcements', label: 'Announcements', emoji: '📢' },
   { role: 'ping-github', label: 'GitHub', emoji: '🔨' },
 ];
+
+export function buildColorRoleButtons(colorRoles: ColorRoleDef[]): ActionRowBuilder<ButtonBuilder>[] {
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  for (let i = 0; i < colorRoles.length; i += 5) {
+    const row = new ActionRowBuilder<ButtonBuilder>();
+    for (const c of colorRoles.slice(i, i + 5)) {
+      const emoji: APIMessageComponentEmoji = { name: c.emoji };
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`color:toggle:${c.name}`)
+          .setLabel(c.label)
+          .setEmoji(emoji)
+          .setStyle(ButtonStyle.Secondary),
+      );
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+export function buildColorRolePickerEmbed(colorRoles: ColorRoleDef[]): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.brand)
+    .setTitle('🎨 Nickname-Farbe wählen')
+    .setDescription(
+      [
+        'Klick eine Farbe → wird als Nickname-Farbe gesetzt. Nochmal klicken → wieder default.',
+        '_Nur eine Farbe gleichzeitig — andere werden automatisch entfernt._',
+        '',
+        colorRoles.map((c) => `${c.emoji} **${c.label}**`).join('   '),
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  cosmetic only' });
+}
 
 export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
@@ -485,6 +555,8 @@ export function buildModLogChannelEmbed(): EmbedBuilder {
       { name: '🔨 BAN', value: 'Permanent gesperrt', inline: true },
       { name: '🕊️ UNBAN', value: 'Ban aufgehoben', inline: true },
       { name: '🧹 PURGE', value: 'Bulk-Delete im Channel', inline: true },
+      { name: '🐌 SLOWMODE', value: 'Channel-Slowmode gesetzt', inline: true },
+      { name: '🤖 AUTOMOD', value: 'Auto-gelöscht (Invite/Caps/Mention/Link/Phrase)', inline: true },
     )
     .setFooter({ text: 'MagguuBot  ·  moderation audit' });
 }
@@ -531,7 +603,11 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
     .setColor(Colors.plex)
     .setTitle('🎬 Plex Activity')
     .setDescription(
-      'Live-Feed was gerade auf Plex läuft: wer was schaut, pausiert, weiter-guckt oder zu Ende gesehen hat.',
+      [
+        'Live-Feed was gerade auf Plex läuft: wer was schaut, pausiert, weiter-guckt oder zu Ende gesehen hat.',
+        '',
+        '_Live-Stream-Counter siehst du außerdem im Voice-Channel **🎬 Plex: N** in der STATISTIK-Kategorie._',
+      ].join('\n'),
     )
     .addFields(
       { name: '▶️ Play / Resume', value: 'Jemand startet oder setzt fort', inline: true },
@@ -543,7 +619,7 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
           'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched aktivieren',
       },
     )
-    .setFooter({ text: 'MagguuBot · Plex activity' });
+    .setFooter({ text: 'MagguuBot · Plex activity + live stream count' });
 }
 
 export function buildMaintainerrChannelEmbed(): EmbedBuilder {
@@ -683,6 +759,25 @@ export function buildBlueTrackerChannelEmbed(): EmbedBuilder {
       { name: '🎯 Scope', value: 'Retail + PTR only', inline: true },
     )
     .setFooter({ text: 'MagguuBot  ·  Blue-Tracker' });
+}
+
+export function buildSuggestionsChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.suggestion)
+    .setTitle('💡 Vorschläge')
+    .setDescription(
+      [
+        'Hier landen alle Vorschläge der Community — von kleinen QoL-Wünschen bis großen Feature-Ideen.',
+        '',
+        '**So gehts:**',
+        '• `/suggest <text>` — schickt deinen Vorschlag mit Vote-Buttons in diesen Channel',
+        '• 👍 / 👎 — andere voten, du selbst kannst nicht für deinen eigenen voten',
+        '• Status-Updates: 💡 Offen → 🛠️ In Arbeit → ✅ Angenommen oder ❌ Abgelehnt',
+        '',
+        '_Bei "Angenommen" und "Abgelehnt" wird Voting geschlossen. Admins ändern Status via `/suggestion-status`._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  community feedback' });
 }
 
 export function buildSpoilerChannelEmbed(): EmbedBuilder {

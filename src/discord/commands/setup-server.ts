@@ -34,8 +34,11 @@ import {
   buildRulesEmbed,
   buildMaintainerrChannelEmbed,
   buildPlexActivityChannelEmbed,
+  buildColorRoleButtons,
+  buildColorRolePickerEmbed,
   buildSpoilerChannelEmbed,
   buildStarboardChannelEmbed,
+  buildSuggestionsChannelEmbed,
   buildWelcomeHeroEmbed,
   type ChannelRefs,
 } from '../../embeds/welcome.js';
@@ -78,6 +81,19 @@ interface RolePlan {
   oldNames?: string[];
 }
 
+export const COLOR_ROLES: Array<{ name: string; color: number; emoji: string; label: string }> = [
+  { name: 'color-red', color: 0xef4444, emoji: '🔴', label: 'Rot' },
+  { name: 'color-orange', color: 0xf97316, emoji: '🟠', label: 'Orange' },
+  { name: 'color-amber', color: 0xf59e0b, emoji: '🟡', label: 'Gelb' },
+  { name: 'color-green', color: 0x22c55e, emoji: '🟢', label: 'Grün' },
+  { name: 'color-teal', color: 0x14b8a6, emoji: '🩵', label: 'Türkis' },
+  { name: 'color-blue', color: 0x3b82f6, emoji: '🔵', label: 'Blau' },
+  { name: 'color-indigo', color: 0x6366f1, emoji: '💙', label: 'Indigo' },
+  { name: 'color-purple', color: 0xa855f7, emoji: '🟣', label: 'Lila' },
+  { name: 'color-pink', color: 0xec4899, emoji: '💖', label: 'Pink' },
+  { name: 'color-slate', color: 0x64748b, emoji: '⚪', label: 'Grau' },
+];
+
 const ROLES: RolePlan[] = [
   { name: 'Admin', color: 0xef4444, hoist: true },
   { name: 'Moderator', color: 0x3b82f6, hoist: true },
@@ -96,6 +112,9 @@ const ROLES: RolePlan[] = [
   { name: 'Plex-Fan', color: 0xe5a00d, mentionable: false, oldNames: ['Plex-Fan'] },
   { name: 'WoW-Fan', color: 0x148ae3, mentionable: false, oldNames: ['WoW-Fan'] },
   { name: 'MagguuUI', color: 0x7c3aed, mentionable: false, oldNames: ['MagguuUI'] },
+  ...COLOR_ROLES.map(
+    (c): RolePlan => ({ name: c.name, color: c.color, mentionable: false, hoist: false }),
+  ),
 ];
 
 const STRUCTURE: CategoryPlan[] = [
@@ -117,6 +136,7 @@ const STRUCTURE: CategoryPlan[] = [
       { name: '📢・ankündigungen', oldNames: ['ankündigungen'], topic: 'Server-Updates.', readOnly: true },
       { name: '🤖・bot-hilfe', oldNames: ['bot-hilfe'], topic: 'Alle Slash-Commands.', readOnly: true },
       { name: '🎭・rollen', oldNames: ['rollen'], topic: 'Benachrichtigungs-Rollen per Button.', readOnly: true },
+      { name: '💡・vorschläge', topic: 'Community-Vorschläge mit Vote-Buttons. Einreichen via /suggest.' },
     ],
   },
   {
@@ -303,6 +323,7 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '📰・blue-tracker': 'blueTracker',
   '🎨・addon-updates': 'addonUpdates',
   '❓・faq': 'faq',
+  '💡・vorschläge': 'suggestions',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -323,6 +344,7 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'blueTracker',
   'addonUpdates',
   'faq',
+  'suggestions',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -350,6 +372,7 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '📰・blue-tracker': () => buildBlueTrackerChannelEmbed(),
   '🎨・addon-updates': () => buildAddonUpdatesChannelEmbed(),
   '❓・faq': buildFaqChannelEmbed,
+  '💡・vorschläge': () => buildSuggestionsChannelEmbed(),
 };
 
 export const setupServerCommand: SlashCommand = {
@@ -435,6 +458,21 @@ export const setupServerCommand: SlashCommand = {
         else if (result === 'updated') embedsUpdated++;
       } catch (err) {
         logger.warn({ err, channel: plan.name }, 'welcome embed upsert failed');
+      }
+
+      if (plan.name === '🎭・rollen') {
+        try {
+          const result = await upsertWelcomeEmbed(
+            channel,
+            '🎭・rollen-colors',
+            buildColorRolePickerEmbed(COLOR_ROLES),
+            buildColorRoleButtons(COLOR_ROLES),
+          );
+          if (result === 'created') embedsPosted++;
+          else if (result === 'updated') embedsUpdated++;
+        } catch (err) {
+          logger.warn({ err, channel: plan.name }, 'color picker embed upsert failed');
+        }
       }
     }
 

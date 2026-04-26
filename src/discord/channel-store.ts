@@ -20,7 +20,8 @@ export type ChannelKey =
   | 'starboard'
   | 'blueTracker'
   | 'addonUpdates'
-  | 'faq';
+  | 'faq'
+  | 'suggestions';
 
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
@@ -40,6 +41,7 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   blueTracker: config.DISCORD_CHANNEL_BLUE_TRACKER,
   addonUpdates: config.DISCORD_CHANNEL_ADDON_UPDATES,
   faq: config.DISCORD_CHANNEL_FAQ,
+  suggestions: undefined,
 };
 
 export function getChannel(key: ChannelKey): string | undefined {

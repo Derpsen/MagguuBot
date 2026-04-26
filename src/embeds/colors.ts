@@ -9,8 +9,36 @@ export const Colors = {
   seerr: 0x7c3aed,
   plex: 0xe5a00d,
   sabnzbd: 0xffd100,
+  tautulli: 0xfa8500,
+  github: 0x24292f,
+  maintainerr: 0xa855f7,
+  blueTracker: 0x148ae3,
+  suggestion: 0x06b6d4,
   muted: 0x64748b,
 } as const;
+
+const FOOTER_ICONS: Record<string, string> = {
+  sonarr: 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/256.png',
+  radarr: 'https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/256.png',
+  seerr: 'https://raw.githubusercontent.com/sct/overseerr/develop/public/android-chrome-512x512.png',
+  plex: 'https://www.plex.tv/wp-content/themes/plex/assets/img/favicons/plex-180.png',
+  sabnzbd: 'https://raw.githubusercontent.com/sabnzbd/sabnzbd/master/icons/logo-arrow.svg',
+  tautulli: 'https://raw.githubusercontent.com/Tautulli/Tautulli/master/data/interfaces/default/images/logo-circle.png',
+  github: 'https://github.githubassets.com/favicons/favicon-dark.png',
+  maintainerr: 'https://raw.githubusercontent.com/jorenn92/Maintainerr/main/docs/assets/logo.png',
+  bot: 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/discord.png',
+};
+
+export interface FooterOptions {
+  source?: keyof typeof FOOTER_ICONS;
+  text?: string;
+}
+
+export function buildFooter(opts: FooterOptions = {}): { text: string; iconURL?: string } {
+  const text = opts.text ?? 'MagguuBot';
+  const iconURL = opts.source ? FOOTER_ICONS[opts.source] : FOOTER_ICONS.bot;
+  return { text, iconURL };
+}
 
 export function formatBytes(bytes: number): string {
   if (!bytes || bytes < 0) return '—';

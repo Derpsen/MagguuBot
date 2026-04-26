@@ -29,6 +29,8 @@ import { searchCommand } from './search.js';
 import { serverinfoCommand } from './serverinfo.js';
 import { setupServerCommand } from './setup-server.js';
 import { slowmodeCommand } from './slowmode.js';
+import { suggestCommand } from './suggest.js';
+import { suggestionStatusCommand } from './suggestion-status.js';
 import { timeoutCommand } from './timeout.js';
 import { userinfoCommand } from './userinfo.js';
 import { warnCommand } from './warn.js';
@@ -76,6 +78,8 @@ const all: SlashCommand[] = [
   stickyCommand,
   ticketPanelCommand,
   repCommand,
+  suggestCommand,
+  suggestionStatusCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));

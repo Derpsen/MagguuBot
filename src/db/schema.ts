@@ -276,8 +276,29 @@ export const reputationLog = sqliteTable('reputation_log', {
     .$defaultFn(() => new Date()),
 });
 
+export const suggestions = sqliteTable('suggestions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  messageId: text('message_id').notNull(),
+  authorId: text('author_id').notNull(),
+  text: text('text').notNull(),
+  status: text('status', { enum: ['open', 'accepted', 'denied', 'in-progress'] })
+    .notNull()
+    .default('open'),
+  upvoters: text('upvoters', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  downvoters: text('downvoters', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export type CustomCommand = typeof customCommands.$inferSelect;
 export type Autoresponder = typeof autoresponders.$inferSelect;
 export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
 export type Reputation = typeof reputation.$inferSelect;
+export type Suggestion = typeof suggestions.$inferSelect;
