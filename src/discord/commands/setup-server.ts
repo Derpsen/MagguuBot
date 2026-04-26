@@ -386,6 +386,22 @@ export const setupServerCommand: SlashCommand = {
       return;
     }
 
+    const permCheck = await assertBotPermissions(interaction.guild);
+    if (!permCheck.ok) {
+      await interaction.editReply(
+        [
+          '⚠️ **Bot fehlen Permissions** — `/setup-server` würde teilweise stillschweigend scheitern.',
+          '',
+          `Fehlend: \`${permCheck.missing.join('`, `')}\``,
+          '',
+          '**Fix:** Server Settings → Roles → **MagguuBot** → **Administrator** aktivieren (einfachste Lösung), oder die fehlenden Permissions einzeln. Danach `/setup-server` erneut.',
+          '',
+          '_Ohne diese kann der Bot u. a. keine Channel-Overwrites setzen oder Welcome-Embeds pinnen — daher die "Missing Permissions" Errors im Log._',
+        ].join('\n'),
+      );
+      return;
+    }
+
     const created: string[] = [];
     const skipped: string[] = [];
     const renamed: string[] = [];
@@ -513,7 +529,7 @@ export const setupServerCommand: SlashCommand = {
     if (embedsUpdated) lines.push(`**✏️ Welcome-Embeds editiert:** ${embedsUpdated}`);
     if (pinsOk || pinsFailed) {
       lines.push(
-        `**📌 Pinning:** ${pinsOk} ok${pinsFailed ? ` · ⚠️ ${pinsFailed} fehlgeschlagen (siehe Bot-Log — meist fehlende ManageMessages-Permission)` : ''}`,
+        `**📌 Pinning:** ${pinsOk} ok${pinsFailed ? ` · ⚠️ ${pinsFailed} fehlgeschlagen → MagguuBot-Rolle braucht **Administrator** (oder mind. ManageMessages + ManageChannels + ManageRoles) in Server Settings → Roles` : ''}`,
       );
     }
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
@@ -772,8 +788,40 @@ async function upsertWelcomeEmbed(
 }
 
 const MAX_PINS_REACHED_CODE = 30003;
+const MISSING_PERMISSIONS_CODE = 50013;
 
-export async function backfillWelcomePins(): Promise<{ checked: number; pinned: number; failed: number }> {
+export interface BotPermCheckResult {
+  ok: boolean;
+  missing: string[];
+  hasAdmin: boolean;
+}
+
+export async function assertBotPermissions(guild: import('discord.js').Guild): Promise<BotPermCheckResult> {
+  const me = await guild.members.fetchMe().catch(() => null);
+  if (!me) return { ok: false, missing: ['(bot member not fetchable)'], hasAdmin: false };
+  const perms = me.permissions;
+  const Flags = (await import('discord.js')).PermissionFlagsBits;
+
+  if (perms.has(Flags.Administrator)) return { ok: true, missing: [], hasAdmin: true };
+
+  const required = [
+    { flag: Flags.ManageRoles, name: 'ManageRoles' },
+    { flag: Flags.ManageChannels, name: 'ManageChannels' },
+    { flag: Flags.ManageMessages, name: 'ManageMessages' },
+    { flag: Flags.ManageGuild, name: 'ManageGuild' },
+    { flag: Flags.SendMessages, name: 'SendMessages' },
+    { flag: Flags.EmbedLinks, name: 'EmbedLinks' },
+  ];
+  const missing = required.filter((r) => !perms.has(r.flag)).map((r) => r.name);
+  return { ok: missing.length === 0, missing, hasAdmin: false };
+}
+
+export async function backfillWelcomePins(): Promise<{
+  checked: number;
+  pinned: number;
+  failed: number;
+  abortedReason?: string;
+}> {
   const rows = db
     .select()
     .from(welcomeMessages)
@@ -782,6 +830,7 @@ export async function backfillWelcomePins(): Promise<{ checked: number; pinned: 
 
   let pinned = 0;
   let failed = 0;
+  let abortedReason: string | undefined;
   for (const row of rows) {
     try {
       const channel = (await getClient().channels.fetch(row.channelId).catch(() => null)) as TextChannel | null;
@@ -790,8 +839,18 @@ export async function backfillWelcomePins(): Promise<{ checked: number; pinned: 
       if (!message) continue;
       if (message.pinned) continue;
       const ok = await ensurePinned(message);
-      if (ok) pinned++;
-      else failed++;
+      if (ok) {
+        pinned++;
+      } else {
+        failed++;
+        // Quick-abort: if first failure is 50013 (Missing Permissions), don't spam — bot lacks global ManageMessages
+        if (failed === 1 && pinned === 0) {
+          abortedReason =
+            'first pin attempt got Missing Permissions (50013) — bot role lacks ManageMessages globally; aborting backfill to avoid log spam';
+          logger.warn({ checked: pinned + failed, total: rows.length, hint: 'add Administrator (or ManageMessages + ManageChannels + ManageRoles) to the MagguuBot role in Server Settings -> Roles' }, abortedReason);
+          break;
+        }
+      }
     } catch (err) {
       logger.debug({ err, planName: row.planName }, 'backfill pin attempt errored');
       failed++;
@@ -799,9 +858,20 @@ export async function backfillWelcomePins(): Promise<{ checked: number; pinned: 
   }
 
   if (pinned > 0 || failed > 0) {
-    logger.info({ checked: rows.length, pinned, failed }, 'welcome-pin backfill complete');
+    logger.info({ checked: rows.length, pinned, failed, abortedReason }, 'welcome-pin backfill complete');
   }
-  return { checked: rows.length, pinned, failed };
+  return { checked: rows.length, pinned, failed, abortedReason };
+}
+
+function describeDiscordError(err: unknown): { code?: number; message: string } {
+  if (err && typeof err === 'object') {
+    const e = err as { code?: number; message?: string; rawError?: { message?: string } };
+    return {
+      code: e.code,
+      message: e.rawError?.message ?? e.message ?? String(err),
+    };
+  }
+  return { message: String(err) };
 }
 
 async function ensurePinned(message: import('discord.js').Message): Promise<boolean> {
@@ -811,10 +881,13 @@ async function ensurePinned(message: import('discord.js').Message): Promise<bool
     await deletePinNotification(message);
     return true;
   } catch (err) {
-    const isMaxPins =
-      err && typeof err === 'object' && 'code' in err && (err as { code: number }).code === MAX_PINS_REACHED_CODE;
+    const { code, message: errMsg } = describeDiscordError(err);
+    const isMaxPins = code === MAX_PINS_REACHED_CODE;
     if (!isMaxPins) {
-      logger.warn({ err, messageId: message.id, channelId: message.channelId }, 'pin failed (non-50-limit reason)');
+      logger.warn(
+        { code, error: errMsg, messageId: message.id, channelId: message.channelId, channelName: 'name' in message.channel ? message.channel.name : '?' },
+        'pin failed — bot likely lacks ManageMessages globally; grant it on the bot role in Server Settings -> Roles',
+      );
       return false;
     }
 
