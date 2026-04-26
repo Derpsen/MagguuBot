@@ -124,23 +124,51 @@ async function processDueAnnouncements(): Promise<void> {
     try {
       const channel = (await client.channels.fetch(a.channelId).catch(() => null)) as TextChannel | null;
       if (channel?.isTextBased()) {
+        const recurringFooter = a.recurrence !== 'none' ? `Scheduled · wiederholt ${a.recurrence}` : 'Scheduled announcement';
         const embed = new EmbedBuilder()
           .setColor(COLOR_MAP[a.color] ?? Colors.brand)
           .setTitle(a.title)
           .setDescription(truncate(a.message, 4000))
-          .setFooter({ text: 'Scheduled announcement' })
+          .setFooter({ text: recurringFooter })
           .setTimestamp(new Date());
         await channel.send({ embeds: [embed] });
       }
-      db.update(scheduledAnnouncements)
-        .set({ fired: true })
-        .where(eq(scheduledAnnouncements.id, a.id))
-        .run();
-      logger.info({ announceId: a.id }, 'scheduled announcement fired');
+
+      if (a.recurrence === 'none') {
+        db.update(scheduledAnnouncements)
+          .set({ fired: true, lastFiredAt: now })
+          .where(eq(scheduledAnnouncements.id, a.id))
+          .run();
+      } else {
+        const next = computeNextFireAt(a.fireAt, a.recurrence, now);
+        db.update(scheduledAnnouncements)
+          .set({ fireAt: next, lastFiredAt: now, fired: false })
+          .where(eq(scheduledAnnouncements.id, a.id))
+          .run();
+      }
+      logger.info({ announceId: a.id, recurrence: a.recurrence }, 'scheduled announcement fired');
     } catch (err) {
       logger.error({ err, announceId: a.id }, 'announce delivery failed');
     }
   }
+}
+
+function computeNextFireAt(currentFireAt: Date, recurrence: 'daily' | 'weekly' | 'monthly' | string, now: Date): Date {
+  const next = new Date(currentFireAt.getTime());
+  // Advance until strictly in the future to handle missed ticks (e.g. bot was offline)
+  do {
+    if (recurrence === 'daily') {
+      next.setDate(next.getDate() + 1);
+    } else if (recurrence === 'weekly') {
+      next.setDate(next.getDate() + 7);
+    } else if (recurrence === 'monthly') {
+      next.setMonth(next.getMonth() + 1);
+    } else {
+      // unknown recurrence — treat as one-shot
+      return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    }
+  } while (next.getTime() <= now.getTime());
+  return next;
 }
 
 async function processDueReminders(): Promise<void> {

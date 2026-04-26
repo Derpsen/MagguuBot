@@ -59,6 +59,21 @@ export async function getHomeStats(
   });
 }
 
+interface TautulliActivityEnvelope {
+  stream_count?: string | number;
+  stream_count_transcode?: string | number;
+  sessions?: unknown[];
+}
+
+export async function getActivePlexStreamCount(): Promise<number | null> {
+  const data = await tautulliFetch<TautulliActivityEnvelope>('get_activity');
+  if (!data) return null;
+  const raw = data.stream_count;
+  if (raw === undefined || raw === null) return 0;
+  const n = typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function pickStatSection(
   sections: TautulliStatSection[],
   statId: 'top_movies' | 'top_tv' | 'top_users',

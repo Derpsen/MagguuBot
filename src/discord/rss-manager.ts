@@ -22,7 +22,19 @@ export async function runRssFeedTick(): Promise<void> {
     if (!feed.enabled) continue;
     try {
       await processFeed(feed);
+      if (feed.lastError) {
+        // recovered — clear error fields
+        db.update(rssFeeds)
+          .set({ lastError: null, lastErrorAt: null })
+          .where(eq(rssFeeds.id, feed.id))
+          .run();
+      }
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      db.update(rssFeeds)
+        .set({ lastError: message.slice(0, 500), lastErrorAt: new Date() })
+        .where(eq(rssFeeds.id, feed.id))
+        .run();
       logger.warn({ err, feedId: feed.id, name: feed.name }, 'rss feed tick failed');
     }
   }

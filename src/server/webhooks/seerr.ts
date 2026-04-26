@@ -11,6 +11,7 @@ import {
   type SeerrIssueType,
   type SeerrRequestStatus,
 } from '../../embeds/seerr.js';
+import { getTmdbPosterUrl } from '../../services/tmdb.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 
@@ -91,6 +92,11 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
   const year = yearMatch?.[1];
   const plainTitle = title.replace(/\s*\(\d{4}\)\s*$/, '');
 
+  let posterUrl: string | null = body.image ?? null;
+  if (!posterUrl && tmdbId) {
+    posterUrl = await getTmdbPosterUrl(mediaType, tmdbId);
+  }
+
   switch (body.notification_type) {
     case 'MEDIA_PENDING': {
       const embed = buildSeerrRequestEmbed({
@@ -141,7 +147,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           title: plainTitle,
           year,
           overview: body.message,
-          posterUrl: body.image ?? null,
+          posterUrl,
           requestedBy: body.request?.requestedBy_username,
           status: 'approved',
         }),
@@ -162,7 +168,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           title: plainTitle,
           year,
           overview: body.message,
-          posterUrl: body.image ?? null,
+          posterUrl,
           requestedBy: body.request?.requestedBy_username,
           status: 'declined',
         }),
@@ -183,7 +189,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           title: plainTitle,
           year,
           overview: body.message,
-          posterUrl: body.image ?? null,
+          posterUrl,
           requestedBy: body.request?.requestedBy_username,
           status: 'available',
         }),
@@ -204,7 +210,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           title: plainTitle,
           year,
           overview: body.message,
-          posterUrl: body.image ?? null,
+          posterUrl,
           requestedBy: body.request?.requestedBy_username,
           status: 'failed',
         }),
@@ -225,7 +231,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           title: plainTitle,
           year,
           overview: body.message,
-          posterUrl: body.image ?? null,
+          posterUrl,
           requestedBy: body.request?.requestedBy_username,
           status: 'deleted',
         }),
@@ -252,7 +258,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           issueType: body.issue?.issue_type,
           issueStatus: body.issue?.issue_status,
           message: issueMessage,
-          posterUrl: body.image ?? null,
+          posterUrl,
           reportedBy: body.issue?.reportedBy_username,
           commentedBy: body.comment?.commentedBy_username,
           reporterDiscordId: body.issue?.reportedBy_settings_discordId,

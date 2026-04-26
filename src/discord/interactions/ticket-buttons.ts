@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -9,6 +10,7 @@ import {
   type ButtonInteraction,
   type CategoryChannel,
   type Guild,
+  type GuildTextBasedChannel,
 } from 'discord.js';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../../db/client.js';
@@ -160,14 +162,43 @@ async function closeTicket(interaction: ButtonInteraction): Promise<void> {
     .where(eq(tickets.channelId, interaction.channelId))
     .run();
 
-  await interaction.editReply('Ticket wird in 5 Sekunden gelöscht…');
   const channel = interaction.channel;
+
+  let transcript: string | null = null;
+  if (channel && channel.isTextBased()) {
+    try {
+      transcript = await buildTicketTranscript(channel as GuildTextBasedChannel, ticket.openerId);
+    } catch (err) {
+      logger.warn({ err, ticket: interaction.channelId }, 'ticket transcript build failed');
+    }
+  }
+
+  if (transcript) {
+    const file = new AttachmentBuilder(Buffer.from(transcript, 'utf8'), {
+      name: `ticket-${ticket.id}-${ticket.channelId}.txt`,
+    });
+    try {
+      const opener = await guild.client.users.fetch(ticket.openerId);
+      await opener.send({
+        content: `Hier ist dein Ticket-Transkript (Channel <#${ticket.channelId}>, ID ${ticket.id}).`,
+        files: [file],
+      });
+    } catch (err) {
+      logger.debug({ err, opener: ticket.openerId }, 'ticket transcript DM blocked — opener has DMs disabled');
+    }
+  }
+
+  await interaction.editReply('Ticket wird in 5 Sekunden gelöscht…');
   if (channel && 'send' in channel) {
     await channel.send({
       embeds: [
         new EmbedBuilder()
           .setColor(Colors.danger)
-          .setDescription(`🔒 Ticket geschlossen von ${interaction.user.toString()} · Channel wird gelöscht`),
+          .setDescription(
+            `🔒 Ticket geschlossen von ${interaction.user.toString()} · Channel wird gelöscht${
+              transcript ? ' · Transkript an den Eröffner verschickt' : ''
+            }`,
+          ),
       ],
     });
   }
@@ -178,7 +209,44 @@ async function closeTicket(interaction: ButtonInteraction): Promise<void> {
       await ch.delete('ticket closed').catch(() => {});
     }
   }, 5000);
-  logger.info({ ticket: interaction.channelId, closer: interaction.user.id }, 'ticket closed');
+  logger.info(
+    { ticket: interaction.channelId, closer: interaction.user.id, transcriptDm: !!transcript },
+    'ticket closed',
+  );
+}
+
+const TRANSCRIPT_FETCH_LIMIT = 100;
+const TRANSCRIPT_MAX_PAGES = 5;
+
+async function buildTicketTranscript(
+  channel: GuildTextBasedChannel,
+  openerId: string,
+): Promise<string> {
+  const lines: string[] = [];
+  let beforeId: string | undefined;
+
+  for (let page = 0; page < TRANSCRIPT_MAX_PAGES; page++) {
+    const batch = await channel.messages
+      .fetch({ limit: TRANSCRIPT_FETCH_LIMIT, before: beforeId })
+      .catch(() => null);
+    if (!batch || batch.size === 0) break;
+    for (const msg of batch.values()) {
+      const ts = new Date(msg.createdTimestamp).toISOString();
+      const author = msg.author.bot ? `${msg.author.username} [BOT]` : msg.author.username;
+      const tag = msg.author.id === openerId ? ' (opener)' : '';
+      const content = msg.content || (msg.embeds.length > 0 ? '[embed]' : msg.attachments.size > 0 ? '[attachment]' : '');
+      lines.push(`[${ts}] ${author}${tag}: ${content}`);
+    }
+    if (batch.size < TRANSCRIPT_FETCH_LIMIT) break;
+    beforeId = batch.last()?.id;
+  }
+
+  return [
+    `Ticket transcript — channel ${channel.name} (${channel.id})`,
+    `Generated at ${new Date().toISOString()}`,
+    '',
+    ...lines.reverse(),
+  ].join('\n');
 }
 
 async function ensureTicketCategory(guild: Guild): Promise<CategoryChannel> {

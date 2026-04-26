@@ -11,6 +11,7 @@ export type ModAction =
   | 'ban'
   | 'unban'
   | 'purge'
+  | 'slowmode'
   | 'automod';
 
 interface ModLogInput {
@@ -30,6 +31,7 @@ const COLORS: Record<ModAction, number> = {
   ban: Colors.danger,
   unban: Colors.success,
   purge: Colors.muted,
+  slowmode: Colors.info,
   automod: Colors.warn,
 };
 
@@ -41,6 +43,7 @@ const ICONS: Record<ModAction, string> = {
   ban: '🔨',
   unban: '🕊️',
   purge: '🧹',
+  slowmode: '🐌',
   automod: '🤖',
 };
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Rss } from 'lucide-vue-next';
+import { Plus, Trash2, Rss, AlertTriangle } from 'lucide-vue-next';
 import { api } from '../lib/api';
 
 interface RssFeed {
@@ -11,6 +11,8 @@ interface RssFeed {
   excludeKeywords: string[];
   enabled: boolean;
   lastRunAt: string | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
   createdAt: string;
 }
 
@@ -189,7 +191,10 @@ onMounted(load);
           class="flex items-center gap-4 border-b border-line/50 px-4 py-3 last:border-0 hover:bg-surface-2/60"
           :class="idx % 2 === 0 ? 'bg-transparent' : 'bg-surface-2/20'"
         >
-          <Rss class="h-5 w-5 shrink-0" :class="f.enabled ? 'text-sky-400' : 'text-slate-600'" />
+          <Rss
+            class="h-5 w-5 shrink-0"
+            :class="f.lastError ? 'text-red-400' : f.enabled ? 'text-sky-400' : 'text-slate-600'"
+          />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <span class="font-medium text-white">{{ f.name }}</span>
@@ -197,12 +202,23 @@ onMounted(load);
                 :class="f.enabled ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
                 {{ f.enabled ? 'aktiv' : 'paused' }}
               </span>
+              <span
+                v-if="f.lastError"
+                class="inline-flex items-center gap-1 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-400"
+                :title="f.lastError"
+              >
+                <AlertTriangle class="h-3 w-3" />
+                Fehler
+              </span>
             </div>
             <div class="truncate text-xs text-slate-500" :title="f.url">{{ f.url }}</div>
             <div class="text-xs text-slate-500">
               → <code>#{{ f.channelId.slice(-5) }}</code>
               <span v-if="f.excludeKeywords.length"> · 🚫 {{ f.excludeKeywords.join(', ') }}</span>
               · last run: {{ relativeTime(f.lastRunAt) }}
+            </div>
+            <div v-if="f.lastError" class="mt-1 truncate text-xs text-red-400" :title="f.lastError">
+              {{ f.lastError }} <span class="text-red-400/60">· {{ relativeTime(f.lastErrorAt) }}</span>
             </div>
           </div>
           <button class="btn-secondary" @click="toggle(f)">

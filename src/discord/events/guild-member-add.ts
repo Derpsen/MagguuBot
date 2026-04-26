@@ -74,24 +74,39 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
   },
 };
 
+const DEFAULT_WELCOME_DM = [
+  'Hey {{username}}, schön dass du da bist.',
+  '',
+  '**So kommst du rein:**',
+  '• Checke die **#📜・regeln** — kurze Liste, freundlicher Server',
+  '• Im **#🎭・rollen** Channel kannst du dir Ping-Rollen per Button holen',
+  '• Klicke auf die Interest-Buttons in **#🎭・rollen** um weitere Channels freizuschalten',
+  '• Für Plex-Zugriff (Film/Serie requesten) → frag einen Admin nach der `Plex-User` Rolle',
+  '',
+  '_Diese DM kommt nur einmal. Fragen? Schreib direkt in den Chat._',
+].join('\n');
+
+function renderTemplate(tpl: string, vars: Record<string, string | number>): string {
+  return tpl.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k: string) => {
+    const v = vars[k];
+    return v === undefined ? `{{${k}}}` : String(v);
+  });
+}
+
 async function sendWelcomeDM(member: GuildMember): Promise<void> {
   try {
+    const tpl = getSetting('welcomeDmTemplate') || DEFAULT_WELCOME_DM;
+    const description = renderTemplate(tpl, {
+      username: member.user.username,
+      mention: member.toString(),
+      server: member.guild.name,
+      memberCount: member.guild.memberCount,
+    });
+
     const embed = new EmbedBuilder()
       .setColor(Colors.brand)
       .setTitle(`Willkommen auf ${member.guild.name}! 🎉`)
-      .setDescription(
-        [
-          `Hey ${member.user.username}, schön dass du da bist.`,
-          '',
-          '**So kommst du rein:**',
-          '• Checke die **#📜・regeln** — kurze Liste, freundlicher Server',
-          '• Im **#🎭・rollen** Channel kannst du dir Ping-Rollen per Button holen',
-          '• Klicke auf die Interest-Buttons in **#🎭・rollen** um weitere Channels freizuschalten',
-          '• Für Plex-Zugriff (Film/Serie requesten) → frag einen Admin nach der `Plex-User` Rolle',
-          '',
-          '_Diese DM kommt nur einmal. Fragen? Schreib direkt in den Chat._',
-        ].join('\n'),
-      )
+      .setDescription(description)
       .setFooter({ text: `MagguuBot  ·  automatische Begrüßung` })
       .setTimestamp(new Date());
     await member.send({ embeds: [embed] });

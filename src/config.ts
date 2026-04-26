@@ -63,6 +63,8 @@ const schema = z.object({
   TAUTULLI_URL: z.string().url().optional(),
   TAUTULLI_API_KEY: z.string().optional(),
 
+  TMDB_API_KEY: z.string().optional(),
+
   DATABASE_PATH: z.string().default('./data/bot.db'),
 });
 

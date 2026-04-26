@@ -28,6 +28,7 @@ import { ticketPanelCommand } from './ticket-panel.js';
 import { searchCommand } from './search.js';
 import { serverinfoCommand } from './serverinfo.js';
 import { setupServerCommand } from './setup-server.js';
+import { slowmodeCommand } from './slowmode.js';
 import { timeoutCommand } from './timeout.js';
 import { userinfoCommand } from './userinfo.js';
 import { warnCommand } from './warn.js';
@@ -56,6 +57,7 @@ const all: SlashCommand[] = [
   unbanCommand,
   purgeCommand,
   purgeUserCommand,
+  slowmodeCommand,
   helpCommand,
   announceCommand,
   pollCommand,

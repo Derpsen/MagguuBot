@@ -72,7 +72,24 @@ export async function runAutomod(message: Message): Promise<boolean> {
     }
   }
 
+  const blocked = parseBlockedPhrases(getSetting('automodBlockedPhrases'));
+  if (blocked.length > 0) {
+    const lower = content.toLowerCase();
+    const hit = blocked.find((p) => lower.includes(p));
+    if (hit) {
+      return await deleteAndLog(message, `Verbotene Phrase: "${hit}"`, 'blocked-phrase');
+    }
+  }
+
   return false;
+}
+
+function parseBlockedPhrases(raw: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n,]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length >= 2);
 }
 
 async function deleteAndLog(message: Message, reason: string, kind: string): Promise<boolean> {

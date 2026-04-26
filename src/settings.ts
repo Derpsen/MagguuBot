@@ -13,9 +13,11 @@ export type SettingKey =
   | 'automodMentionSpam'
   | 'automodMentionThreshold'
   | 'automodExternalLinkFilter'
+  | 'automodBlockedPhrases'
   | 'autoRoleId'
   | 'aiModerationEnabled'
-  | 'aiModerationThreshold';
+  | 'aiModerationThreshold'
+  | 'welcomeDmTemplate';
 
 export interface SettingValueMap {
   starboardThreshold: number;
@@ -27,9 +29,11 @@ export interface SettingValueMap {
   automodMentionSpam: boolean;
   automodMentionThreshold: number;
   automodExternalLinkFilter: boolean;
+  automodBlockedPhrases: string;
   autoRoleId: string | null;
   aiModerationEnabled: boolean;
   aiModerationThreshold: number;
+  welcomeDmTemplate: string;
 }
 
 interface SettingDef<T> {
@@ -90,6 +94,11 @@ const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
     serialize: (v) => (v ? 'true' : 'false'),
     envValue: () => config.AUTOMOD_EXTERNAL_LINK_FILTER,
   },
+  automodBlockedPhrases: {
+    parse: (raw) => raw,
+    serialize: (v) => v,
+    envValue: () => '',
+  },
   autoRoleId: {
     parse: (raw) => (raw || null),
     serialize: (v) => v ?? '',
@@ -107,6 +116,11 @@ const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
     },
     serialize: String,
     envValue: () => 0.7,
+  },
+  welcomeDmTemplate: {
+    parse: (raw) => raw,
+    serialize: (v) => v,
+    envValue: () => '',
   },
 };
 
@@ -146,8 +160,10 @@ export function getAllSettings(): SettingValueMap {
     automodMentionSpam: getSetting('automodMentionSpam'),
     automodMentionThreshold: getSetting('automodMentionThreshold'),
     automodExternalLinkFilter: getSetting('automodExternalLinkFilter'),
+    automodBlockedPhrases: getSetting('automodBlockedPhrases'),
     autoRoleId: getSetting('autoRoleId'),
     aiModerationEnabled: getSetting('aiModerationEnabled'),
     aiModerationThreshold: getSetting('aiModerationThreshold'),
+    welcomeDmTemplate: getSetting('welcomeDmTemplate'),
   };
 }

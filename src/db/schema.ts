@@ -68,6 +68,8 @@ export const rssFeeds = sqliteTable('rss_feeds', {
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   seenGuids: text('seen_guids'),
   lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+  lastError: text('last_error'),
+  lastErrorAt: integer('last_error_at', { mode: 'timestamp_ms' }),
   createdBy: text('created_by').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
@@ -233,6 +235,10 @@ export const scheduledAnnouncements = sqliteTable('scheduled_announcements', {
   color: text('color').notNull().default('brand'),
   fireAt: integer('fire_at', { mode: 'timestamp_ms' }).notNull(),
   fired: integer('fired', { mode: 'boolean' }).notNull().default(false),
+  recurrence: text('recurrence', { enum: ['none', 'daily', 'weekly', 'monthly'] })
+    .notNull()
+    .default('none'),
+  lastFiredAt: integer('last_fired_at', { mode: 'timestamp_ms' }),
   createdBy: text('created_by').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()

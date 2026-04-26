@@ -31,6 +31,10 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 function runMigrations(): void {
   addColumnIfMissing('autoresponders', 'auto_delete_seconds', 'INTEGER');
   addColumnIfMissing('autoresponders', 'as_embed', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing('rss_feeds', 'last_error', 'TEXT');
+  addColumnIfMissing('rss_feeds', 'last_error_at', 'INTEGER');
+  addColumnIfMissing('scheduled_announcements', 'recurrence', "TEXT NOT NULL DEFAULT 'none'");
+  addColumnIfMissing('scheduled_announcements', 'last_fired_at', 'INTEGER');
 }
 
 function ensureSchema(): void {
@@ -100,6 +104,8 @@ function ensureSchema(): void {
       enabled INTEGER NOT NULL DEFAULT 1,
       seen_guids TEXT,
       last_run_at INTEGER,
+      last_error TEXT,
+      last_error_at INTEGER,
       created_by TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
@@ -217,6 +223,8 @@ function ensureSchema(): void {
       color TEXT NOT NULL DEFAULT 'brand',
       fire_at INTEGER NOT NULL,
       fired INTEGER NOT NULL DEFAULT 0,
+      recurrence TEXT NOT NULL DEFAULT 'none',
+      last_fired_at INTEGER,
       created_by TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );

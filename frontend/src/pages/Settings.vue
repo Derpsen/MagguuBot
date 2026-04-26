@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Save, Star, Shield, UserPlus, Sparkles } from 'lucide-vue-next';
+import { Save, Star, Shield, UserPlus, Sparkles, MessageSquare, Ban } from 'lucide-vue-next';
 import { api } from '../lib/api';
 import { useToast } from '../composables/useToast';
 
@@ -16,9 +16,11 @@ interface Settings {
   automodMentionSpam: boolean;
   automodMentionThreshold: number;
   automodExternalLinkFilter: boolean;
+  automodBlockedPhrases: string;
   autoRoleId: string | null;
   aiModerationEnabled: boolean;
   aiModerationThreshold: number;
+  welcomeDmTemplate: string;
 }
 
 interface Role {
@@ -31,6 +33,7 @@ const settings = ref<Settings | null>(null);
 const roles = ref<Role[]>([]);
 const loading = ref(true);
 const saving = ref(false);
+const welcomeDmPlaceholder = 'Hey {{username}}, willkommen auf {{server}}! …';
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -207,6 +210,46 @@ onMounted(load);
               <div class="text-xs text-slate-500">Löscht Nachrichten mit Links außerhalb Discord-Domains.</div>
             </div>
           </label>
+
+          <div class="flex items-start gap-3">
+            <Ban class="mt-0.5 h-4 w-4 text-slate-400" />
+            <div class="flex-1">
+              <div class="text-sm font-medium text-white">Blockierte Phrasen</div>
+              <div class="text-xs text-slate-500">
+                Eine Phrase pro Zeile (oder Komma-separiert). Substring-Match, case-insensitive. Min. 2 Zeichen.
+              </div>
+              <textarea
+                v-model="settings.automodBlockedPhrases"
+                rows="4"
+                placeholder="badword&#10;another phrase&#10;n-word"
+                class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center gap-3">
+          <MessageSquare class="h-5 w-5 text-cyan-400" />
+          <h2 class="text-lg font-semibold text-white">Welcome-DM Template</h2>
+        </div>
+        <div class="mt-4">
+          <p class="text-xs text-slate-500">
+            Wird neuen Mitgliedern als private DM geschickt. Leer lassen → Default-Text.
+            Verfügbare Platzhalter:
+            <code v-text="'{{username}}'" />,
+            <code v-text="'{{mention}}'" />,
+            <code v-text="'{{server}}'" />,
+            <code v-text="'{{memberCount}}'" />.
+            Markdown ist erlaubt.
+          </p>
+          <textarea
+            v-model="settings.welcomeDmTemplate"
+            rows="8"
+            :placeholder="welcomeDmPlaceholder"
+            class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-none"
+          />
         </div>
       </div>
 

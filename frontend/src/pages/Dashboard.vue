@@ -28,11 +28,27 @@ interface Stats {
   scheduledPending: number;
 }
 
+interface SeerrWeekly {
+  sinceIso: string;
+  total: number;
+  approved: number;
+  declined: number;
+  failed: number;
+  pending: number;
+  declineRate: number;
+}
+
 const stats = ref<Stats | null>(null);
+const seerrWeekly = ref<SeerrWeekly | null>(null);
 const loading = ref(true);
 
 onMounted(async () => {
-  stats.value = await api<Stats>('/api/admin/stats');
+  const [s, w] = await Promise.all([
+    api<Stats>('/api/admin/stats'),
+    api<SeerrWeekly>('/api/admin/seerr/weekly').catch(() => null),
+  ]);
+  stats.value = s;
+  seerrWeekly.value = w;
   loading.value = false;
 });
 
@@ -133,6 +149,35 @@ function formatUptime(sec: number): string {
           <span class="stat-label">Starboard</span>
         </div>
         <div class="stat-number">{{ stats.starboardCount }}</div>
+      </div>
+    </div>
+
+    <div v-if="seerrWeekly && seerrWeekly.total > 0" class="mt-6 card">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-white">Seerr — diese Woche</h2>
+        <router-link to="/requests" class="text-xs text-blurple hover:underline">Alle Requests →</router-link>
+      </div>
+      <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div>
+          <div class="stat-label">Total</div>
+          <div class="stat-number">{{ seerrWeekly.total }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Approved</div>
+          <div class="stat-number text-green-400">{{ seerrWeekly.approved }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Declined</div>
+          <div class="stat-number text-red-400">{{ seerrWeekly.declined }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Failed</div>
+          <div class="stat-number text-orange-400">{{ seerrWeekly.failed }}</div>
+        </div>
+        <div>
+          <div class="stat-label">Decline-Rate</div>
+          <div class="stat-number">{{ seerrWeekly.declineRate }}%</div>
+        </div>
       </div>
     </div>
 

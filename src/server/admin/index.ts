@@ -212,6 +212,8 @@ adminRouter.get('/rss', (c) => {
       excludeKeywords: r.excludeKeywords ? JSON.parse(r.excludeKeywords) : [],
       enabled: r.enabled,
       lastRunAt: r.lastRunAt?.toISOString() ?? null,
+      lastError: r.lastError,
+      lastErrorAt: r.lastErrorAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     })),
   );
@@ -292,9 +294,11 @@ const settingsSchema = z.object({
   automodMentionSpam: z.boolean().optional(),
   automodMentionThreshold: z.number().int().min(1).max(100).optional(),
   automodExternalLinkFilter: z.boolean().optional(),
+  automodBlockedPhrases: z.string().max(2000).optional(),
   autoRoleId: z.string().nullable().optional(),
   aiModerationEnabled: z.boolean().optional(),
   aiModerationThreshold: z.number().min(0).max(1).optional(),
+  welcomeDmTemplate: z.string().max(2000).optional(),
 });
 
 adminRouter.get('/settings', (c) => c.json(getAllSettings()));
@@ -314,9 +318,11 @@ adminRouter.put('/settings', async (c) => {
   if (data.automodMentionSpam !== undefined) setSetting('automodMentionSpam', data.automodMentionSpam);
   if (data.automodMentionThreshold !== undefined) setSetting('automodMentionThreshold', data.automodMentionThreshold);
   if (data.automodExternalLinkFilter !== undefined) setSetting('automodExternalLinkFilter', data.automodExternalLinkFilter);
+  if (data.automodBlockedPhrases !== undefined) setSetting('automodBlockedPhrases', data.automodBlockedPhrases);
   if (data.autoRoleId !== undefined) setSetting('autoRoleId', data.autoRoleId);
   if (data.aiModerationEnabled !== undefined) setSetting('aiModerationEnabled', data.aiModerationEnabled);
   if (data.aiModerationThreshold !== undefined) setSetting('aiModerationThreshold', data.aiModerationThreshold);
+  if (data.welcomeDmTemplate !== undefined) setSetting('welcomeDmTemplate', data.welcomeDmTemplate);
 
   logger.info({ keys: Object.keys(data), by: getSession(c).userId }, 'settings updated via dashboard');
   return c.json({ ok: true, settings: getAllSettings() });
@@ -449,6 +455,58 @@ adminRouter.get('/seerr', (c) => {
       createdAt: r.createdAt.toISOString(),
     })),
   );
+});
+
+adminRouter.get('/seerr/weekly', (c) => {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const total =
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(gt(seerrRequests.createdAt, since))
+      .get()?.count ?? 0;
+  const approved =
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(
+        and(
+          gt(seerrRequests.createdAt, since),
+          sql`${seerrRequests.status} IN ('approved', 'available')`,
+        ),
+      )
+      .get()?.count ?? 0;
+  const declined =
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(and(gt(seerrRequests.createdAt, since), eq(seerrRequests.status, 'declined')))
+      .get()?.count ?? 0;
+  const failed =
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(and(gt(seerrRequests.createdAt, since), eq(seerrRequests.status, 'failed')))
+      .get()?.count ?? 0;
+  const pending =
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(and(gt(seerrRequests.createdAt, since), eq(seerrRequests.status, 'pending')))
+      .get()?.count ?? 0;
+
+  const decided = approved + declined;
+  const declineRate = decided > 0 ? Math.round((declined / decided) * 100) : 0;
+
+  return c.json({
+    sinceIso: since.toISOString(),
+    total,
+    approved,
+    declined,
+    failed,
+    pending,
+    declineRate,
+  });
 });
 
 adminRouter.post('/seerr/:id/approve', async (c) => {
@@ -748,9 +806,42 @@ adminRouter.get('/scheduled', (c) => {
       color: r.color,
       fireAt: r.fireAt.toISOString(),
       fired: r.fired,
+      recurrence: r.recurrence,
+      lastFiredAt: r.lastFiredAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     })),
   );
+});
+
+const scheduledPatchSchema = z.object({
+  recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']).optional(),
+  fireAt: z.string().datetime().optional(),
+});
+
+adminRouter.patch('/scheduled/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const parsed = scheduledPatchSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
+
+  const update: Partial<typeof scheduledAnnouncements.$inferInsert> = {};
+  if (parsed.data.recurrence !== undefined) update.recurrence = parsed.data.recurrence;
+  if (parsed.data.fireAt !== undefined) {
+    update.fireAt = new Date(parsed.data.fireAt);
+    update.fired = false;
+  }
+  if (Object.keys(update).length === 0) return c.json({ ok: true });
+
+  db.update(scheduledAnnouncements)
+    .set(update)
+    .where(
+      and(
+        eq(scheduledAnnouncements.guildId, config.DISCORD_GUILD_ID),
+        eq(scheduledAnnouncements.id, id),
+      ),
+    )
+    .run();
+  return c.json({ ok: true });
 });
 
 adminRouter.delete('/scheduled/:id', (c) => {

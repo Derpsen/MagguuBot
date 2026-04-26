@@ -106,6 +106,7 @@ const STRUCTURE: CategoryPlan[] = [
       { name: '📈 Boosts: 0', kind: 'voice' },
       { name: '🎙 In Voice: 0', kind: 'voice' },
       { name: '🤖 Bot-Uptime: 0h', kind: 'voice' },
+      { name: '🎬 Plex: 0', kind: 'voice' },
     ],
   },
   {
@@ -271,7 +272,7 @@ const EXPLICIT_CHANNEL_NAMES: ReadonlySet<string> = new Set(
   ]),
 );
 
-const STATS_CHANNEL_PREFIXES = ['👥 Mitglieder: ', '📈 Boosts: ', '🎙 In Voice: ', '🤖 Bot-Uptime: '];
+const STATS_CHANNEL_PREFIXES = ['👥 Mitglieder: ', '📈 Boosts: ', '🎙 In Voice: ', '🤖 Bot-Uptime: ', '🎬 Plex: '];
 
 export function isKnownChannelName(name: string): boolean {
   if (EXPLICIT_CHANNEL_NAMES.has(name)) return true;
