@@ -72,6 +72,8 @@
 
   <Config Name="OPENAI_API_KEY" Target="OPENAI_API_KEY" Default="" Mode="" Description="Optional. OpenAI API key for AI-Moderation (uses the free /v1/moderations endpoint, no tokens consumed). Get one at platform.openai.com/api-keys. Enable the feature via the Settings page in the dashboard. Leave empty to disable — other automod filters are unaffected." Type="Variable" Display="always" Required="false" Mask="true"/>
 
+  <Config Name="TMDB_API_KEY" Target="TMDB_API_KEY" Default="" Mode="" Description="Optional. TMDB v3 API key (themoviedb.org -&gt; Settings -&gt; API). Used as a fallback for Seerr request embeds when Seerr does not include a poster image. 6h in-memory cache. Leave empty to disable — Seerr embeds work without it." Type="Variable" Display="always" Required="false" Mask="true"/>
+
   <Config Name="ADDON_REPO_FULL_NAMES" Target="ADDON_REPO_FULL_NAMES" Default="" Mode="" Description="Optional. Comma-separated list of GitHub full names (e.g. 'Derpsen/MagguuUI') that should be routed to the #addon-updates channel instead of the generic #github channel. All other repos still post to #github. Case-insensitive. Leave empty to route everything to #github." Type="Variable" Display="always" Required="false" Mask="false"/>
 
   <Config Name="LOG_LEVEL" Target="LOG_LEVEL" Default="info" Mode="" Description="Log level: trace | debug | info | warn | error | fatal" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
