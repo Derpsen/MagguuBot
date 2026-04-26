@@ -1,19 +1,14 @@
-import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
-import { getUserXp, levelFromXp, xpForLevel } from '../xp.js';
+import { AttachmentBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { renderRankCard } from '../cards/rank-card.js';
+import { getLeaderboard, getUserXp, levelFromXp, xpForLevel } from '../xp.js';
+import { logger } from '../../utils/logger.js';
 import type { SlashCommand } from './index.js';
-
-function progressBar(current: number, max: number, width = 14): string {
-  const pct = Math.min(1, Math.max(0, current / max));
-  const filled = Math.round(pct * width);
-  return '█'.repeat(filled) + '░'.repeat(width - filled);
-}
 
 export const rankCommand: SlashCommand = {
   category: 'utility',
   data: new SlashCommandBuilder()
     .setName('rank')
-    .setDescription('Zeig dein Level + XP (oder von jemand anderem)')
+    .setDescription('Zeig dein Level + XP als Karte')
     .addUserOption((o) => o.setName('user').setDescription('Zielt auf — default: du selbst')) as SlashCommandBuilder,
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
@@ -34,22 +29,29 @@ export const rankCommand: SlashCommand = {
     const level = levelFromXp(row.xp);
     const currentLevelXp = xpForLevel(level);
     const nextLevelXp = xpForLevel(level + 1);
-    const progress = row.xp - currentLevelXp;
-    const needed = nextLevelXp - currentLevelXp;
 
-    const e = new EmbedBuilder()
-      .setColor(Colors.brand)
-      .setAuthor({ name: `Rank of ${target.tag}`, iconURL: target.displayAvatarURL() })
-      .setDescription(
-        [
-          `**Level:** \`${level}\``,
-          `**XP:** \`${row.xp}\` (+${progress}/${needed} bis Level ${level + 1})`,
-          `\`${progressBar(progress, needed)}\``,
-          `**Messages counted:** \`${row.messagesCounted}\``,
-        ].join('\n'),
-      )
-      .setFooter({ text: 'MagguuBot  ·  XP only counts non-bot messages, 1/min cap' });
+    const leaderboard = getLeaderboard(interaction.guildId, 1000);
+    const rank = leaderboard.findIndex((r) => r.userId === target.id) + 1;
 
-    await interaction.reply({ embeds: [e] });
+    await interaction.deferReply();
+    try {
+      const buffer = await renderRankCard({
+        username: target.globalName ?? target.username,
+        avatarUrl: target.displayAvatarURL({ extension: 'png', size: 256 }),
+        level,
+        xp: row.xp,
+        xpInLevel: row.xp - currentLevelXp,
+        xpForNextLevel: nextLevelXp - currentLevelXp,
+        rank: rank > 0 ? rank : leaderboard.length + 1,
+        messages: row.messagesCounted,
+      });
+      const file = new AttachmentBuilder(buffer, { name: 'rank.png' });
+      await interaction.editReply({ files: [file] });
+    } catch (err) {
+      logger.warn({ err, userId: target.id }, 'rank card render failed, replying with text');
+      await interaction.editReply({
+        content: `**${target.tag}** — Level ${level}, ${row.xp} XP, Rank ${rank > 0 ? `#${rank}` : '—'}.`,
+      });
+    }
   },
 };

@@ -10,7 +10,7 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini fontconfig font-noto font-noto-emoji
 ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist

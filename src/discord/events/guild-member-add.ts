@@ -1,4 +1,5 @@
-import { EmbedBuilder, type GuildMember, type TextChannel } from 'discord.js';
+import { AttachmentBuilder, EmbedBuilder, type GuildMember, type TextChannel } from 'discord.js';
+import { renderWelcomeCard } from '../cards/welcome-card.js';
 import { Colors } from '../../embeds/colors.js';
 import { getSetting } from '../../settings.js';
 import { logger } from '../../utils/logger.js';
@@ -40,9 +41,23 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
       if (welcomeChannelId) {
         const channel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
         if (channel && channel.isSendable()) {
+          let cardAttachment: AttachmentBuilder | null = null;
+          try {
+            const buffer = await renderWelcomeCard({
+              username: member.user.globalName ?? member.user.username,
+              avatarUrl: member.user.displayAvatarURL({ extension: 'png', size: 256 }),
+              memberCount: member.guild.memberCount,
+              serverName: member.guild.name,
+            });
+            cardAttachment = new AttachmentBuilder(buffer, { name: 'welcome.png' });
+          } catch (err) {
+            logger.warn({ err, userId: member.id }, 'welcome card render failed, falling back to embed only');
+          }
+
           await (channel as TextChannel).send({
             content: `👋 ${member.toString()}`,
-            embeds: [buildWelcomeEmbed(member.user.username, member.guild.memberCount)],
+            embeds: cardAttachment ? [] : [buildWelcomeEmbed(member.user.username, member.guild.memberCount)],
+            files: cardAttachment ? [cardAttachment] : undefined,
           });
         }
       }

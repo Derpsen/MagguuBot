@@ -35,13 +35,20 @@ interface XpRow {
   lastGrantedAt: Date;
 }
 
-export async function grantXp(member: GuildMember): Promise<void> {
+export interface XpGrantResult {
+  granted: boolean;
+  leveledUp: boolean;
+  oldLevel: number;
+  newLevel: number;
+}
+
+export async function grantXp(member: GuildMember): Promise<XpGrantResult> {
   const now = new Date();
   const key = and(eq(userXp.guildId, member.guild.id), eq(userXp.userId, member.id));
   const existing = db.select().from(userXp).where(key).get() as XpRow | undefined;
 
   if (existing && now.getTime() - existing.lastGrantedAt.getTime() < COOLDOWN_MS) {
-    return;
+    return { granted: false, leveledUp: false, oldLevel: existing.level, newLevel: existing.level };
   }
 
   const oldXp = existing?.xp ?? 0;
@@ -71,6 +78,8 @@ export async function grantXp(member: GuildMember): Promise<void> {
   if (newLevel > oldLevel) {
     await applyRankRoles(member, newLevel);
   }
+
+  return { granted: true, leveledUp: newLevel > oldLevel, oldLevel, newLevel };
 }
 
 async function applyRankRoles(member: GuildMember, level: number): Promise<void> {

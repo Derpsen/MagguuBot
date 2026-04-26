@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@napi-rs/canvas": "^0.1.100",
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.2.0",
     "discord.js": "^14.16.3",
