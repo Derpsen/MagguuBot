@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { getClient } from '../discord/client.js';
 import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
+import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 
 interface PostArgs {
@@ -36,6 +37,8 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
     if (!channel || !channel.isSendable()) {
       throw new Error(`channel ${channelId} is not sendable`);
     }
+
+    enforceEmbedTotalSize(embed);
 
     const content = buildPingContent(pingRoles, config.DISCORD_GUILD_ID);
     const message = await channel.send({ content, embeds: [embed], components, allowedMentions: { parse: ['roles'] } });

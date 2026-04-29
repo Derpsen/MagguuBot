@@ -11,6 +11,7 @@ import { dbBackupCommand } from './db-backup.js';
 import { helpCommand } from './help.js';
 import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
+import { plexNowPlayingCommand } from './plex-now-playing.js';
 import { plexTopCommand } from './plex-top.js';
 import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
@@ -48,6 +49,7 @@ const all: SlashCommand[] = [
   arrStatusCommand,
   calendarCommand,
   plexTopCommand,
+  plexNowPlayingCommand,
   searchCommand,
   setupServerCommand,
   cleanupServerCommand,

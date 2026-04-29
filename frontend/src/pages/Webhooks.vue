@@ -12,7 +12,24 @@ interface WebhookEvent {
   channelId?: string | null;
 }
 
+interface WebhookHealthSource {
+  source: string;
+  total: number;
+  posted: number;
+  failed: number;
+  skipped: number;
+  lastEventAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+}
+
+interface WebhookHealth {
+  sinceIso: string;
+  sources: WebhookHealthSource[];
+}
+
 const rows = ref<WebhookEvent[]>([]);
+const health = ref<WebhookHealth | null>(null);
 const loading = ref(true);
 const sourceFilter = ref<string>('all');
 const statusFilter = ref<string>('all');
@@ -76,9 +93,21 @@ const stats = computed(() => {
 
 async function reload(): Promise<void> {
   loading.value = true;
-  rows.value = await api<WebhookEvent[]>('/api/admin/webhooks');
+  const [eventsResponse, healthResponse] = await Promise.all([
+    api<WebhookEvent[]>('/api/admin/webhooks'),
+    api<WebhookHealth>('/api/admin/webhooks/health'),
+  ]);
+  rows.value = eventsResponse;
+  health.value = healthResponse;
   loading.value = false;
 }
+
+const healthRows = computed<WebhookHealthSource[]>(() =>
+  (health.value?.sources ?? []).slice().sort((a, b) => {
+    if (a.failed !== b.failed) return b.failed - a.failed;
+    return b.total - a.total;
+  }),
+);
 
 function setSourceFilter(s: string): void {
   sourceFilter.value = sourceFilter.value === s ? 'all' : s;
@@ -159,6 +188,43 @@ onMounted(reload);
     <div v-if="loading && rows.length === 0" class="mt-8 text-slate-500">Lade…</div>
 
     <div v-else>
+      <div v-if="healthRows.length > 0" class="mt-6">
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-300">Health (letzte 24h)</h2>
+          <span class="text-xs text-slate-500">je Source</span>
+        </div>
+        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div
+            v-for="h in healthRows"
+            :key="h.source"
+            class="card px-3 py-2.5"
+            :class="h.failed > 0 ? 'ring-1 ring-red-500/30' : ''"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 text-sm font-medium text-slate-200">
+                <span>{{ SOURCE_META[h.source]?.emoji ?? '🔔' }}</span>
+                <span>{{ SOURCE_META[h.source]?.label ?? h.source }}</span>
+              </div>
+              <span class="text-xs text-slate-500" :title="h.lastEventAt ?? ''">
+                {{ h.lastEventAt ? relativeTime(h.lastEventAt) : '—' }}
+              </span>
+            </div>
+            <div class="mt-1.5 flex items-center gap-3 text-xs">
+              <span class="text-green-400">{{ h.posted }} ok</span>
+              <span :class="h.failed > 0 ? 'text-red-400' : 'text-slate-500'">{{ h.failed }} fail</span>
+              <span class="text-slate-500">{{ h.skipped }} skip</span>
+            </div>
+            <div
+              v-if="h.lastError"
+              class="mt-1 truncate text-[11px] text-red-400/85"
+              :title="h.lastError"
+            >
+              ↳ {{ h.lastError }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="card px-4 py-3">
           <div class="text-xs text-slate-500">Total (gefiltert)</div>

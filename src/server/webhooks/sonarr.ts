@@ -10,48 +10,7 @@ import {
 } from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
-
-interface SonarrEpisode {
-  seasonNumber: number;
-  episodeNumber: number;
-  title?: string;
-}
-
-interface SonarrEpisodeFile {
-  quality?: string;
-  size?: number;
-  releaseGroup?: string;
-  path?: string;
-}
-
-interface SonarrPayload {
-  eventType: string;
-  series?: {
-    title: string;
-    year?: number;
-    path?: string;
-    images?: { coverType: string; remoteUrl?: string }[];
-  };
-  episodes?: SonarrEpisode[];
-  release?: {
-    quality?: string;
-    size?: number;
-    releaseGroup?: string;
-    releaseTitle?: string;
-    indexer?: string;
-  };
-  episodeFile?: SonarrEpisodeFile;
-  episodeFiles?: SonarrEpisodeFile[];
-  deletedFiles?: boolean;
-  downloadClient?: string;
-  isUpgrade?: boolean;
-  level?: 'ok' | 'warning' | 'error';
-  message?: string;
-  type?: string;
-  instanceName?: string;
-  previousVersion?: string;
-  newVersion?: string;
-}
+import { sonarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -60,7 +19,12 @@ function is4kQuality(q: string | undefined): boolean {
 }
 
 export const sonarrWebhook = new Hono().post('/', async (c) => {
-  const body = await c.req.json<SonarrPayload>();
+  const parsed = sonarrPayloadSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    logger.warn({ issues: parsed.error.flatten() }, 'sonarr webhook payload invalid');
+    return c.json({ ok: false, error: 'invalid payload' }, 400);
+  }
+  const body = parsed.data;
   logger.debug({ eventType: body.eventType }, 'sonarr webhook received');
 
   const poster = body.series?.images?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;

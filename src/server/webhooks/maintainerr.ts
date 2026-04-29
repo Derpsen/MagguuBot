@@ -2,35 +2,11 @@ import { Hono } from 'hono';
 import { EmbedBuilder } from 'discord.js';
 import { getChannel } from '../../discord/channel-store.js';
 import { Colors } from '../../embeds/colors.js';
+import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
+import { maintainerrPayloadSchema, type MaintainerrEmbed } from './schemas.js';
 
-interface DiscordEmbedField {
-  name: string;
-  value: string;
-  inline?: boolean;
-}
-
-interface DiscordEmbed {
-  title?: string;
-  description?: string;
-  url?: string;
-  timestamp?: string;
-  color?: number;
-  footer?: { text: string; icon_url?: string };
-  image?: { url: string };
-  thumbnail?: { url: string };
-  author?: { name: string; icon_url?: string; url?: string };
-  fields?: DiscordEmbedField[];
-}
-
-interface DiscordWebhookPayload {
-  content?: string;
-  username?: string;
-  avatar_url?: string;
-  embeds?: DiscordEmbed[];
-}
-
-function classify(input: DiscordEmbed | undefined): string {
+function classify(input: MaintainerrEmbed | undefined): string {
   if (!input) return 'handled';
   const text = `${input.title ?? ''} ${input.description ?? ''}`.toLowerCase();
   if (/\bdelete(d)?\b|gelöscht/.test(text)) return 'deleted';
@@ -53,7 +29,12 @@ const COLOR_FOR: Record<string, number> = {
 };
 
 export const maintainerrWebhook = new Hono().post('/', async (c) => {
-  const body = await c.req.json<DiscordWebhookPayload>();
+  const parsed = maintainerrPayloadSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    logger.warn({ issues: parsed.error.flatten() }, 'maintainerr webhook payload invalid');
+    return c.json({ ok: false, error: 'invalid payload' }, 400);
+  }
+  const body = parsed.data;
   const source = body.embeds?.[0];
   const kind = classify(source);
 

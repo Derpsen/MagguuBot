@@ -2,53 +2,14 @@ import { Hono } from 'hono';
 import { EmbedBuilder } from 'discord.js';
 import { getChannel, type ChannelKey } from '../../discord/channel-store.js';
 import { Colors, truncate } from '../../embeds/colors.js';
+import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
-
-interface DiscordEmbedField {
-  name: string;
-  value: string;
-  inline?: boolean;
-}
-
-interface DiscordEmbed {
-  title?: string;
-  description?: string;
-  url?: string;
-  color?: number;
-  footer?: { text: string; icon_url?: string };
-  image?: { url: string };
-  thumbnail?: { url: string };
-  author?: { name: string; icon_url?: string; url?: string };
-  fields?: DiscordEmbedField[];
-}
-
-interface DiscordWebhookPayload {
-  content?: string;
-  username?: string;
-  avatar_url?: string;
-  embeds?: DiscordEmbed[];
-}
-
-interface CustomTautulliPayload {
-  event?: string;
-  action?: string;
-  title?: string;
-  year?: string | number;
-  mediaType?: string;
-  summary?: string;
-  posterUrl?: string;
-  serverName?: string;
-  user?: string;
-  player?: string;
-  progress?: string;
-  duration?: string;
-  progressPercent?: string | number;
-  episode?: string;
-  season?: string;
-  showTitle?: string;
-}
-
-type TautulliPayload = DiscordWebhookPayload | CustomTautulliPayload;
+import {
+  tautulliPayloadSchema,
+  type TautulliPayload,
+  type TautulliDiscordPayload,
+  type TautulliCustomPayload,
+} from './schemas.js';
 
 interface EventMeta {
   kind: string;
@@ -82,12 +43,18 @@ function classify(input: string): EventMeta {
   return EVENT_META.recently_added!;
 }
 
-function isDiscordPayload(p: TautulliPayload): p is DiscordWebhookPayload {
-  return Array.isArray((p as DiscordWebhookPayload).embeds) || typeof (p as DiscordWebhookPayload).content === 'string';
+function isDiscordPayload(p: TautulliPayload): p is TautulliDiscordPayload {
+  const candidate = p as TautulliDiscordPayload;
+  return Array.isArray(candidate.embeds) || typeof candidate.content === 'string';
 }
 
 export const tautulliWebhook = new Hono().post('/', async (c) => {
-  const body = await c.req.json<TautulliPayload>();
+  const parsed = tautulliPayloadSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    logger.warn({ issues: parsed.error.flatten() }, 'tautulli webhook payload invalid');
+    return c.json({ ok: false, error: 'invalid payload' }, 400);
+  }
+  const body = parsed.data;
 
   if (isDiscordPayload(body)) {
     await handleDiscord(body);
@@ -97,7 +64,7 @@ export const tautulliWebhook = new Hono().post('/', async (c) => {
   return c.json({ ok: true });
 });
 
-async function handleDiscord(body: DiscordWebhookPayload): Promise<void> {
+async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
   const source = body.embeds?.[0];
   const titleHint = source?.title ?? body.content ?? '';
   const descHint = source?.description ?? '';
@@ -134,7 +101,7 @@ async function handleDiscord(body: DiscordWebhookPayload): Promise<void> {
   });
 }
 
-async function handleCustom(body: CustomTautulliPayload): Promise<void> {
+async function handleCustom(body: TautulliCustomPayload): Promise<void> {
   const event = (body.event ?? body.action ?? '').toLowerCase();
   const meta = EVENT_META[event] ?? EVENT_META.recently_added!;
 

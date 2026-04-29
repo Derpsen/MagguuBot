@@ -8,35 +8,12 @@ import {
   buildSeerrApprovalButtons,
   buildSeerrIssueEmbed,
   buildSeerrRequestEmbed,
-  type SeerrIssueType,
   type SeerrRequestStatus,
 } from '../../embeds/seerr.js';
 import { getTmdbPosterUrl } from '../../services/tmdb.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
-
-interface SeerrPayload {
-  notification_type: string;
-  event?: string;
-  subject?: string;
-  message?: string;
-  image?: string;
-  media?: { media_type?: 'movie' | 'tv'; tmdbId?: string | number; status?: string };
-  request?: { request_id?: string | number; requestedBy_username?: string };
-  issue?: {
-    issue_id?: string | number;
-    issue_type?: SeerrIssueType | string;
-    issue_status?: 'OPEN' | 'RESOLVED' | string;
-    reportedBy_username?: string;
-    reportedBy_settings_discordId?: string;
-  };
-  comment?: {
-    comment_message?: string;
-    commentedBy_username?: string;
-    commentedBy_settings_discordId?: string;
-  };
-  extra?: { name: string; value: string }[];
-}
+import { seerrPayloadSchema } from './schemas.js';
 
 function updateRequestStatus(requestId: number, status: SeerrRequestStatus): void {
   if (!requestId) return;
@@ -65,7 +42,12 @@ async function disableSeerrPendingButtons(requestId: number): Promise<void> {
 }
 
 export const seerrWebhook = new Hono().post('/', async (c) => {
-  const body = await c.req.json<SeerrPayload>();
+  const parsed = seerrPayloadSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    logger.warn({ issues: parsed.error.flatten() }, 'seerr webhook payload invalid');
+    return c.json({ ok: false, error: 'invalid payload' }, 400);
+  }
+  const body = parsed.data;
   logger.debug({ notification_type: body.notification_type }, 'seerr webhook received');
 
   if (body.notification_type === 'TEST_NOTIFICATION') {

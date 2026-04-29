@@ -187,6 +187,56 @@ adminRouter.get('/webhooks', (c) => {
   );
 });
 
+interface WebhookHealthRow {
+  source: string;
+  total: number;
+  posted: number;
+  failed: number;
+  skipped: number;
+  last_event_at: number | null;
+  last_error_at: number | null;
+  last_error: string | null;
+}
+
+adminRouter.get('/webhooks/health', (c) => {
+  const since = Math.floor(Date.now()) - 24 * 60 * 60 * 1000;
+  const rows = db.all(sql<WebhookHealthRow>`
+    SELECT
+      source,
+      COUNT(*) AS total,
+      SUM(CASE WHEN status = 'posted' THEN 1 ELSE 0 END) AS posted,
+      SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+      SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) AS skipped,
+      MAX(created_at) AS last_event_at,
+      MAX(CASE WHEN status = 'failed' THEN created_at END) AS last_error_at,
+      (
+        SELECT error FROM webhook_events e2
+        WHERE e2.source = webhook_events.source
+          AND e2.status = 'failed'
+        ORDER BY e2.created_at DESC
+        LIMIT 1
+      ) AS last_error
+    FROM webhook_events
+    WHERE created_at >= ${since}
+    GROUP BY source
+    ORDER BY total DESC
+  `) as WebhookHealthRow[];
+
+  return c.json({
+    sinceIso: new Date(since).toISOString(),
+    sources: rows.map((r) => ({
+      source: r.source,
+      total: Number(r.total),
+      posted: Number(r.posted),
+      failed: Number(r.failed),
+      skipped: Number(r.skipped),
+      lastEventAt: r.last_event_at ? new Date(Number(r.last_event_at)).toISOString() : null,
+      lastErrorAt: r.last_error_at ? new Date(Number(r.last_error_at)).toISOString() : null,
+      lastError: r.last_error,
+    })),
+  });
+});
+
 // ─── RSS feeds ───────────────────────────────────────────────────────────────
 
 const rssFeedInput = z.object({

@@ -56,3 +56,46 @@ export function truncate(s: string | undefined, max = 1024): string {
   if (!s) return '';
   return s.length <= max ? s : s.slice(0, max - 1) + '…';
 }
+
+// Discord rejects an embed whose combined character count exceeds 6000.
+// `truncate()` only protects individual fields — a long description plus many
+// medium-sized fields can still overflow. This helper trims to fit, keeping
+// the most important parts (title, author, footer, fields) and shortening
+// the description first, then dropping fields from the tail as a last resort.
+const EMBED_TOTAL_LIMIT = 6000;
+
+interface MutableEmbed {
+  data: {
+    title?: string;
+    description?: string;
+    footer?: { text: string };
+    author?: { name: string };
+    fields?: { name: string; value: string }[];
+  };
+  setDescription: (value: string) => MutableEmbed;
+  spliceFields: (start: number, deleteCount: number) => MutableEmbed;
+}
+
+export function enforceEmbedTotalSize(embed: MutableEmbed, limit = EMBED_TOTAL_LIMIT): void {
+  const total = (): number => {
+    const d = embed.data;
+    let sum = (d.title?.length ?? 0) + (d.description?.length ?? 0);
+    sum += d.footer?.text?.length ?? 0;
+    sum += d.author?.name?.length ?? 0;
+    for (const f of d.fields ?? []) sum += f.name.length + f.value.length;
+    return sum;
+  };
+
+  if (total() <= limit) return;
+
+  const description = embed.data.description;
+  if (description) {
+    const overflow = total() - limit;
+    const target = Math.max(0, description.length - overflow - 1);
+    embed.setDescription(target > 0 ? description.slice(0, target) + '…' : '…');
+  }
+
+  while (total() > limit && (embed.data.fields?.length ?? 0) > 0) {
+    embed.spliceFields((embed.data.fields?.length ?? 1) - 1, 1);
+  }
+}
