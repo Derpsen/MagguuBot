@@ -44,6 +44,18 @@ export async function startDiscord(): Promise<void> {
     logger.info({ tag: c.user?.tag }, 'discord connected');
   });
 
+  // Surface gateway-level failures so an invalidated session, network drop,
+  // or shard error doesn't leave the bot half-dead with nothing in the logs.
+  c.on('error', (err) => logger.error({ err }, 'discord client error'));
+  c.on('shardError', (err, shardId) => logger.error({ err, shardId }, 'discord shard error'));
+  c.on('shardDisconnect', (event, shardId) =>
+    logger.warn({ code: event.code, shardId }, 'discord shard disconnect'),
+  );
+  c.on('invalidated', () => {
+    logger.fatal('discord session invalidated — exiting so the supervisor can restart');
+    process.exit(1);
+  });
+
   for (const event of allEvents) {
     if (event.once) c.once(event.name, (...args) => Promise.resolve(event.execute(...args)));
     else c.on(event.name, (...args) => Promise.resolve(event.execute(...args)));

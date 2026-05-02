@@ -26,12 +26,16 @@ interface TautulliEnvelope<T> {
   response: { result: 'success' | 'error'; data: T; message?: string };
 }
 
+const TAUTULLI_TIMEOUT_MS = 10_000;
+
 async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}): Promise<T | null> {
   if (!config.TAUTULLI_URL || !config.TAUTULLI_API_KEY) return null;
   const q = new URLSearchParams({ apikey: config.TAUTULLI_API_KEY, cmd, ...params });
   const url = `${config.TAUTULLI_URL}/api/v2?${q.toString()}`;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), TAUTULLI_TIMEOUT_MS);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: ctl.signal });
     if (!res.ok) {
       logger.warn({ cmd, status: res.status }, 'tautulli request failed');
       return null;
@@ -45,6 +49,8 @@ async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}
   } catch (err) {
     logger.warn({ err, cmd }, 'tautulli fetch error');
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

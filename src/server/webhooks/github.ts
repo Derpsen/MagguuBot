@@ -90,19 +90,39 @@ interface IssuePayload {
   repository: { full_name: string; html_url: string };
 }
 
+// GitHub release/push payloads are typically <100 KB. Cap well above that
+// so an unauthenticated probe cannot force a multi-MB read into RAM before
+// the signature check runs.
+const MAX_GITHUB_BODY_BYTES = 1 * 1024 * 1024;
+
 export const githubWebhook = new Hono().post('/', async (c) => {
   const secret = config.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
-    logger.warn('github webhook received but GITHUB_WEBHOOK_SECRET is not set');
-    return c.json({ ok: false, error: 'github webhook not configured' }, 503);
+    // Fail closed: do NOT 503 (which leaks "this endpoint exists but is
+    // misconfigured"). Return 401 so an unauthenticated probe sees the same
+    // response shape as a bad signature.
+    logger.warn('github webhook hit but GITHUB_WEBHOOK_SECRET is unset; rejecting');
+    return c.json({ ok: false, error: 'unauthorized' }, 401);
+  }
+
+  // Reject oversized bodies before reading them (Content-Length hint).
+  const declaredLen = Number(c.req.header('content-length') ?? 0);
+  if (declaredLen && declaredLen > MAX_GITHUB_BODY_BYTES) {
+    return c.json({ ok: false, error: 'payload too large' }, 413);
   }
 
   const signature = c.req.header('x-hub-signature-256');
   const eventName = c.req.header('x-github-event');
   const raw = await c.req.text();
+  if (Buffer.byteLength(raw) > MAX_GITHUB_BODY_BYTES) {
+    return c.json({ ok: false, error: 'payload too large' }, 413);
+  }
 
   if (!signature || !eventName) {
     return c.json({ ok: false, error: 'missing signature or event' }, 400);
+  }
+  if (!signature.startsWith('sha256=')) {
+    return c.json({ ok: false, error: 'invalid signature' }, 401);
   }
   if (!verifySignature(raw, signature, secret)) {
     logger.warn({ eventName }, 'github webhook signature mismatch');

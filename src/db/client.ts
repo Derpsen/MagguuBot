@@ -15,9 +15,32 @@ sqlite.pragma('foreign_keys = ON');
 
 ensureSchema();
 runMigrations();
+scheduleWebhookEventsRetention();
 
 export const db = drizzle(sqlite, { schema });
 export const sqliteHandle = sqlite;
+
+// `webhook_events` is append-only and stores the full payload per hit. Without
+// retention it grows unbounded over months. Prune on boot + every 24h.
+const WEBHOOK_EVENTS_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+function pruneWebhookEvents(): void {
+  const cutoff = Date.now() - WEBHOOK_EVENTS_RETENTION_MS;
+  try {
+    const result = sqlite.prepare('DELETE FROM webhook_events WHERE created_at < ?').run(cutoff);
+    if (result.changes > 0) {
+      // Lazy logger import — logger module imports config which imports this file.
+      void import('../utils/logger.js').then(({ logger }) =>
+        logger.info({ deleted: result.changes, cutoff }, 'webhook_events retention prune'),
+      );
+    }
+  } catch {
+    /* prune is best-effort; never crash startup */
+  }
+}
+function scheduleWebhookEventsRetention(): void {
+  pruneWebhookEvents();
+  setInterval(pruneWebhookEvents, 24 * 60 * 60 * 1000).unref();
+}
 
 function addColumnIfMissing(table: string, column: string, type: string): void {
   try {

@@ -24,6 +24,8 @@ export interface SabQueueResponse {
   };
 }
 
+const SAB_TIMEOUT_MS = 10_000;
+
 async function sabFetch<T>(mode: string, extra: Record<string, string> = {}): Promise<T | null> {
   if (!config.SAB_URL || !config.SAB_API_KEY) return null;
   const params = new URLSearchParams({
@@ -33,13 +35,22 @@ async function sabFetch<T>(mode: string, extra: Record<string, string> = {}): Pr
     ...extra,
   });
   const url = `${config.SAB_URL}/api?${params.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    logger.error({ mode, status: res.status, text }, 'sabnzbd request failed');
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SAB_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      logger.error({ mode, status: res.status, text }, 'sabnzbd request failed');
+      return null;
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    logger.warn({ err, mode }, 'sabnzbd fetch error');
     return null;
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as T;
 }
 
 export async function getSabQueue(): Promise<SabQueueResponse | null> {

@@ -9,6 +9,17 @@ import { logger } from './utils/logger.js';
 async function main(): Promise<void> {
   logger.info({ env: config.NODE_ENV }, 'magguu-bot starting');
 
+  // Catch-all for promise rejections / sync throws inside timer callbacks and
+  // event handlers that aren't wrapped in try/catch. Without these, Node 20+
+  // crashes silently to stderr and the supervisor sees no Pino log entry.
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ reason }, 'unhandled promise rejection');
+  });
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'uncaught exception — exiting');
+    process.exit(1);
+  });
+
   await startDiscord();
   startScheduler();
 

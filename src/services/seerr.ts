@@ -1,6 +1,8 @@
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 
+const SEERR_TIMEOUT_MS = 10_000;
+
 interface SeerrOpts {
   method?: 'GET' | 'POST';
   body?: unknown;
@@ -10,21 +12,28 @@ async function seerrFetch<T>(path: string, opts: SeerrOpts = {}): Promise<T> {
   if (!config.SEERR_URL || !config.SEERR_API_KEY) {
     throw new Error('SEERR_URL/SEERR_API_KEY not configured');
   }
-  const res = await fetch(`${config.SEERR_URL}${path}`, {
-    method: opts.method ?? 'GET',
-    headers: {
-      'X-Api-Key': config.SEERR_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    logger.error({ path, status: res.status, text }, 'seerr request failed');
-    throw new Error(`Seerr ${path} → ${res.status}`);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SEERR_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${config.SEERR_URL}${path}`, {
+      method: opts.method ?? 'GET',
+      headers: {
+        'X-Api-Key': config.SEERR_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: ctl.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      logger.error({ path, status: res.status, text }, 'seerr request failed');
+      throw new Error(`Seerr ${path} → ${res.status}`);
+    }
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }
 
 export async function approveSeerrRequest(requestId: number): Promise<void> {

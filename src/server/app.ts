@@ -137,16 +137,26 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 function clientIp(c: import('hono').Context): string {
-  return (
-    c.req.header('cf-connecting-ip') ??
-    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
-    c.req.header('x-real-ip') ??
-    'unknown'
-  );
+  if (config.TRUST_PROXY) {
+    const cf = c.req.header('cf-connecting-ip');
+    if (cf) return cf;
+    const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+    if (fwd) return fwd;
+    const real = c.req.header('x-real-ip');
+    if (real) return real;
+  }
+  // Fallback to the raw socket address — never trust client-supplied headers
+  // unless TRUST_PROXY is on, otherwise an attacker can spoof their key for
+  // the rate-limit map and bypass it by cycling header values.
+  const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
+  return env?.incoming?.socket?.remoteAddress ?? 'unknown';
 }
 
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 120;
+// Cap the bucket map so an attacker cycling source IPs (or a misconfigured
+// proxy producing per-request unique keys) cannot grow the map without bound.
+const RATE_BUCKETS_MAX = 10_000;
 
 function webhookRateLimit(): (c: import('hono').Context, next: () => Promise<void>) => Promise<Response | void> {
   const buckets = new Map<string, { count: number; resetAt: number }>();
@@ -163,6 +173,11 @@ function webhookRateLimit(): (c: import('hono').Context, next: () => Promise<voi
     const now = Date.now();
     const bucket = buckets.get(ip);
     if (!bucket || bucket.resetAt <= now) {
+      if (buckets.size >= RATE_BUCKETS_MAX) {
+        // Evict the oldest entry (insertion order) so the map stays bounded.
+        const oldest = buckets.keys().next().value;
+        if (oldest !== undefined) buckets.delete(oldest);
+      }
       buckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
       await next();
       return;
