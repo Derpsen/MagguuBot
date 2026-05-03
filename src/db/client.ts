@@ -13,6 +13,10 @@ sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('busy_timeout = 5000');
 sqlite.pragma('foreign_keys = ON');
 
+// `webhook_events` is append-only and stores the full payload per hit. Without
+// retention it grows unbounded over months. Prune on boot + every 24h.
+const WEBHOOK_EVENTS_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 ensureSchema();
 runMigrations();
 scheduleWebhookEventsRetention();
@@ -20,9 +24,6 @@ scheduleWebhookEventsRetention();
 export const db = drizzle(sqlite, { schema });
 export const sqliteHandle = sqlite;
 
-// `webhook_events` is append-only and stores the full payload per hit. Without
-// retention it grows unbounded over months. Prune on boot + every 24h.
-const WEBHOOK_EVENTS_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 function pruneWebhookEvents(): void {
   const cutoff = Date.now() - WEBHOOK_EVENTS_RETENTION_MS;
   try {
