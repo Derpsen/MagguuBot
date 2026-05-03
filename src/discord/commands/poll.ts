@@ -47,7 +47,7 @@ export const pollCommand: SlashCommand = {
       .setColor(Colors.brand)
       .setTitle(`📊  ${question}`)
       .setDescription(body)
-      .setFooter({ text: `Poll by ${interaction.user.tag}` })
+      .setFooter({ text: `Poll by ${interaction.user.displayName}` })
       .setTimestamp(new Date());
 
     await interaction.reply({ embeds: [embed] });

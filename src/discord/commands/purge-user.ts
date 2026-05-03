@@ -92,7 +92,7 @@ export const purgeUserCommand: SlashCommand = {
 
     if (totalDeleted === 0) {
       await interaction.editReply(
-        `Keine Nachrichten von **${target.tag}** in den letzten ${PER_CHANNEL_LIMIT} Messages pro Channel gefunden${
+        `Keine Nachrichten von **${target.displayName}** in den letzten ${PER_CHANNEL_LIMIT} Messages pro Channel gefunden${
           skippedNoPerms > 0 ? ` (${skippedNoPerms} Channels übersprungen — keine Permissions)` : ''
         }.`,
       );
@@ -107,7 +107,7 @@ export const purgeUserCommand: SlashCommand = {
     const skipNote = skippedNoPerms > 0 ? `\n\n_${skippedNoPerms} Channels übersprungen — Bot hat dort keine Manage-Messages-Permission._` : '';
 
     await interaction.editReply(
-      `🧹 **${totalDeleted}** Nachrichten von **${target.tag}** gelöscht in **${perChannel.length}** Channels:\n${lines.join('\n')}${more}${skipNote}`,
+      `🧹 **${totalDeleted}** Nachrichten von **${target.displayName}** gelöscht in **${perChannel.length}** Channels:\n${lines.join('\n')}${more}${skipNote}`,
     );
   },
 };

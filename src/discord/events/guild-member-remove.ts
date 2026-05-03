@@ -22,7 +22,7 @@ export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
           new EmbedBuilder()
             .setColor(Colors.muted)
             .setAuthor({ name: 'Member left', iconURL: member.user?.displayAvatarURL() })
-            .setDescription(`**${member.user?.tag ?? 'unknown'}** (\`${member.id}\`)`)
+            .setDescription(`**${member.user?.displayName ?? 'unknown'}** (\`${member.id}\`)`)
             .addFields({ name: 'Joined', value: joinedAt, inline: true })
             .setTimestamp(new Date()),
         ],

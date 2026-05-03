@@ -46,7 +46,7 @@ export const warnCommand: SlashCommand = {
     });
 
     await interaction.reply({
-      content: `⚠️ **${user.tag}** verwarnt. Insgesamt **${count}** Warnung(en).`,
+      content: `⚠️ **${user.displayName}** verwarnt. Insgesamt **${count}** Warnung(en).`,
       flags: MessageFlags.Ephemeral,
     });
   },

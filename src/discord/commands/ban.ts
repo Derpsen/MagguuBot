@@ -36,7 +36,7 @@ export const banCommand: SlashCommand = {
         reason,
         extra: deleteDays > 0 ? [{ name: 'Msgs purged', value: `last ${deleteDays}d`, inline: true }] : [],
       });
-      await interaction.reply({ content: `🔨 **${user.tag}** gebannt.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `🔨 **${user.displayName}** gebannt.`, flags: MessageFlags.Ephemeral });
     } catch {
       await interaction.reply({
         content: 'Konnte nicht bannen — Bot-Rolle muss über der Ziel-Rolle stehen.',
@@ -73,7 +73,7 @@ export const unbanCommand: SlashCommand = {
         reason,
       });
       await interaction.reply({
-        content: `🕊️ Ban für **${user.tag}** aufgehoben.`,
+        content: `🕊️ Ban für **${user.displayName}** aufgehoben.`,
         flags: MessageFlags.Ephemeral,
       });
     } catch {

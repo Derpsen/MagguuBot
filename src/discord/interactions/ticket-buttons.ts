@@ -65,7 +65,7 @@ async function openTicket(interaction: ButtonInteraction): Promise<void> {
     name: `ticket-${interaction.user.username}`.slice(0, 90),
     type: ChannelType.GuildText,
     parent: category.id,
-    topic: `Ticket von ${interaction.user.tag} · ${interaction.user.id}`,
+    topic: `Ticket von ${interaction.user.displayName} · ${interaction.user.id}`,
     permissionOverwrites: [
       { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
       {

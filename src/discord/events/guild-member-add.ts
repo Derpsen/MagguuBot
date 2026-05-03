@@ -73,7 +73,7 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
               new EmbedBuilder()
                 .setColor(Colors.success)
                 .setAuthor({ name: 'Member joined', iconURL: member.user.displayAvatarURL() })
-                .setDescription(`${member.toString()} — **${member.user.tag}** (\`${member.id}\`)`)
+                .setDescription(`${member.toString()} — **${member.user.displayName}** (\`${member.id}\`)`)
                 .addFields(
                   { name: 'Account created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
                   { name: 'Member #', value: `${member.guild.memberCount}`, inline: true },

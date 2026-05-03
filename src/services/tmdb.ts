@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js';
 const POSTER_BASE = 'https://image.tmdb.org/t/p/w500';
 const TMDB_API = 'https://api.themoviedb.org/3';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 interface TmdbMovie {
   poster_path?: string | null;
@@ -28,9 +29,11 @@ export async function getTmdbPosterUrl(
   const hit = cache.get(key);
   if (hit && Date.now() - hit.fetchedAt < CACHE_TTL_MS) return hit.url;
 
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
   try {
     const url = `${TMDB_API}/${mediaType}/${tmdbId}?api_key=${config.TMDB_API_KEY}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: ctl.signal });
     if (!res.ok) {
       cache.set(key, { url: null, fetchedAt: Date.now() });
       return null;
@@ -42,5 +45,7 @@ export async function getTmdbPosterUrl(
   } catch (err) {
     logger.debug({ err, mediaType, tmdbId }, 'tmdb poster fetch failed');
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }

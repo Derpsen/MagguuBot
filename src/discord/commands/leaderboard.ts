@@ -24,7 +24,7 @@ export const leaderboardCommand: SlashCommand = {
     const lines = await Promise.all(
       rows.map(async (r, i) => {
         const user = await interaction.client.users.fetch(r.userId).catch(() => null);
-        const name = user?.tag ?? `User ${r.userId}`;
+        const name = user?.displayName ?? `User ${r.userId}`;
         const prefix = medals[i] ?? `\`#${i + 1}\``;
         return `${prefix} **${name}** — Level \`${levelFromXp(r.xp)}\` · \`${r.xp}\` XP`;
       }),

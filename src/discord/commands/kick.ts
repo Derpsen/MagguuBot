@@ -33,7 +33,7 @@ export const kickCommand: SlashCommand = {
         target: user,
         reason,
       });
-      await interaction.reply({ content: `👢 **${user.tag}** gekickt.`, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: `👢 **${user.displayName}** gekickt.`, flags: MessageFlags.Ephemeral });
     } catch {
       await interaction.reply({
         content: 'Konnte nicht kicken — Bot-Rolle muss über der Ziel-Rolle stehen.',

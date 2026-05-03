@@ -82,7 +82,7 @@ export const purgeCommand: SlashCommand = {
         guild: interaction.guild,
         action: 'purge',
         moderator: interaction.user,
-        reason: filterUser ? `nur von ${filterUser.tag}` : wantAll ? 'all-mode' : undefined,
+        reason: filterUser ? `nur von ${filterUser.displayName}` : wantAll ? 'all-mode' : undefined,
         extra: [
           { name: 'Channel', value: channel.toString(), inline: true },
           { name: 'Deleted', value: `${totalDeleted}`, inline: true },

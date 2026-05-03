@@ -63,11 +63,11 @@ export async function postModLog(i: ModLogInput): Promise<void> {
       })
       .setDescription(
         i.target
-          ? `**Target:** ${i.target.toString()} (\`${i.target.tag}\` · ${i.target.id})`
+          ? `**Target:** ${i.target.toString()} (\`${i.target.displayName}\` · ${i.target.id})`
           : `_(no target — e.g. purge)_`,
       )
       .addFields(
-        { name: 'Moderator', value: `${i.moderator.toString()} (\`${i.moderator.tag}\`)`, inline: true },
+        { name: 'Moderator', value: `${i.moderator.toString()} (\`${i.moderator.displayName}\`)`, inline: true },
         { name: 'Reason', value: i.reason ?? '_none provided_', inline: true },
       )
       .setTimestamp(new Date());

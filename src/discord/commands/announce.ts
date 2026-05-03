@@ -96,7 +96,7 @@ export const announceCommand: SlashCommand = {
       .setColor(COLOR_MAP[colorKey] ?? Colors.brand)
       .setTitle(title)
       .setDescription(message.replaceAll('\\n', '\n'))
-      .setFooter({ text: `Posted by ${interaction.user.tag}` })
+      .setFooter({ text: `Posted by ${interaction.user.displayName}` })
       .setTimestamp(new Date());
 
     await channel.send({

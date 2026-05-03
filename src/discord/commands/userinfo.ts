@@ -38,7 +38,7 @@ export const userinfoCommand: SlashCommand = {
 
     const e = new EmbedBuilder()
       .setColor(member?.displayColor || Colors.brand)
-      .setAuthor({ name: target.tag, iconURL: target.displayAvatarURL() })
+      .setAuthor({ name: target.displayName, iconURL: target.displayAvatarURL() })
       .setThumbnail(target.displayAvatarURL({ size: 256 }))
       .addFields(
         { name: 'ID', value: `\`${target.id}\``, inline: true },

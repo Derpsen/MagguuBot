@@ -32,7 +32,7 @@ export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
           new EmbedBuilder()
             .setColor(Colors.info)
             .setAuthor({ name: 'Roles changed', iconURL: newMember.user.displayAvatarURL() })
-            .setDescription(`${newMember.toString()} — **${newMember.user.tag}**\n\n${lines.join('\n')}`)
+            .setDescription(`${newMember.toString()} — **${newMember.user.displayName}**\n\n${lines.join('\n')}`)
             .setTimestamp(new Date()),
         ],
       });

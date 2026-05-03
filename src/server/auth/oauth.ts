@@ -9,6 +9,17 @@ import { clearSessionCookie, setSessionCookie } from './session.js';
 
 const STATE_COOKIE = 'magguu_oauth_state';
 const NEXT_COOKIE = 'magguu_oauth_next';
+const DISCORD_API_TIMEOUT_MS = 10_000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), DISCORD_API_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const discordUserSchema = z.object({
   id: z.string(),
@@ -97,7 +108,7 @@ authRouter.get('/callback', async (c) => {
     return c.text('OAuth state mismatch — try logging in again.', 400);
   }
 
-  const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+  const tokenRes = await fetchWithTimeout('https://discord.com/api/oauth2/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -118,7 +129,7 @@ authRouter.get('/callback', async (c) => {
   const token = (await tokenRes.json()) as { access_token?: string };
   if (!token.access_token) return c.text('No access token.', 502);
 
-  const userRes = await fetch('https://discord.com/api/users/@me', {
+  const userRes = await fetchWithTimeout('https://discord.com/api/users/@me', {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });
   if (!userRes.ok) {

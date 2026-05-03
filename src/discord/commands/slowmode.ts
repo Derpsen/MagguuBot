@@ -43,7 +43,7 @@ export const slowmodeCommand: SlashCommand = {
     const reason = interaction.options.getString('reason') ?? undefined;
 
     try {
-      await (channel as TextChannel).setRateLimitPerUser(seconds, reason ?? `slowmode by ${interaction.user.tag}`);
+      await (channel as TextChannel).setRateLimitPerUser(seconds, reason ?? `slowmode by ${interaction.user.displayName}`);
     } catch {
       await interaction.reply({
         content: 'Konnte Slowmode nicht setzen — fehlende Permissions?',

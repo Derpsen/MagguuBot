@@ -51,8 +51,8 @@ export const timeoutCommand: SlashCommand = {
       await interaction.reply({
         content:
           minutes === 0
-            ? `🔊 Timeout von **${user.tag}** aufgehoben.`
-            : `🔇 **${user.tag}** für **${minutes} Minuten** getimeoutet.`,
+            ? `🔊 Timeout von **${user.displayName}** aufgehoben.`
+            : `🔇 **${user.displayName}** für **${minutes} Minuten** getimeoutet.`,
         flags: MessageFlags.Ephemeral,
       });
     } catch {

@@ -13,7 +13,7 @@ export const avatarCommand: SlashCommand = {
     const url = target.displayAvatarURL({ size: 1024 });
     const e = new EmbedBuilder()
       .setColor(Colors.brand)
-      .setTitle(`Avatar of ${target.tag}`)
+      .setTitle(`Avatar of ${target.displayName}`)
       .setURL(url)
       .setImage(url);
     await interaction.reply({ embeds: [e] });

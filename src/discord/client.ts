@@ -57,8 +57,17 @@ export async function startDiscord(): Promise<void> {
   });
 
   for (const event of allEvents) {
-    if (event.once) c.once(event.name, (...args) => Promise.resolve(event.execute(...args)));
-    else c.on(event.name, (...args) => Promise.resolve(event.execute(...args)));
+    const onError = (err: unknown): void =>
+      logger.error({ err, event: event.name }, 'discord event handler failed');
+    if (event.once) {
+      c.once(event.name, (...args) => {
+        Promise.resolve(event.execute(...args)).catch(onError);
+      });
+    } else {
+      c.on(event.name, (...args) => {
+        Promise.resolve(event.execute(...args)).catch(onError);
+      });
+    }
   }
 
   c.on('interactionCreate', async (interaction: Interaction) => {
@@ -99,7 +108,7 @@ export async function startDiscord(): Promise<void> {
     }
   });
 
-  c.once('ready', () => {
+  c.once('clientReady', () => {
     setTimeout(() => {
       void backfillWelcomePins().catch((err) => logger.warn({ err }, 'welcome-pin backfill failed'));
     }, 5000);

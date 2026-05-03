@@ -27,7 +27,7 @@ export const serverinfoCommand: SlashCommand = {
       .setThumbnail(g.iconURL({ size: 256 }) ?? null)
       .addFields(
         { name: 'ID', value: `\`${g.id}\``, inline: true },
-        { name: 'Owner', value: owner ? owner.user.tag : '_—_', inline: true },
+        { name: 'Owner', value: owner ? owner.user.displayName : '_—_', inline: true },
         { name: 'Erstellt', value: `<t:${Math.floor(g.createdTimestamp / 1000)}:R>`, inline: true },
         { name: 'Mitglieder', value: `${g.memberCount}`, inline: true },
         { name: 'Boosts', value: `${g.premiumSubscriptionCount ?? 0} (Tier ${g.premiumTier})`, inline: true },

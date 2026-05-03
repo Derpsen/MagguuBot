@@ -20,7 +20,7 @@ export const rankCommand: SlashCommand = {
     const row = getUserXp(interaction.guildId, target.id);
     if (!row) {
       await interaction.reply({
-        content: `**${target.tag}** hat noch keine XP gesammelt.`,
+        content: `**${target.displayName}** hat noch keine XP gesammelt.`,
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -50,7 +50,7 @@ export const rankCommand: SlashCommand = {
     } catch (err) {
       logger.warn({ err, userId: target.id }, 'rank card render failed, replying with text');
       await interaction.editReply({
-        content: `**${target.tag}** — Level ${level}, ${row.xp} XP, Rank ${rank > 0 ? `#${rank}` : '—'}.`,
+        content: `**${target.displayName}** — Level ${level}, ${row.xp} XP, Rank ${rank > 0 ? `#${rank}` : '—'}.`,
       });
     }
   },
