@@ -82,6 +82,11 @@ export async function runBlueTrackerTick(): Promise<void> {
     if (fresh.length >= MAX_POST_PER_RUN) break;
   }
 
+  if (fresh.length === 0) {
+    logger.debug({ total: all.length, eu: items.length }, 'blue-tracker tick: no new items');
+    return;
+  }
+
   for (const item of fresh) {
     const enriched = item.link ? await enrichBluePost(item.link) : null;
     const body = enriched?.body ?? item.description ?? '';
