@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { config } from '../../config.js';
 import { db } from '../../db/client.js';
 import {
+  adminAuditLog,
   autoresponders,
   customCommands,
   reminders,
@@ -26,7 +27,9 @@ import { getClient } from '../../discord/client.js';
 import { approveSeerrRequest, declineSeerrRequest } from '../../services/seerr.js';
 import { getAllSettings, setSetting } from '../../settings.js';
 import { logger } from '../../utils/logger.js';
+import { recordAdminAudit } from '../auth/audit.js';
 import { getSession, requireAdmin } from '../auth/middleware.js';
+import { revokeUserSessions } from '../auth/revocations.js';
 
 export const adminRouter = new Hono();
 
@@ -150,6 +153,7 @@ adminRouter.delete('/warnings/:id', async (c) => {
   const id = Number(c.req.param('id'));
   if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
   db.delete(warnings).where(eq(warnings.id, id)).run();
+  recordAdminAudit(c, { action: 'warning.delete', target: String(id) });
   return c.json({ ok: true });
 });
 
@@ -329,6 +333,7 @@ adminRouter.delete('/webhooks', (c) => {
     result = db.delete(webhookEvents).run();
   }
   logger.info({ scope, deleted: result.changes }, 'webhook events cleared via dashboard');
+  recordAdminAudit(c, { action: 'webhook_events.clear', target: scope, detail: { deleted: result.changes } });
   return c.json({ ok: true, deleted: result.changes });
 });
 
@@ -375,6 +380,7 @@ adminRouter.put('/settings', async (c) => {
   if (data.welcomeDmTemplate !== undefined) setSetting('welcomeDmTemplate', data.welcomeDmTemplate);
 
   logger.info({ keys: Object.keys(data), by: getSession(c).userId }, 'settings updated via dashboard');
+  recordAdminAudit(c, { action: 'settings.update', detail: Object.keys(data) });
   return c.json({ ok: true, settings: getAllSettings() });
 });
 
@@ -456,6 +462,7 @@ adminRouter.put('/channels/:key', async (c) => {
 
   saveChannel(key, parsed.data.channelId);
   logger.info({ key, channelId: parsed.data.channelId, by: getSession(c).userId }, 'channel remapped via dashboard');
+  recordAdminAudit(c, { action: 'channel.remap', target: key, detail: { channelId: parsed.data.channelId } });
   return c.json({ ok: true });
 });
 
@@ -565,6 +572,7 @@ adminRouter.post('/seerr/:id/approve', async (c) => {
   try {
     await approveSeerrRequest(id);
     db.update(seerrRequests).set({ status: 'approved' }).where(eq(seerrRequests.seerrRequestId, id)).run();
+    recordAdminAudit(c, { action: 'seerr.approve', target: String(id) });
     return c.json({ ok: true });
   } catch (err) {
     logger.error({ err, id }, 'seerr approve via dashboard failed');
@@ -578,6 +586,7 @@ adminRouter.post('/seerr/:id/decline', async (c) => {
   try {
     await declineSeerrRequest(id);
     db.update(seerrRequests).set({ status: 'declined' }).where(eq(seerrRequests.seerrRequestId, id)).run();
+    recordAdminAudit(c, { action: 'seerr.decline', target: String(id) });
     return c.json({ ok: true });
   } catch (err) {
     logger.error({ err, id }, 'seerr decline via dashboard failed');
@@ -653,6 +662,7 @@ adminRouter.delete('/role-panels/:messageId', async (c) => {
       ),
     )
     .run();
+  recordAdminAudit(c, { action: 'role-panel.delete', target: messageId });
   return c.json({ ok: true });
 });
 
@@ -723,6 +733,7 @@ adminRouter.delete('/tags/:name', (c) => {
   db.delete(customCommands)
     .where(and(eq(customCommands.guildId, config.DISCORD_GUILD_ID), eq(customCommands.name, name)))
     .run();
+  recordAdminAudit(c, { action: 'tag.delete', target: name });
   return c.json({ ok: true });
 });
 
@@ -835,6 +846,7 @@ adminRouter.delete('/autoresponders/:id', (c) => {
     .where(and(eq(autoresponders.guildId, config.DISCORD_GUILD_ID), eq(autoresponders.id, id)))
     .run();
   invalidateAutoresponderCache();
+  recordAdminAudit(c, { action: 'autoresponder.delete', target: String(id) });
   return c.json({ ok: true });
 });
 
@@ -954,6 +966,7 @@ adminRouter.post('/tickets/:id/close', async (c) => {
     /* ignore */
   }
 
+  recordAdminAudit(c, { action: 'ticket.close', target: String(id) });
   return c.json({ ok: true });
 });
 
@@ -976,6 +989,39 @@ adminRouter.get('/reputation', async (c) => {
       })),
     ),
   );
+});
+
+// ─── Audit log + session revocation ─────────────────────────────────────────
+
+adminRouter.get('/audit-log', (c) => {
+  const limit = Math.min(Number(c.req.query('limit') ?? 200), 1000);
+  const rows = db
+    .select()
+    .from(adminAuditLog)
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(limit)
+    .all();
+  return c.json(
+    rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      action: r.action,
+      target: r.target,
+      detail: r.detail,
+      ip: r.ip,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  );
+});
+
+const revokeSchema = z.object({ userId: z.string().regex(/^\d{17,20}$/) });
+
+adminRouter.post('/sessions/revoke', async (c) => {
+  const parsed = revokeSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
+  revokeUserSessions(parsed.data.userId);
+  recordAdminAudit(c, { action: 'session.revoke', target: parsed.data.userId });
+  return c.json({ ok: true });
 });
 
 // ─── helpers ────────────────────────────────────────────────────────────────

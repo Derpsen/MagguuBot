@@ -30,10 +30,15 @@ export async function startDiscord(): Promise<void> {
   const c = new Client({
     intents: [
       GatewayIntentBits.Guilds,
+      // privileged: required to receive guildMemberAdd/Remove for welcome flow
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.GuildMessageReactions,
+      // required for stats voice-channel counter
       GatewayIntentBits.GuildVoiceStates,
+      // privileged: ONLY required for autoresponder/automod content matching.
+      // If autoresponders + content-based automod filters are ever removed,
+      // this intent should also be dropped to minimize the privacy surface.
       GatewayIntentBits.MessageContent,
     ],
     partials: [Partials.Message, Partials.Channel, Partials.Reaction],

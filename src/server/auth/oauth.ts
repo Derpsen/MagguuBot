@@ -7,8 +7,8 @@ import { logger } from '../../utils/logger.js';
 import { isAdmin } from './middleware.js';
 import { clearSessionCookie, setSessionCookie } from './session.js';
 
-const STATE_COOKIE = 'magguu_oauth_state';
-const NEXT_COOKIE = 'magguu_oauth_next';
+const STATE_COOKIE = '__Host-magguu_oauth_state';
+const NEXT_COOKIE = '__Host-magguu_oauth_next';
 const DISCORD_API_TIMEOUT_MS = 10_000;
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
@@ -43,7 +43,10 @@ authRouter.get('/login', (c) => {
   }
 
   const state = randomBytes(16).toString('hex');
-  const next = c.req.query('next') ?? '/';
+  const rawNext = c.req.query('next') ?? '/';
+  // Only allow same-app paths — never an absolute URL or scheme-relative path
+  // that could turn this endpoint into an open redirect.
+  const next = /^\/(?!\/)[A-Za-z0-9_\-\/?&=.%#]*$/.test(rawNext) ? rawNext : '/';
 
   setCookie(c, STATE_COOKIE, state, {
     httpOnly: true,
@@ -80,7 +83,8 @@ authRouter.get('/callback', async (c) => {
   const error = c.req.query('error');
   const errorDesc = c.req.query('error_description');
   const storedState = getCookie(c, STATE_COOKIE);
-  const next = getCookie(c, NEXT_COOKIE) ?? '/';
+  const rawNext = getCookie(c, NEXT_COOKIE) ?? '/';
+  const next = /^\/(?!\/)[A-Za-z0-9_\-\/?&=.%#]*$/.test(rawNext) ? rawNext : '/';
 
   deleteCookie(c, STATE_COOKIE, { path: '/' });
   deleteCookie(c, NEXT_COOKIE, { path: '/' });

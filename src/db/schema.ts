@@ -297,8 +297,29 @@ export const suggestions = sqliteTable('suggestions', {
 });
 
 export type CustomCommand = typeof customCommands.$inferSelect;
+export const adminAuditLog = sqliteTable('admin_audit_log', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull(),
+  action: text('action').notNull(),
+  target: text('target'),
+  detail: text('detail'),
+  ip: text('ip'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const sessionRevocations = sqliteTable('session_revocations', {
+  userId: text('user_id').primaryKey(),
+  // All session cookies issued before this timestamp are no longer valid for
+  // the user. Cheaper than a full session-id table and works with our
+  // stateless HMAC cookie design.
+  notValidBefore: integer('not_valid_before', { mode: 'timestamp_ms' }).notNull(),
+});
+
 export type Autoresponder = typeof autoresponders.$inferSelect;
 export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
 export type Reputation = typeof reputation.$inferSelect;
 export type Suggestion = typeof suggestions.$inferSelect;
+export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;

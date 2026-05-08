@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { AnyNode, Element } from 'domhandler';
 import { logger } from '../utils/logger.js';
+import { safeFetch } from '../utils/safe-fetch.js';
 
 export interface EnrichedBluePost {
   body: string;
@@ -11,15 +12,22 @@ export interface EnrichedBluePost {
 }
 
 const TIMEOUT_MS = 6_000;
-const HOST = 'https://www.bluetracker.gg';
+const HOST_NAME = 'www.bluetracker.gg';
+const HOST = `https://${HOST_NAME}`;
 
 export async function enrichBluePost(url: string): Promise<EnrichedBluePost | null> {
-  if (!url.startsWith(HOST)) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' || parsed.host !== HOST_NAME) return null;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'MagguuBot/1.0 (+https://github.com/magguu)',

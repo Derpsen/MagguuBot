@@ -5,6 +5,7 @@ import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { sanitizePayload } from './webhook-payload-redactor.js';
 
 interface PostArgs {
   channelId: string | undefined;
@@ -18,12 +19,13 @@ interface PostArgs {
 
 export async function postEmbed(args: PostArgs): Promise<Message | null> {
   const { channelId, embed, components, source, eventType, payload, pingRoles } = args;
+  const safePayload = sanitizePayload(payload) as object;
 
   if (!channelId) {
     db.insert(webhookEvents).values({
       source,
       eventType,
-      payload: payload as object,
+      payload: safePayload,
       status: 'skipped',
       error: 'no channel configured',
     }).run();
@@ -40,12 +42,20 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
 
     enforceEmbedTotalSize(embed);
 
-    const content = buildPingContent(pingRoles, config.DISCORD_GUILD_ID);
-    const message = await channel.send({ content, embeds: [embed], components, allowedMentions: { parse: ['roles'] } });
+    const ping = buildPing(pingRoles, config.DISCORD_GUILD_ID);
+    // allowedMentions.roles MUST be the explicit ID list — `parse: ['roles']`
+    // would let any role-mention inside the embed reflect through (e.g. an
+    // upstream service quoting a role-id back to us).
+    const message = await channel.send({
+      content: ping.content,
+      embeds: [embed],
+      components,
+      allowedMentions: { parse: [], roles: ping.roleIds },
+    });
     db.insert(webhookEvents).values({
       source,
       eventType,
-      payload: payload as object,
+      payload: safePayload,
       channelId,
       messageId: message.id,
       status: 'posted',
@@ -57,7 +67,7 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
     db.insert(webhookEvents).values({
       source,
       eventType,
-      payload: payload as object,
+      payload: safePayload,
       channelId,
       status: 'failed',
       error,
@@ -66,17 +76,25 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
   }
 }
 
-function buildPingContent(roleNames: string[] | undefined, guildId: string): string | undefined {
-  if (!roleNames?.length) return undefined;
+interface ResolvedPing {
+  content: string | undefined;
+  roleIds: string[];
+}
+
+function buildPing(roleNames: string[] | undefined, guildId: string): ResolvedPing {
+  if (!roleNames?.length) return { content: undefined, roleIds: [] };
   try {
     const guild = getClient().guilds.cache.get(guildId);
-    if (!guild) return undefined;
-    const mentions = roleNames
+    if (!guild) return { content: undefined, roleIds: [] };
+    const roles = roleNames
       .map((name) => guild.roles.cache.find((r) => r.name === name))
-      .filter((r): r is NonNullable<typeof r> => Boolean(r))
-      .map((r) => `<@&${r.id}>`);
-    return mentions.length > 0 ? mentions.join(' ') : undefined;
+      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+    if (roles.length === 0) return { content: undefined, roleIds: [] };
+    return {
+      content: roles.map((r) => `<@&${r.id}>`).join(' '),
+      roleIds: roles.map((r) => r.id),
+    };
   } catch {
-    return undefined;
+    return { content: undefined, roleIds: [] };
   }
 }

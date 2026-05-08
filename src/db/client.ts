@@ -297,5 +297,22 @@ function ensureSchema(): void {
       updated_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_suggestions_guild_status ON suggestions(guild_id, status);
+
+    CREATE TABLE IF NOT EXISTS admin_audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT,
+      detail TEXT,
+      ip TEXT,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_log_user ON admin_audit_log(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created ON admin_audit_log(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS session_revocations (
+      user_id TEXT PRIMARY KEY,
+      not_valid_before INTEGER NOT NULL
+    );
   `);
 }

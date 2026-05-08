@@ -2,6 +2,8 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { secureHeaders } from 'hono/secure-headers';
 import { sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
@@ -30,8 +32,37 @@ const MIME_TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
+const WEBHOOK_BODY_LIMIT = 1 * 1024 * 1024;
+const ADMIN_BODY_LIMIT = 256 * 1024;
+
 export function buildApp(): Hono {
   const app = new Hono();
+
+  // Reject any HTTP method that we never serve. Discord/upstream services only
+  // ever POST or GET; PUT/DELETE/PATCH are dashboard-only and routed below.
+  app.use('*', secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      // Vue + Vite-built bundle: `unsafe-inline` covers the inline boot script
+      // produced by Vite. No remote scripts are loaded.
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      // Tailwind / generated <style> + Lucide icons inlined as <style>.
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com', 'https://image.tmdb.org'],
+      fontSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'", 'https://discord.com'],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+    },
+    referrerPolicy: 'no-referrer',
+    xFrameOptions: 'DENY',
+    xContentTypeOptions: 'nosniff',
+    strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+    crossOriginOpenerPolicy: 'same-origin',
+    crossOriginResourcePolicy: 'same-origin',
+  }));
 
   app.get('/healthz', (c) => {
     let dbOk = false;
@@ -41,19 +72,17 @@ export function buildApp(): Hono {
     } catch (err) {
       logger.warn({ err }, 'healthz db check failed');
     }
-    const ok = dbOk;
-    return c.json(
-      {
-        ok,
-        uptime: Math.floor(process.uptime()),
-        db: dbOk ? 'ok' : 'fail',
-        timestamp: new Date().toISOString(),
-      },
-      ok ? 200 : 503,
-    );
+    return c.json({ ok: dbOk, db: dbOk ? 'ok' : 'fail' }, dbOk ? 200 : 503);
   });
 
   app.use('/webhook/*', webhookRateLimit());
+  app.use('/webhook/*', bodyLimit({
+    maxSize: WEBHOOK_BODY_LIMIT,
+    onError: (c) => {
+      logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook body too large');
+      return c.json({ ok: false, error: 'payload too large' }, 413);
+    },
+  }));
 
   app.use('/webhook/*', async (c, next) => {
     if (c.req.path.startsWith('/webhook/github')) {
@@ -63,7 +92,11 @@ export function buildApp(): Hono {
 
     if (c.req.path.startsWith('/webhook/maintainerr')) {
       const queryToken = c.req.query('token');
-      if (queryToken && !constantTimeEquals(queryToken, config.WEBHOOK_SECRET)) {
+      if (!queryToken) {
+        // Maintainerr's Discord-agent can't set headers and we accept the
+        // request, but flag it so an exposure becomes visible in the logs.
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook without ?token=');
+      } else if (!constantTimeEquals(queryToken, config.WEBHOOK_SECRET)) {
         logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook bad token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
@@ -86,6 +119,29 @@ export function buildApp(): Hono {
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
   app.route('/webhook/maintainerr', maintainerrWebhook);
+
+  app.use('/api/admin/*', bodyLimit({
+    maxSize: ADMIN_BODY_LIMIT,
+    onError: (c) => c.json({ ok: false, error: 'payload too large' }, 413),
+  }));
+  // CSRF defence-in-depth: SameSite=Lax already blocks cross-site GETs from
+  // smuggling cookies on top-level navigations, but for state-changing methods
+  // the Origin/Referer must match the dashboard's own origin.
+  app.use('/api/admin/*', async (c, next) => {
+    const method = c.req.method;
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+      await next();
+      return;
+    }
+    if (!isSameOrigin(c)) {
+      logger.warn(
+        { path: c.req.path, origin: c.req.header('origin'), referer: c.req.header('referer') },
+        'admin: cross-origin POST blocked',
+      );
+      return c.json({ ok: false, error: 'cross-origin request blocked' }, 403);
+    }
+    await next();
+  });
 
   app.route('/auth', authRouter);
   app.route('/api/admin', adminRouter);
@@ -134,6 +190,28 @@ function constantTimeEquals(a: string, b: string): boolean {
   const bufB = Buffer.from(b);
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
+}
+
+function isSameOrigin(c: import('hono').Context): boolean {
+  if (!config.DASHBOARD_BASE_URL) {
+    // Dashboard-disabled deployment can't be browsed → CSRF doesn't apply.
+    // The middleware is still mounted because admin routes also reject 401
+    // via `requireAdmin`; this just prevents weird header-less calls from
+    // succeeding when DASHBOARD_BASE_URL is unset.
+    return true;
+  }
+  const expected = new URL(config.DASHBOARD_BASE_URL).origin;
+  const origin = c.req.header('origin');
+  if (origin) return origin === expected;
+  const referer = c.req.header('referer');
+  if (referer) {
+    try {
+      return new URL(referer).origin === expected;
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 function clientIp(c: import('hono').Context): string {

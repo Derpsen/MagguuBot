@@ -95,6 +95,29 @@ interface IssuePayload {
 // the signature check runs.
 const MAX_GITHUB_BODY_BYTES = 1 * 1024 * 1024;
 
+// Replay protection: every GitHub webhook delivery carries a unique
+// `X-GitHub-Delivery` UUID. Cache the last seen IDs so a captured-and-replayed
+// payload is rejected as a duplicate. Bounded LRU keeps memory predictable.
+const SEEN_DELIVERIES_MAX = 2_000;
+const SEEN_DELIVERIES_TTL_MS = 60 * 60 * 1000;
+const seenDeliveries = new Map<string, number>();
+
+function rememberDelivery(id: string): boolean {
+  const now = Date.now();
+  // Lazy expiry: evict entries older than TTL on each call.
+  for (const [key, at] of seenDeliveries) {
+    if (now - at > SEEN_DELIVERIES_TTL_MS) seenDeliveries.delete(key);
+    else break; // Map preserves insertion order
+  }
+  if (seenDeliveries.has(id)) return false;
+  if (seenDeliveries.size >= SEEN_DELIVERIES_MAX) {
+    const oldest = seenDeliveries.keys().next().value;
+    if (oldest !== undefined) seenDeliveries.delete(oldest);
+  }
+  seenDeliveries.set(id, now);
+  return true;
+}
+
 export const githubWebhook = new Hono().post('/', async (c) => {
   const secret = config.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
@@ -113,6 +136,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
 
   const signature = c.req.header('x-hub-signature-256');
   const eventName = c.req.header('x-github-event');
+  const deliveryId = c.req.header('x-github-delivery');
   const raw = await c.req.text();
   if (Buffer.byteLength(raw) > MAX_GITHUB_BODY_BYTES) {
     return c.json({ ok: false, error: 'payload too large' }, 413);
@@ -127,6 +151,11 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   if (!verifySignature(raw, signature, secret)) {
     logger.warn({ eventName }, 'github webhook signature mismatch');
     return c.json({ ok: false, error: 'invalid signature' }, 401);
+  }
+
+  if (deliveryId && !rememberDelivery(deliveryId)) {
+    logger.warn({ deliveryId, eventName }, 'github webhook replay rejected');
+    return c.json({ ok: true, skipped: 'duplicate delivery' });
   }
 
   let body: unknown;

@@ -26,7 +26,15 @@ export async function runAutomod(message: Message): Promise<boolean> {
     return false;
   }
 
-  const content = message.content;
+  // Cap the content we run regex/automod over. Discord allows up to 4000 chars
+  // for normal messages but boosters can push higher; capping here keeps the
+  // event-loop bound for any single message. The full content is still
+  // available on `message` for moderation log embed truncation.
+  const AUTOMOD_MAX_LEN = 4000;
+  const content =
+    message.content.length > AUTOMOD_MAX_LEN
+      ? message.content.slice(0, AUTOMOD_MAX_LEN)
+      : message.content;
 
   if (getSetting('automodInviteFilter') && INVITE_PATTERN.test(content)) {
     return await deleteAndLog(message, 'Discord-Invite-Link', 'invite');

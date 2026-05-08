@@ -2,8 +2,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { config } from '../../config.js';
+import { isSessionRevoked } from './revocations.js';
 
-const COOKIE_NAME = 'magguu_session';
+// `__Host-` prefix forces Secure + Path=/ + no Domain — a sibling subdomain
+// can't overwrite the cookie even if it's compromised.
+const COOKIE_NAME = '__Host-magguu_session';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 export interface Session {
@@ -38,6 +41,7 @@ export function verifySession(value: string): Session | null {
   try {
     const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session;
     if (Date.now() - session.issuedAt > COOKIE_MAX_AGE * 1000) return null;
+    if (isSessionRevoked(session.userId, session.issuedAt)) return null;
     return session;
   } catch {
     return null;
