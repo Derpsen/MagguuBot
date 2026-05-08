@@ -86,8 +86,9 @@ authRouter.get('/callback', async (c) => {
   const rawNext = getCookie(c, NEXT_COOKIE) ?? '/';
   const next = /^\/(?!\/)[A-Za-z0-9_\-\/?&=.%#]*$/.test(rawNext) ? rawNext : '/';
 
-  deleteCookie(c, STATE_COOKIE, { path: '/' });
-  deleteCookie(c, NEXT_COOKIE, { path: '/' });
+  // __Host- prefix forces secure on every cookie write, including deletes.
+  deleteCookie(c, STATE_COOKIE, { path: '/', secure: true });
+  deleteCookie(c, NEXT_COOKIE, { path: '/', secure: true });
 
   if (error) {
     logger.warn({ error, errorDesc }, 'oauth callback: discord returned error');

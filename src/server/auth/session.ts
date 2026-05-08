@@ -66,5 +66,6 @@ export function readSession(c: Context): Session | null {
 }
 
 export function clearSessionCookie(c: Context): void {
-  deleteCookie(c, COOKIE_NAME, { path: '/' });
+  // __Host- prefix requires secure on writes, including deletes.
+  deleteCookie(c, COOKIE_NAME, { path: '/', secure: true });
 }
