@@ -13,11 +13,14 @@ import { commands } from './commands/index.js';
 import { backfillWelcomePins } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
+import { handleGiveawayButton } from './interactions/giveaway-buttons.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleSuggestionButton } from './interactions/suggestion-buttons.js';
 import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
 import { handleSeerrButton } from './interactions/seerr-buttons.js';
 import { handleTicketButton } from './interactions/ticket-buttons.js';
+import { handleTicketCategorySelect } from './interactions/ticket-category-select.js';
+import { handleTicketModalSubmit } from './interactions/ticket-modal.js';
 
 let client: Client | null = null;
 
@@ -101,6 +104,16 @@ export async function startDiscord(): Promise<void> {
           await handleTicketButton(interaction);
         } else if (interaction.customId.startsWith('suggestion:')) {
           await handleSuggestionButton(interaction);
+        } else if (interaction.customId.startsWith('giveaway:')) {
+          await handleGiveawayButton(interaction);
+        }
+      } else if (interaction.isStringSelectMenu()) {
+        if (interaction.customId.startsWith('ticket-category:')) {
+          await handleTicketCategorySelect(interaction);
+        }
+      } else if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('ticket-modal:')) {
+          await handleTicketModalSubmit(interaction);
         }
       }
     } catch (err) {

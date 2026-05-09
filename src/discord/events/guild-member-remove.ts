@@ -1,4 +1,7 @@
 import { EmbedBuilder, type TextChannel } from 'discord.js';
+import { and, eq } from 'drizzle-orm';
+import { db } from '../../db/client.js';
+import { memberHistory } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
@@ -7,6 +10,15 @@ import type { BotEvent } from './types.js';
 export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
   name: 'guildMemberRemove',
   async execute(member) {
+    try {
+      db.update(memberHistory)
+        .set({ lastLeftAt: new Date() })
+        .where(and(eq(memberHistory.guildId, member.guild.id), eq(memberHistory.userId, member.id)))
+        .run();
+    } catch (err) {
+      logger.warn({ err, userId: member.id }, 'member_history left-update failed');
+    }
+
     try {
       const auditChannelId = getChannel('auditLog');
       if (!auditChannelId) return;

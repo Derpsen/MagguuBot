@@ -5,12 +5,15 @@ import { db } from '../db/client.js';
 import { reminders, scheduledAnnouncements } from '../db/schema.js';
 import { Colors, truncate } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { tickBirthdays } from './birthday.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
+import { tickGiveaways } from './giveaway.js';
 import { runRssFeedTick } from './rss-manager.js';
 import { updateStatsChannels } from './stats-channels.js';
+import { tickTicketAutoClose } from './ticket-autoclose.js';
 
 const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
@@ -19,6 +22,9 @@ const BLUE_TRACKER_TICK_MS = 15 * 60_000;
 const TOPICS_TICK_MS = 5 * 60_000;
 const COUNTDOWN_TICK_MS = 60_000;
 const RSS_TICK_MS = 15 * 60_000;
+const GIVEAWAY_TICK_MS = 30_000;
+const BIRTHDAY_TICK_MS = 15 * 60_000;
+const TICKET_AUTOCLOSE_TICK_MS = 30 * 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
@@ -27,6 +33,9 @@ let blueTrackerTimer: NodeJS.Timeout | null = null;
 let topicsTimer: NodeJS.Timeout | null = null;
 let countdownTimer: NodeJS.Timeout | null = null;
 let rssTimer: NodeJS.Timeout | null = null;
+let giveawayTimer: NodeJS.Timeout | null = null;
+let birthdayTimer: NodeJS.Timeout | null = null;
+let ticketAutoCloseTimer: NodeJS.Timeout | null = null;
 
 export function startScheduler(): void {
   remindersTimer = setInterval(() => {
@@ -59,6 +68,18 @@ export function startScheduler(): void {
     void runRssFeedTick().catch((err) => logger.error({ err }, 'rss feed tick failed'));
   }, RSS_TICK_MS);
 
+  giveawayTimer = setInterval(() => {
+    void tickGiveaways().catch((err) => logger.error({ err }, 'giveaway tick failed'));
+  }, GIVEAWAY_TICK_MS);
+
+  birthdayTimer = setInterval(() => {
+    void tickBirthdays().catch((err) => logger.error({ err }, 'birthday tick failed'));
+  }, BIRTHDAY_TICK_MS);
+
+  ticketAutoCloseTimer = setInterval(() => {
+    void tickTicketAutoClose().catch((err) => logger.error({ err }, 'ticket autoclose tick failed'));
+  }, TICKET_AUTOCLOSE_TICK_MS);
+
   setImmediate(() => {
     void processDueReminders().catch((err) => logger.error({ err }, 'reminder boot tick failed'));
     void updateStatsChannels().catch((err) => logger.error({ err }, 'stats boot tick failed'));
@@ -66,6 +87,8 @@ export function startScheduler(): void {
     void updateChannelTopics().catch((err) => logger.error({ err }, 'topics boot tick failed'));
     void tickCountdowns().catch((err) => logger.error({ err }, 'countdown boot tick failed'));
     void runRssFeedTick().catch((err) => logger.error({ err }, 'rss boot tick failed'));
+    void tickGiveaways().catch((err) => logger.error({ err }, 'giveaway boot tick failed'));
+    void tickBirthdays().catch((err) => logger.error({ err }, 'birthday boot tick failed'));
     if (config.WOW_BLUE_TRACKER_URL) {
       void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker boot tick failed'));
     }
@@ -79,6 +102,9 @@ export function startScheduler(): void {
       topicsMs: TOPICS_TICK_MS,
       countdownMs: COUNTDOWN_TICK_MS,
       rssMs: RSS_TICK_MS,
+      giveawayMs: GIVEAWAY_TICK_MS,
+      birthdayMs: BIRTHDAY_TICK_MS,
+      ticketAutoCloseMs: TICKET_AUTOCLOSE_TICK_MS,
       blueTrackerMs: config.WOW_BLUE_TRACKER_URL ? BLUE_TRACKER_TICK_MS : 'disabled',
     },
     'scheduler started',
@@ -93,6 +119,9 @@ export function stopScheduler(): void {
   if (topicsTimer) clearInterval(topicsTimer);
   if (countdownTimer) clearInterval(countdownTimer);
   if (rssTimer) clearInterval(rssTimer);
+  if (giveawayTimer) clearInterval(giveawayTimer);
+  if (birthdayTimer) clearInterval(birthdayTimer);
+  if (ticketAutoCloseTimer) clearInterval(ticketAutoCloseTimer);
   remindersTimer = null;
   statsTimer = null;
   announceTimer = null;
@@ -100,6 +129,9 @@ export function stopScheduler(): void {
   topicsTimer = null;
   countdownTimer = null;
   rssTimer = null;
+  giveawayTimer = null;
+  birthdayTimer = null;
+  ticketAutoCloseTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {

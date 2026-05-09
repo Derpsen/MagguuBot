@@ -12,7 +12,10 @@ export type ModAction =
   | 'unban'
   | 'purge'
   | 'slowmode'
-  | 'automod';
+  | 'automod'
+  | 'lockdown'
+  | 'unlock'
+  | 'antiraid';
 
 interface ModLogInput {
   guild: Guild;
@@ -33,6 +36,9 @@ const COLORS: Record<ModAction, number> = {
   purge: Colors.muted,
   slowmode: Colors.info,
   automod: Colors.warn,
+  lockdown: Colors.danger,
+  unlock: Colors.success,
+  antiraid: Colors.danger,
 };
 
 const ICONS: Record<ModAction, string> = {
@@ -45,6 +51,9 @@ const ICONS: Record<ModAction, string> = {
   purge: '🧹',
   slowmode: '🐌',
   automod: '🤖',
+  lockdown: '🔒',
+  unlock: '🔓',
+  antiraid: '🛡️',
 };
 
 export async function postModLog(i: ModLogInput): Promise<void> {

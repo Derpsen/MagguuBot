@@ -251,7 +251,14 @@ export const tickets = sqliteTable('tickets', {
   channelId: text('channel_id').notNull().unique(),
   openerId: text('opener_id').notNull(),
   topic: text('topic'),
+  category: text('category'),
+  priority: text('priority', { enum: ['low', 'normal', 'high'] }).default('normal'),
+  claimedBy: text('claimed_by'),
+  claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
+  lastActivityAt: integer('last_activity_at', { mode: 'timestamp_ms' }),
   closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+  closedBy: text('closed_by'),
+  closeReason: text('close_reason'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -316,6 +323,94 @@ export const sessionRevocations = sqliteTable('session_revocations', {
   // stateless HMAC cookie design.
   notValidBefore: integer('not_valid_before', { mode: 'timestamp_ms' }).notNull(),
 });
+
+export const memberHistory = sqliteTable(
+  'member_history',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    firstJoinedAt: integer('first_joined_at', { mode: 'timestamp_ms' }).notNull(),
+    lastJoinedAt: integer('last_joined_at', { mode: 'timestamp_ms' }).notNull(),
+    lastLeftAt: integer('last_left_at', { mode: 'timestamp_ms' }),
+    joinCount: integer('join_count').notNull().default(1),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.userId] }) }),
+);
+
+export const afk = sqliteTable(
+  'afk',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    reason: text('reason').notNull(),
+    setAt: integer('set_at', { mode: 'timestamp_ms' }).notNull(),
+    originalNick: text('original_nick'),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.userId] }) }),
+);
+
+export const giveaways = sqliteTable('giveaways', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  messageId: text('message_id').notNull(),
+  prize: text('prize').notNull(),
+  winnersCount: integer('winners_count').notNull().default(1),
+  endsAt: integer('ends_at', { mode: 'timestamp_ms' }).notNull(),
+  ended: integer('ended', { mode: 'boolean' }).notNull().default(false),
+  hostId: text('host_id').notNull(),
+  participants: text('participants', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  winners: text('winners', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  requiredRoleId: text('required_role_id'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const birthdays = sqliteTable(
+  'birthdays',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    day: integer('day').notNull(),
+    month: integer('month').notNull(),
+    year: integer('year'),
+    lastCelebratedYear: integer('last_celebrated_year'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.userId] }) }),
+);
+
+export const jtcRooms = sqliteTable('jtc_rooms', {
+  channelId: text('channel_id').primaryKey(),
+  guildId: text('guild_id').notNull(),
+  ownerId: text('owner_id').notNull(),
+  textChannelId: text('text_channel_id'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const ticketCategories = sqliteTable('ticket_categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  emoji: text('emoji'),
+  description: text('description'),
+  pingRoles: text('ping_roles'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+});
+
+export type MemberHistory = typeof memberHistory.$inferSelect;
+export type Afk = typeof afk.$inferSelect;
+export type Giveaway = typeof giveaways.$inferSelect;
+export type Birthday = typeof birthdays.$inferSelect;
+export type JtcRoom = typeof jtcRooms.$inferSelect;
+export type TicketCategory = typeof ticketCategories.$inferSelect;
 
 export type Autoresponder = typeof autoresponders.$inferSelect;
 export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;

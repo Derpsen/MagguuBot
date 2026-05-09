@@ -17,7 +17,18 @@ export type SettingKey =
   | 'autoRoleId'
   | 'aiModerationEnabled'
   | 'aiModerationThreshold'
-  | 'welcomeDmTemplate';
+  | 'welcomeDmTemplate'
+  | 'warnEscalationEnabled'
+  | 'warnEscalationTimeoutAt'
+  | 'warnEscalationKickAt'
+  | 'jtcChannelId'
+  | 'jtcCategoryId'
+  | 'birthdayChannelId'
+  | 'birthdayRoleId'
+  | 'antiRaidEnabled'
+  | 'antiRaidJoinThreshold'
+  | 'antiRaidJoinWindowSec'
+  | 'usernameBlockedSubstrings';
 
 export interface SettingValueMap {
   starboardThreshold: number;
@@ -34,6 +45,17 @@ export interface SettingValueMap {
   aiModerationEnabled: boolean;
   aiModerationThreshold: number;
   welcomeDmTemplate: string;
+  warnEscalationEnabled: boolean;
+  warnEscalationTimeoutAt: number;
+  warnEscalationKickAt: number;
+  jtcChannelId: string | null;
+  jtcCategoryId: string | null;
+  birthdayChannelId: string | null;
+  birthdayRoleId: string | null;
+  antiRaidEnabled: boolean;
+  antiRaidJoinThreshold: number;
+  antiRaidJoinWindowSec: number;
+  usernameBlockedSubstrings: string;
 }
 
 interface SettingDef<T> {
@@ -122,6 +144,61 @@ const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
     serialize: (v) => v,
     envValue: () => '',
   },
+  warnEscalationEnabled: {
+    parse: asBool,
+    serialize: (v) => (v ? 'true' : 'false'),
+    envValue: () => false,
+  },
+  warnEscalationTimeoutAt: {
+    parse: asInt(3),
+    serialize: String,
+    envValue: () => 3,
+  },
+  warnEscalationKickAt: {
+    parse: asInt(5),
+    serialize: String,
+    envValue: () => 5,
+  },
+  jtcChannelId: {
+    parse: (raw) => raw || null,
+    serialize: (v) => v ?? '',
+    envValue: () => null,
+  },
+  jtcCategoryId: {
+    parse: (raw) => raw || null,
+    serialize: (v) => v ?? '',
+    envValue: () => null,
+  },
+  birthdayChannelId: {
+    parse: (raw) => raw || null,
+    serialize: (v) => v ?? '',
+    envValue: () => null,
+  },
+  birthdayRoleId: {
+    parse: (raw) => raw || null,
+    serialize: (v) => v ?? '',
+    envValue: () => null,
+  },
+  antiRaidEnabled: {
+    parse: asBool,
+    serialize: (v) => (v ? 'true' : 'false'),
+    envValue: () => false,
+  },
+  antiRaidJoinThreshold: {
+    parse: asInt(8),
+    serialize: String,
+    envValue: () => 8,
+  },
+  antiRaidJoinWindowSec: {
+    parse: asInt(20),
+    serialize: String,
+    envValue: () => 20,
+  },
+  usernameBlockedSubstrings: {
+    parse: (raw) => raw,
+    serialize: (v) => v,
+    envValue: () => '',
+  },
 };
 
 export function getSetting<K extends SettingKey>(key: K): SettingValueMap[K] {
@@ -165,5 +242,16 @@ export function getAllSettings(): SettingValueMap {
     aiModerationEnabled: getSetting('aiModerationEnabled'),
     aiModerationThreshold: getSetting('aiModerationThreshold'),
     welcomeDmTemplate: getSetting('welcomeDmTemplate'),
+    warnEscalationEnabled: getSetting('warnEscalationEnabled'),
+    warnEscalationTimeoutAt: getSetting('warnEscalationTimeoutAt'),
+    warnEscalationKickAt: getSetting('warnEscalationKickAt'),
+    jtcChannelId: getSetting('jtcChannelId'),
+    jtcCategoryId: getSetting('jtcCategoryId'),
+    birthdayChannelId: getSetting('birthdayChannelId'),
+    birthdayRoleId: getSetting('birthdayRoleId'),
+    antiRaidEnabled: getSetting('antiRaidEnabled'),
+    antiRaidJoinThreshold: getSetting('antiRaidJoinThreshold'),
+    antiRaidJoinWindowSec: getSetting('antiRaidJoinWindowSec'),
+    usernameBlockedSubstrings: getSetting('usernameBlockedSubstrings'),
   };
 }

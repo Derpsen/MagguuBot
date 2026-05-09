@@ -1,10 +1,26 @@
-import { AttachmentBuilder, EmbedBuilder, type GuildMember, type TextChannel } from 'discord.js';
+import {
+  AttachmentBuilder,
+  EmbedBuilder,
+  type GuildMember,
+  type TextChannel,
+} from 'discord.js';
+import { and, eq } from 'drizzle-orm';
 import { renderWelcomeCard } from '../cards/welcome-card.js';
 import { Colors } from '../../embeds/colors.js';
+import {
+  buildWelcomeChannelEmbed,
+  buildWelcomeDmEmbed,
+  buildWelcomeOnboardingButtons,
+} from '../../embeds/welcome-onboarding.js';
+import { db } from '../../db/client.js';
+import { memberHistory } from '../../db/schema.js';
 import { getSetting } from '../../settings.js';
 import { logger } from '../../utils/logger.js';
+import { checkAntiRaid, checkUsernameFilter } from '../anti-raid.js';
 import { getChannel } from '../channel-store.js';
 import type { BotEvent } from './types.js';
+
+const SUSPICIOUS_ACCOUNT_AGE_DAYS = 7;
 
 async function applyAutoRole(member: GuildMember): Promise<void> {
   if (member.user.bot) return;
@@ -27,9 +43,58 @@ async function applyAutoRole(member: GuildMember): Promise<void> {
   }
 }
 
+interface JoinHistoryResult {
+  isReturning: boolean;
+  joinCount: number;
+}
+
+function trackMemberJoin(member: GuildMember): JoinHistoryResult {
+  const key = and(eq(memberHistory.guildId, member.guild.id), eq(memberHistory.userId, member.id));
+  const existing = db.select().from(memberHistory).where(key).get();
+  const now = new Date();
+
+  if (existing) {
+    db.update(memberHistory)
+      .set({ lastJoinedAt: now, joinCount: existing.joinCount + 1 })
+      .where(key)
+      .run();
+    return { isReturning: true, joinCount: existing.joinCount + 1 };
+  }
+
+  db.insert(memberHistory)
+    .values({
+      guildId: member.guild.id,
+      userId: member.id,
+      firstJoinedAt: now,
+      lastJoinedAt: now,
+      joinCount: 1,
+    })
+    .run();
+  return { isReturning: false, joinCount: 1 };
+}
+
 export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
   name: 'guildMemberAdd',
   async execute(member) {
+    if (member.user.bot) return;
+
+    try {
+      const kicked = await checkUsernameFilter(member);
+      if (kicked) return;
+    } catch (err) {
+      logger.error({ err, userId: member.id }, 'username filter failed');
+    }
+
+    try {
+      await checkAntiRaid(member);
+    } catch (err) {
+      logger.error({ err, userId: member.id }, 'anti-raid check failed');
+    }
+
+    const accountAgeMs = Date.now() - member.user.createdTimestamp;
+    const accountAgeDays = accountAgeMs / 86_400_000;
+    const history = trackMemberJoin(member);
+
     try {
       await applyAutoRole(member);
     } catch (err) {
@@ -48,39 +113,93 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
               avatarUrl: member.user.displayAvatarURL({ extension: 'png', size: 256 }),
               memberCount: member.guild.memberCount,
               serverName: member.guild.name,
+              accountAgeDays,
+              isReturning: history.isReturning,
+              serverBoostLevel: member.guild.premiumTier ?? 0,
             });
             cardAttachment = new AttachmentBuilder(buffer, { name: 'welcome.png' });
           } catch (err) {
-            logger.warn({ err, userId: member.id }, 'welcome card render failed, falling back to embed only');
+            logger.warn(
+              { err, userId: member.id },
+              'welcome card render failed, falling back to embed only',
+            );
           }
 
+          const embed = buildWelcomeChannelEmbed({
+            member,
+            isReturning: history.isReturning,
+            accountAgeDays,
+          });
           await (channel as TextChannel).send({
-            content: `👋 ${member.toString()}`,
-            embeds: cardAttachment ? [] : [buildWelcomeEmbed(member.user.username, member.guild.memberCount)],
+            content: history.isReturning
+              ? `↩️ ${member.toString()} ist zurück.`
+              : `🎉 ${member.toString()} hat den Server betreten!`,
+            embeds: [embed],
+            components: buildWelcomeOnboardingButtons(),
             files: cardAttachment ? [cardAttachment] : undefined,
           });
         }
       }
 
-      await sendWelcomeDM(member);
+      await sendWelcomeDM(member, history.isReturning);
 
       const auditChannelId = getChannel('auditLog');
       if (auditChannelId) {
         const channel = await member.guild.channels.fetch(auditChannelId).catch(() => null);
         if (channel && channel.isSendable()) {
-          await (channel as TextChannel).send({
-            embeds: [
-              new EmbedBuilder()
-                .setColor(Colors.success)
-                .setAuthor({ name: 'Member joined', iconURL: member.user.displayAvatarURL() })
-                .setDescription(`${member.toString()} — **${member.user.displayName}** (\`${member.id}\`)`)
-                .addFields(
-                  { name: 'Account created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
-                  { name: 'Member #', value: `${member.guild.memberCount}`, inline: true },
-                )
-                .setTimestamp(new Date()),
-            ],
-          });
+          const auditEmbed = new EmbedBuilder()
+            .setColor(history.isReturning ? Colors.brand : Colors.success)
+            .setAuthor({
+              name: history.isReturning ? 'Member rejoined' : 'Member joined',
+              iconURL: member.user.displayAvatarURL(),
+            })
+            .setDescription(
+              `${member.toString()} — **${member.user.displayName}** (\`${member.id}\`)`,
+            )
+            .addFields(
+              {
+                name: 'Account created',
+                value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`,
+                inline: true,
+              },
+              { name: 'Member #', value: `${member.guild.memberCount}`, inline: true },
+              { name: 'Join count', value: `${history.joinCount}`, inline: true },
+            )
+            .setTimestamp(new Date());
+          await (channel as TextChannel).send({ embeds: [auditEmbed] });
+        }
+      }
+
+      if (accountAgeDays < SUSPICIOUS_ACCOUNT_AGE_DAYS) {
+        const modLogId = getChannel('modLog');
+        if (modLogId) {
+          const channel = await member.guild.channels.fetch(modLogId).catch(() => null);
+          if (channel && channel.isSendable()) {
+            await (channel as TextChannel).send({
+              embeds: [
+                new EmbedBuilder()
+                  .setColor(Colors.warn)
+                  .setAuthor({
+                    name: 'Junges Account joined',
+                    iconURL: member.user.displayAvatarURL(),
+                  })
+                  .setDescription(
+                    `${member.toString()} — Account ist erst **${Math.floor(accountAgeDays)} Tag${
+                      Math.floor(accountAgeDays) === 1 ? '' : 'e'
+                    }** alt. Genauer beobachten oder ggf. verifizieren.`,
+                  )
+                  .addFields(
+                    {
+                      name: 'Created',
+                      value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:F>`,
+                      inline: true,
+                    },
+                    { name: 'User-ID', value: `\`${member.id}\``, inline: true },
+                  )
+                  .setTimestamp(new Date()),
+              ],
+            });
+          }
         }
       }
     } catch (err) {
@@ -89,67 +208,31 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
   },
 };
 
-const DEFAULT_WELCOME_DM = [
-  'Hey {{username}}, schön dass du da bist.',
-  '',
-  '**So kommst du rein:**',
-  '• Checke die **#📜・regeln** — kurze Liste, freundlicher Server',
-  '• Im **#🎭・rollen** Channel kannst du dir Ping-Rollen per Button holen',
-  '• Klicke auf die Interest-Buttons in **#🎭・rollen** um weitere Channels freizuschalten',
-  '• Für Plex-Zugriff (Film/Serie requesten) → frag einen Admin nach der `Plex-User` Rolle',
-  '',
-  '_Diese DM kommt nur einmal. Fragen? Schreib direkt in den Chat._',
-].join('\n');
-
-function renderTemplate(tpl: string, vars: Record<string, string | number>): string {
-  return tpl.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k: string) => {
-    const v = vars[k];
-    return v === undefined ? `{{${k}}}` : String(v);
-  });
-}
-
-async function sendWelcomeDM(member: GuildMember): Promise<void> {
+async function sendWelcomeDM(member: GuildMember, isReturning: boolean): Promise<void> {
   try {
-    const tpl = getSetting('welcomeDmTemplate') || DEFAULT_WELCOME_DM;
-    const description = renderTemplate(tpl, {
-      username: member.user.username,
-      mention: member.toString(),
-      server: member.guild.name,
-      memberCount: member.guild.memberCount,
-    });
+    const customTpl = getSetting('welcomeDmTemplate');
+    if (customTpl) {
+      const description = customTpl
+        .replace(/\{\{\s*username\s*\}\}/g, member.user.username)
+        .replace(/\{\{\s*mention\s*\}\}/g, member.toString())
+        .replace(/\{\{\s*server\s*\}\}/g, member.guild.name)
+        .replace(/\{\{\s*memberCount\s*\}\}/g, String(member.guild.memberCount));
+      const embed = new EmbedBuilder()
+        .setColor(Colors.brand)
+        .setTitle(`Willkommen auf ${member.guild.name}! 🎉`)
+        .setDescription(description)
+        .setFooter({ text: 'MagguuBot · automatische Begrüßung' })
+        .setTimestamp(new Date());
+      await member.send({ embeds: [embed] });
+      logger.info({ userId: member.id }, 'welcome DM sent (custom template)');
+      return;
+    }
 
-    const embed = new EmbedBuilder()
-      .setColor(Colors.brand)
-      .setTitle(`Willkommen auf ${member.guild.name}! 🎉`)
-      .setDescription(description)
-      .setFooter({ text: `MagguuBot  ·  automatische Begrüßung` })
-      .setTimestamp(new Date());
-    await member.send({ embeds: [embed] });
-    logger.info({ userId: member.id }, 'welcome DM sent');
+    const embed = buildWelcomeDmEmbed(member, isReturning);
+    const components = buildWelcomeOnboardingButtons();
+    await member.send({ embeds: [embed], components });
+    logger.info({ userId: member.id, isReturning }, 'welcome DM sent (default + buttons)');
   } catch (err) {
-    // User might have DMs disabled — expected, log-only
     logger.debug({ err, userId: member.id }, 'welcome DM blocked by user privacy');
   }
-}
-
-function buildWelcomeEmbed(username: string, memberCount: number): EmbedBuilder {
-  const requestsId = getChannel('requests');
-  const requestsRef = requestsId ? `<#${requestsId}>` : '**#anfragen**';
-
-  return new EmbedBuilder()
-    .setColor(Colors.brand)
-    .setTitle(`Willkommen, ${username}! 🎉`)
-    .setDescription(
-      [
-        'Schön dass du da bist — du startest als **Newcomer**.',
-        '',
-        '**📜 Les die Regeln** → **#📜・regeln**',
-        '**🎭 Hol dir Rollen** → **#🎭・rollen**',
-        `**📝 Film / Serie requesten** → ${requestsRef} (wird mit Plex-User-Rolle freigeschaltet)`,
-        '',
-        '_Plex-Channels siehst du sobald ein Admin dir die `Plex-User` Rolle gibt._',
-      ].join('\n'),
-    )
-    .setFooter({ text: `Member #${memberCount}  ·  MagguuBot` })
-    .setTimestamp(new Date());
 }

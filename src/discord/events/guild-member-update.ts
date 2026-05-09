@@ -8,6 +8,16 @@ export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
   name: 'guildMemberUpdate',
   async execute(oldMember, newMember) {
     try {
+      const wasBoosting = oldMember.premiumSinceTimestamp !== null;
+      const isBoosting = newMember.premiumSinceTimestamp !== null;
+      if (!wasBoosting && isBoosting) {
+        await postBoostNotification(newMember);
+      }
+    } catch (err) {
+      logger.error({ err, userId: newMember.id }, 'boost notify failed');
+    }
+
+    try {
       const auditChannelId = getChannel('auditLog');
       if (!auditChannelId) return;
 
@@ -32,7 +42,9 @@ export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
           new EmbedBuilder()
             .setColor(Colors.info)
             .setAuthor({ name: 'Roles changed', iconURL: newMember.user.displayAvatarURL() })
-            .setDescription(`${newMember.toString()} — **${newMember.user.displayName}**\n\n${lines.join('\n')}`)
+            .setDescription(
+              `${newMember.toString()} — **${newMember.user.displayName}**\n\n${lines.join('\n')}`,
+            )
             .setTimestamp(new Date()),
         ],
       });
@@ -41,3 +53,38 @@ export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
     }
   },
 };
+
+async function postBoostNotification(
+  member: import('discord.js').GuildMember,
+): Promise<void> {
+  const guild = member.guild;
+  const channelId = getChannel('welcome') ?? getChannel('auditLog');
+  if (!channelId) return;
+  const channel = await guild.channels.fetch(channelId).catch(() => null);
+  if (!channel || !channel.isSendable()) return;
+
+  const tier = guild.premiumTier ?? 0;
+  const total = guild.premiumSubscriptionCount ?? 0;
+
+  const embed = new EmbedBuilder()
+    .setColor(0xff73fa)
+    .setAuthor({ name: 'Server boosted! 🚀', iconURL: member.user.displayAvatarURL() })
+    .setTitle(`💜 Danke ${member.user.displayName}!`)
+    .setDescription(
+      [
+        `${member.toString()} hat **${guild.name}** geboostet!`,
+        '',
+        `🚀 **Boost-Level:** ${tier}`,
+        `💎 **Boosts gesamt:** ${total}`,
+        '',
+        '_Mehr Boosts schalten höhere Audio-Qualität, mehr Emojis und größere Upload-Limits frei._',
+      ].join('\n'),
+    )
+    .setThumbnail(member.user.displayAvatarURL({ extension: 'png', size: 256 }))
+    .setTimestamp(new Date());
+
+  await (channel as TextChannel).send({
+    content: `🎉 ${member.toString()}`,
+    embeds: [embed],
+  });
+}

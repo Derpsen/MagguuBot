@@ -1,10 +1,12 @@
 import { AttachmentBuilder } from 'discord.js';
 import { logger } from '../../utils/logger.js';
+import { handleAfkMessage } from '../afk.js';
 import { runAiModeration } from '../ai-automod.js';
 import { runAutomod } from '../automod.js';
 import { runAutoresponder } from '../autoresponder.js';
 import { renderLevelUpCard } from '../cards/level-up-card.js';
 import { scheduleStickyRepost } from '../sticky.js';
+import { handleTicketMessage } from '../ticket-message-handler.js';
 import { grantXp } from '../xp.js';
 import type { BotEvent } from './types.js';
 
@@ -14,6 +16,18 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
     if (message.author.bot) return;
     if (!message.inGuild()) return;
     if (!message.member) return;
+
+    try {
+      await handleAfkMessage(message);
+    } catch (err) {
+      logger.error({ err, userId: message.author.id }, 'afk handler failed');
+    }
+
+    try {
+      await handleTicketMessage(message);
+    } catch (err) {
+      logger.error({ err, userId: message.author.id }, 'ticket message handler failed');
+    }
 
     try {
       const deleted = await runAutomod(message);

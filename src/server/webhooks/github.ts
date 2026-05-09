@@ -240,6 +240,12 @@ export const githubWebhook = new Hono().post('/', async (c) => {
         prerelease: p.release.prerelease,
       }),
       pingRoles: p.release.prerelease ? [] : ['ping-github'],
+      thread: p.release.prerelease
+        ? undefined
+        : {
+            name: `💬 ${p.release.tag_name} — ${p.repository.full_name.split('/').pop() ?? p.repository.full_name}`,
+            archiveMinutes: 4320,
+          },
     });
     return c.json({ ok: true });
   }

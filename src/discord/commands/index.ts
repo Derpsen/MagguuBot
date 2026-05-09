@@ -1,22 +1,29 @@
 import type { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { afkCommand } from './afk.js';
 import { announceCommand } from './announce.js';
 import { arrStatusCommand } from './arr-status.js';
 import { avatarCommand } from './avatar.js';
+import { birthdayCommand } from './birthday.js';
 import { calendarCommand } from './calendar.js';
 import { countdownCommand } from './countdown.js';
 import { banCommand, unbanCommand } from './ban.js';
 import { botinfoCommand } from './botinfo.js';
 import { cleanupServerCommand } from './cleanup-server.js';
 import { dbBackupCommand } from './db-backup.js';
+import { editSnipeCommand, snipeCommand } from './snipe.js';
+import { giveawayCommand } from './giveaway.js';
 import { helpCommand } from './help.js';
+import { jtcCommand } from './jtc.js';
 import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
+import { lockdownCommand } from './lockdown.js';
 import { plexNowPlayingCommand } from './plex-now-playing.js';
 import { plexTopCommand } from './plex-top.js';
 import { pollCommand } from './poll.js';
 import { purgeCommand } from './purge.js';
 import { purgeUserCommand } from './purge-user.js';
 import { queueCommand } from './queue.js';
+import { quoteCommand } from './quote.js';
 import { rankCommand } from './rank.js';
 import { autoresponderCommand } from './autoresponder.js';
 import { remindmeCommand } from './remindme.js';
@@ -62,6 +69,7 @@ const all: SlashCommand[] = [
   purgeCommand,
   purgeUserCommand,
   slowmodeCommand,
+  lockdownCommand,
   helpCommand,
   announceCommand,
   pollCommand,
@@ -82,6 +90,13 @@ const all: SlashCommand[] = [
   repCommand,
   suggestCommand,
   suggestionStatusCommand,
+  afkCommand,
+  snipeCommand,
+  editSnipeCommand,
+  quoteCommand,
+  giveawayCommand,
+  birthdayCommand,
+  jtcCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));

@@ -137,6 +137,7 @@ async function postOne(
         enriched: Boolean(enriched),
       },
       pingRoles: classifyPings(item, enriched),
+      thread: { name: `💬 ${item.title}`, archiveMinutes: 4320 },
     });
   } catch (err) {
     logger.warn({ err, guid: item.guid }, 'blue-tracker post failed');
