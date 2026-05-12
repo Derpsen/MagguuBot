@@ -1,4 +1,4 @@
-import { EmbedBuilder, type TextChannel } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { memberHistory } from '../../db/schema.js';
@@ -29,7 +29,7 @@ export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
         ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`
         : '_unknown_';
 
-      await (channel as TextChannel).send({
+      await channel.send({
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.muted)

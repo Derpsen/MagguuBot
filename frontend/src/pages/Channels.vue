@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Hash, Check } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -66,14 +66,14 @@ onMounted(load);
             <div class="flex items-center gap-2">
               <Hash class="h-4 w-4 text-slate-500" />
               <h3 class="font-semibold text-white">{{ m.label }}</h3>
-              <code class="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">{{ m.key }}</code>
+              <code class="rounded-sm bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">{{ m.key }}</code>
             </div>
             <p class="mt-1 text-xs text-slate-500">{{ m.description }}</p>
           </div>
           <div class="flex items-center gap-2">
             <select
               :value="m.channelId ?? ''"
-              class="rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none"
+              class="rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
               @change="(e) => update(m.key, (e.target as HTMLSelectElement).value)"
             >
               <option value="" disabled>— wähle Channel —</option>

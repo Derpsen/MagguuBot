@@ -1,4 +1,4 @@
-import { EmbedBuilder, type Guild, type TextChannel, type User } from 'discord.js';
+import { EmbedBuilder, type Guild, type User } from 'discord.js';
 import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
@@ -83,7 +83,7 @@ export async function postModLog(i: ModLogInput): Promise<void> {
 
     if (i.extra?.length) embed.addFields(i.extra);
 
-    await (channel as TextChannel).send({ embeds: [embed] });
+    await channel.send({ embeds: [embed] });
   } catch (err) {
     logger.error({ err, action: i.action }, 'postModLog failed');
   }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { api } from '../lib/api';
 
@@ -258,7 +258,7 @@ onMounted(reload);
         >
           <span>{{ SOURCE_META[s]?.emoji ?? '🔔' }}</span>
           <span>{{ SOURCE_META[s]?.label ?? s }}</span>
-          <span class="rounded bg-slate-900/50 px-1 text-[10px] text-slate-400">{{ count }}</span>
+          <span class="rounded-sm bg-slate-900/50 px-1 text-[10px] text-slate-400">{{ count }}</span>
         </button>
         <div class="flex-1" />
         <select

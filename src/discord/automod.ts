@@ -74,7 +74,7 @@ export async function runAutomod(message: Message): Promise<boolean> {
     if (externals.length > 0) {
       return await deleteAndLog(
         message,
-        `Externer Link: ${externals.map((m) => m[1]).join(', ').slice(0, 200)}`,
+        `Externer Link: ${externals.map((m) => m[1] ?? '').join(', ').slice(0, 200)}`,
         'external-link',
       );
     }

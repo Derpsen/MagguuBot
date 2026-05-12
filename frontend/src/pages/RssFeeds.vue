@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { Plus, Trash2, Rss, AlertTriangle } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -198,13 +198,13 @@ onMounted(load);
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <span class="font-medium text-white">{{ f.name }}</span>
-              <span class="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              <span class="rounded-sm px-1.5 py-0.5 text-[10px] font-medium"
                 :class="f.enabled ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
                 {{ f.enabled ? 'aktiv' : 'paused' }}
               </span>
               <span
                 v-if="f.lastError"
-                class="inline-flex items-center gap-1 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-400"
+                class="inline-flex items-center gap-1 rounded-sm bg-red-500/20 px-1.5 py-0.5 text-[10px] font-medium text-red-400"
                 :title="f.lastError"
               >
                 <AlertTriangle class="h-3 w-3" />

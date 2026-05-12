@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -324,7 +324,7 @@ onMounted(load);
               <div class="min-w-0 flex-1">
                 <div class="group/code relative rounded-md bg-[#1e1f22] p-3">
                   <pre class="mono whitespace-pre-wrap break-words text-xs text-slate-200">{{ formResponse || 'Dein Text erscheint hier.' }}</pre>
-                  <div class="pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded bg-[#2b2d31] text-slate-400 opacity-60">
+                  <div class="pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-sm bg-[#2b2d31] text-slate-400 opacity-60">
                     <Copy class="h-3 w-3" />
                   </div>
                 </div>

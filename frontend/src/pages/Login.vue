@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { useRoute } from 'vue-router';
 import { LogIn, ShieldCheck } from 'lucide-vue-next';
 
@@ -30,7 +30,7 @@ const loginUrl = `/auth/login?next=${encodeURIComponent(next)}`;
         </a>
 
         <div class="mt-6 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 p-3 text-left">
-          <ShieldCheck class="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-400" />
+          <ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
           <p class="text-xs text-slate-400">
             Nur auf der <code>ADMIN_USER_IDS</code>-Allowlist eingetragene Discord-Accounts haben Zugriff. Nicht-Admins werden nach dem Login mit einer Fehlerseite abgewiesen.
           </p>

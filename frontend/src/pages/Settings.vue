@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Save, Star, Shield, UserPlus, Sparkles, MessageSquare, Ban } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -88,7 +88,7 @@ onMounted(load);
           <label class="block text-xs font-medium text-slate-400">Rolle für neue Member</label>
           <select
             v-model="settings.autoRoleId"
-            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none"
+            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
           >
             <option :value="null">— keine —</option>
             <option v-for="r in roles" :key="r.id" :value="r.id">@{{ r.name }}</option>
@@ -112,7 +112,7 @@ onMounted(load);
               min="1"
               max="100"
               v-model.number="settings.starboardThreshold"
-              class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none"
+              class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
             />
           </div>
           <div>
@@ -121,7 +121,7 @@ onMounted(load);
               type="text"
               maxlength="32"
               v-model="settings.starboardEmoji"
-              class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none"
+              class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
             />
           </div>
         </div>
@@ -137,7 +137,7 @@ onMounted(load);
             <input
               type="checkbox"
               v-model="settings.automodInviteFilter"
-              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+              class="mt-0.5 h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
             />
             <div>
               <div class="text-sm font-medium text-white">Invite-Filter</div>
@@ -149,7 +149,7 @@ onMounted(load);
             <input
               type="checkbox"
               v-model="settings.automodMentionSpam"
-              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+              class="mt-0.5 h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
             />
             <div class="flex-1">
               <div class="text-sm font-medium text-white">Mention-Spam-Filter</div>
@@ -161,7 +161,7 @@ onMounted(load);
                   min="1"
                   max="100"
                   v-model.number="settings.automodMentionThreshold"
-                  class="w-20 rounded border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-none"
+                  class="w-20 rounded-sm border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-hidden"
                 />
                 <span class="text-slate-400">Mentions (@everyone zählt als 5)</span>
               </div>
@@ -172,7 +172,7 @@ onMounted(load);
             <input
               type="checkbox"
               v-model="settings.automodCapsFilter"
-              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+              class="mt-0.5 h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
             />
             <div class="flex-1">
               <div class="text-sm font-medium text-white">Caps-Filter</div>
@@ -184,7 +184,7 @@ onMounted(load);
                   min="0"
                   max="100"
                   v-model.number="settings.automodCapsThreshold"
-                  class="w-20 rounded border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-none"
+                  class="w-20 rounded-sm border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-hidden"
                 />
                 <span class="text-slate-400">% Großbuchstaben, Min-Länge:</span>
                 <input
@@ -192,7 +192,7 @@ onMounted(load);
                   min="1"
                   max="1000"
                   v-model.number="settings.automodCapsMinLen"
-                  class="w-20 rounded border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-none"
+                  class="w-20 rounded-sm border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-hidden"
                 />
                 <span class="text-slate-400">Zeichen</span>
               </div>
@@ -203,7 +203,7 @@ onMounted(load);
             <input
               type="checkbox"
               v-model="settings.automodExternalLinkFilter"
-              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+              class="mt-0.5 h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
             />
             <div>
               <div class="text-sm font-medium text-white">Externe-Link-Filter</div>
@@ -222,7 +222,7 @@ onMounted(load);
                 v-model="settings.automodBlockedPhrases"
                 rows="4"
                 placeholder="badword&#10;another phrase&#10;n-word"
-                class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-none"
+                class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-hidden"
               />
             </div>
           </div>
@@ -248,7 +248,7 @@ onMounted(load);
             v-model="settings.welcomeDmTemplate"
             rows="8"
             :placeholder="welcomeDmPlaceholder"
-            class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-none"
+            class="mt-2 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blurple focus:outline-hidden"
           />
         </div>
       </div>
@@ -263,7 +263,7 @@ onMounted(load);
             <input
               type="checkbox"
               v-model="settings.aiModerationEnabled"
-              class="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
+              class="mt-0.5 h-4 w-4 rounded-sm border-slate-600 bg-slate-800 text-blurple focus:ring-blurple"
             />
             <div class="flex-1">
               <div class="text-sm font-medium text-white">OpenAI Moderation aktiv</div>
@@ -279,7 +279,7 @@ onMounted(load);
                   max="1"
                   step="0.05"
                   v-model.number="settings.aiModerationThreshold"
-                  class="w-20 rounded border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-none"
+                  class="w-20 rounded-sm border border-border bg-slate-900 px-2 py-0.5 text-white focus:border-blurple focus:outline-hidden"
                 />
                 <span class="text-slate-400">(0.0-1.0, default 0.7 = streng. Niedriger = aggressiver.)</span>
               </div>

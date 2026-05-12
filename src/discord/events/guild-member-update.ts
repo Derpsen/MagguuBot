@@ -1,4 +1,4 @@
-import { EmbedBuilder, type TextChannel } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
@@ -37,7 +37,7 @@ export const guildMemberUpdateEvent: BotEvent<'guildMemberUpdate'> = {
         lines.push(`**➖ Removed:** ${removedRoles.map((r) => r.toString()).join(', ')}`);
       }
 
-      await (channel as TextChannel).send({
+      await channel.send({
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.info)
@@ -83,7 +83,7 @@ async function postBoostNotification(
     .setThumbnail(member.user.displayAvatarURL({ extension: 'png', size: 256 }))
     .setTimestamp(new Date());
 
-  await (channel as TextChannel).send({
+  await channel.send({
     content: `🎉 ${member.toString()}`,
     embeds: [embed],
   });

@@ -32,6 +32,8 @@ export async function runAiModeration(message: Message): Promise<boolean> {
   if (content.length < MIN_LENGTH) return false;
 
   try {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 8_000);
     const res = await fetch(MODERATION_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -39,7 +41,8 @@ export async function runAiModeration(message: Message): Promise<boolean> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ model: 'omni-moderation-latest', input: content }),
-    });
+      signal: abort.signal,
+    }).finally(() => clearTimeout(timer));
 
     if (!res.ok) {
       logger.warn({ status: res.status }, 'ai-moderation API returned non-ok');

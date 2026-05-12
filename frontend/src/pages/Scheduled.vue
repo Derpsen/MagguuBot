@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Trash2, Calendar, Repeat } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -81,14 +81,14 @@ onMounted(load);
             <div class="flex items-center gap-2">
               <Calendar class="h-4 w-4 text-slate-500" />
               <span class="text-sm font-medium text-white">{{ r.title }}</span>
-              <span v-if="r.recurrence !== 'none'" class="inline-flex items-center gap-1 rounded bg-blurple/20 px-2 py-0.5 text-xs text-blurple">
+              <span v-if="r.recurrence !== 'none'" class="inline-flex items-center gap-1 rounded-sm bg-blurple/20 px-2 py-0.5 text-xs text-blurple">
                 <Repeat class="h-3 w-3" />
                 {{ r.recurrence }}
               </span>
-              <span v-if="r.fired && r.recurrence === 'none'" class="rounded bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
+              <span v-if="r.fired && r.recurrence === 'none'" class="rounded-sm bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
                 gesendet
               </span>
-              <span v-else class="rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-400">
+              <span v-else class="rounded-sm bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-400">
                 {{ r.recurrence !== 'none' ? `nächste ${timeUntil(r.fireAt)}` : timeUntil(r.fireAt) }}
               </span>
             </div>
@@ -101,7 +101,7 @@ onMounted(load);
           <select
             :value="r.recurrence"
             @change="setRecurrence(r.id, ($event.target as HTMLSelectElement).value as Recurrence)"
-            class="rounded-lg border border-border bg-slate-900 px-2 py-1 text-xs text-white focus:border-blurple focus:outline-none"
+            class="rounded-lg border border-border bg-slate-900 px-2 py-1 text-xs text-white focus:border-blurple focus:outline-hidden"
           >
             <option value="none">einmalig</option>
             <option value="daily">täglich</option>

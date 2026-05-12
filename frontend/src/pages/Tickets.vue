@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Lock, Ticket } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -46,7 +46,7 @@ onMounted(load);
       <div v-else>
         <div v-for="t in rows" :key="t.id" class="table-row">
           <div class="flex min-w-0 flex-1 items-center gap-3">
-            <Ticket class="h-5 w-5 flex-shrink-0" :class="t.open ? 'text-blurple' : 'text-slate-600'" />
+            <Ticket class="h-5 w-5 shrink-0" :class="t.open ? 'text-blurple' : 'text-slate-600'" />
             <div class="min-w-0">
               <div class="text-sm font-medium text-white">#{{ t.id }} — {{ t.opener }}</div>
               <div class="text-xs text-slate-500">

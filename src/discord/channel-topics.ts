@@ -13,28 +13,28 @@ interface TopicUpdate {
   build: () => Promise<string | null>;
 }
 
+function getPendingSeerrCount(): number {
+  return (
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(seerrRequests)
+      .where(eq(seerrRequests.status, 'pending'))
+      .get()?.count ?? 0
+  );
+}
+
 const TOPICS: TopicUpdate[] = [
   {
     key: 'requests',
     build: async () => {
-      const pending = db
-        .select({ count: sql<number>`count(*)` })
-        .from(seerrRequests)
-        .where(eq(seerrRequests.status, 'pending'))
-        .get();
-      const n = pending?.count ?? 0;
+      const n = getPendingSeerrCount();
       return `📝 Film / Serie requesten · ${n} pending`;
     },
   },
   {
     key: 'approvals',
     build: async () => {
-      const pending = db
-        .select({ count: sql<number>`count(*)` })
-        .from(seerrRequests)
-        .where(eq(seerrRequests.status, 'pending'))
-        .get();
-      const n = pending?.count ?? 0;
+      const n = getPendingSeerrCount();
       return `⏳ Admin-only Approvals · ${n} in queue`;
     },
   },

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Check, X, Film, Tv } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -71,7 +71,7 @@ onMounted(load);
           <div class="flex min-w-0 flex-1 items-center gap-3">
             <component
               :is="r.mediaType === 'movie' ? Film : Tv"
-              class="h-5 w-5 flex-shrink-0 text-slate-500"
+              class="h-5 w-5 shrink-0 text-slate-500"
             />
             <div class="min-w-0">
               <div class="truncate text-sm font-medium text-white">{{ r.title }}</div>

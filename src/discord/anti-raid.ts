@@ -3,7 +3,6 @@ import {
   GuildVerificationLevel,
   type Guild,
   type GuildMember,
-  type TextChannel,
 } from 'discord.js';
 import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
@@ -15,6 +14,7 @@ interface JoinTrack {
   guildId: string;
   events: number[];
   raidActive: boolean;
+  raidTriggeredAt: number | null;
   previousLevel: GuildVerificationLevel | null;
 }
 
@@ -29,7 +29,7 @@ export async function checkAntiRaid(member: GuildMember): Promise<boolean> {
   const now = Date.now();
   let track = STATE.get(member.guild.id);
   if (!track) {
-    track = { guildId: member.guild.id, events: [], raidActive: false, previousLevel: null };
+    track = { guildId: member.guild.id, events: [], raidActive: false, raidTriggeredAt: null, previousLevel: null };
     STATE.set(member.guild.id, track);
   }
   track.events.push(now);
@@ -40,7 +40,7 @@ export async function checkAntiRaid(member: GuildMember): Promise<boolean> {
     return true;
   }
 
-  if (track.raidActive && now - (track.events[track.events.length - 1] ?? now) > RAID_COOLDOWN_MS) {
+  if (track.raidActive && track.raidTriggeredAt !== null && now - track.raidTriggeredAt > RAID_COOLDOWN_MS) {
     await releaseRaidProtection(member.guild, track);
   }
 
@@ -53,6 +53,7 @@ async function triggerRaidProtection(
   joins: number,
 ): Promise<void> {
   track.raidActive = true;
+  track.raidTriggeredAt = Date.now();
   try {
     track.previousLevel = guild.verificationLevel;
     await guild.setVerificationLevel(GuildVerificationLevel.High, 'anti-raid auto-trigger');
@@ -65,7 +66,7 @@ async function triggerRaidProtection(
   if (modLogId) {
     const ch = await guild.channels.fetch(modLogId).catch(() => null);
     if (ch?.isSendable()) {
-      await (ch as TextChannel).send({
+      await ch.send({
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.danger)

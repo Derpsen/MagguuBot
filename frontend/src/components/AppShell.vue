@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -121,8 +121,8 @@ function isActive(item: NavItem): boolean {
         collapsed ? 'w-16' : 'w-60',
       ]"
     >
-      <div class="flex h-[52px] flex-shrink-0 items-center gap-3 border-b border-line px-4">
-        <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blurple font-bold text-white">
+      <div class="flex h-[52px] shrink-0 items-center gap-3 border-b border-line px-4">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blurple font-bold text-white">
           M
         </div>
         <div v-if="!collapsed" class="min-w-0 flex-1">
@@ -154,25 +154,25 @@ function isActive(item: NavItem): boolean {
               :class="[isActive(item) ? 'nav-item-active' : '', collapsed ? 'justify-center px-0' : '']"
               :title="collapsed ? item.label : undefined"
             >
-              <component :is="item.icon" class="h-[18px] w-[18px] flex-shrink-0" />
+              <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" />
               <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
             </router-link>
           </div>
         </div>
       </nav>
 
-      <div class="flex-shrink-0 border-t border-line p-3">
+      <div class="shrink-0 border-t border-line p-3">
         <div class="flex items-center gap-2" :class="collapsed ? 'flex-col' : ''">
           <div class="flex min-w-0 items-center gap-2" :class="collapsed ? '' : 'flex-1'">
             <img
               v-if="user.avatarUrl"
               :src="user.avatarUrl"
               :alt="displayName"
-              class="h-8 w-8 flex-shrink-0 rounded-full"
+              class="h-8 w-8 shrink-0 rounded-full"
             />
             <div
               v-else
-              class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blurple text-xs font-semibold text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blurple text-xs font-semibold text-white"
             >
               {{ userInitial }}
             </div>
@@ -190,7 +190,7 @@ function isActive(item: NavItem): boolean {
 
     <div
       v-if="mobileOpen"
-      class="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+      class="fixed inset-0 z-30 bg-black/60 backdrop-blur-xs lg:hidden"
       @click="mobileOpen = false"
     />
 
@@ -198,17 +198,17 @@ function isActive(item: NavItem): boolean {
       class="flex min-h-screen flex-1 flex-col transition-all duration-200"
       :class="collapsed ? 'lg:pl-16' : 'lg:pl-60'"
     >
-      <header class="sticky top-0 z-20 flex h-[52px] flex-shrink-0 items-center gap-3 border-b border-line bg-surface-0/90 px-4 backdrop-blur">
+      <header class="sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-3 border-b border-line bg-surface-0/90 px-4 backdrop-blur-sm">
         <button class="btn-icon lg:hidden" @click="mobileOpen = !mobileOpen">
           <Menu class="h-5 w-5" />
         </button>
         <nav class="flex min-w-0 items-center gap-1.5 text-sm">
-          <router-link to="/" class="flex-shrink-0 text-blurple hover:opacity-80">
+          <router-link to="/" class="shrink-0 text-blurple hover:opacity-80">
             <LayoutDashboard class="h-4 w-4" />
           </router-link>
-          <span class="flex-shrink-0 text-slate-600">/</span>
-          <span class="flex-shrink-0 text-slate-500">{{ breadcrumb.section }}</span>
-          <span class="flex-shrink-0 text-slate-600">/</span>
+          <span class="shrink-0 text-slate-600">/</span>
+          <span class="shrink-0 text-slate-500">{{ breadcrumb.section }}</span>
+          <span class="shrink-0 text-slate-600">/</span>
           <span class="truncate font-medium text-white">{{ breadcrumb.label }}</span>
         </nav>
 

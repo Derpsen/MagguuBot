@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../../tailwind.config.ts";
 
 html,
 body,
@@ -52,30 +51,35 @@ kbd,
     @apply rounded-2xl border border-line bg-surface-1 shadow-card;
   }
 
-  /* Buttons */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blurple-ring disabled:cursor-not-allowed disabled:opacity-50;
+  /* Buttons — shared base via multi-selector (v4: @apply only works on utility classes) */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blurple-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-blurple text-white hover:bg-blurple-hover active:translate-y-px;
+    @apply bg-blurple text-white hover:bg-blurple-hover active:translate-y-px;
   }
   .btn-secondary {
-    @apply btn border border-line-strong bg-surface-2 text-slate-100 hover:bg-surface-3;
+    @apply border border-line-strong bg-surface-2 text-slate-100 hover:bg-surface-3;
   }
   .btn-ghost {
-    @apply btn text-slate-300 hover:bg-surface-2 hover:text-white;
+    @apply text-slate-300 hover:bg-surface-2 hover:text-white;
   }
   .btn-danger {
-    @apply btn bg-red-600/90 text-white hover:bg-red-600 active:translate-y-px;
+    @apply bg-red-600/90 text-white hover:bg-red-600 active:translate-y-px;
   }
   .btn-success {
-    @apply btn bg-emerald-600/90 text-white hover:bg-emerald-600 active:translate-y-px;
+    @apply bg-emerald-600/90 text-white hover:bg-emerald-600 active:translate-y-px;
   }
   .btn-sm {
     @apply gap-1.5 px-2.5 py-1.5 text-xs;
   }
   .btn-icon {
-    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-surface-2 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blurple-ring;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-surface-2 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blurple-ring;
   }
 
   /* Nav items (Vben-style) */
@@ -100,7 +104,7 @@ kbd,
 
   /* Stats */
   .stat-card {
-    @apply card flex flex-col gap-1 hover:border-line-strong transition-colors;
+    @apply rounded-2xl border border-line bg-surface-1 p-5 shadow-card flex flex-col gap-1 hover:border-line-strong transition-colors;
   }
   .stat-number {
     @apply text-3xl font-semibold tracking-tight text-white;
@@ -111,27 +115,32 @@ kbd,
 
   /* Inputs */
   .input {
-    @apply w-full rounded-lg border border-line-strong bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-blurple focus:outline-none focus:ring-2 focus:ring-blurple-ring;
+    @apply w-full rounded-lg border border-line-strong bg-surface-2 px-3 py-2 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-blurple focus:outline-hidden focus:ring-2 focus:ring-blurple-ring;
   }
 
-  /* Badges */
-  .badge {
+  /* Badges — shared base via multi-selector */
+  .badge,
+  .badge-success,
+  .badge-warn,
+  .badge-danger,
+  .badge-info,
+  .badge-muted {
     @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
   }
   .badge-success {
-    @apply badge bg-emerald-500/15 text-emerald-400;
+    @apply bg-emerald-500/15 text-emerald-400;
   }
   .badge-warn {
-    @apply badge bg-amber-500/15 text-amber-400;
+    @apply bg-amber-500/15 text-amber-400;
   }
   .badge-danger {
-    @apply badge bg-red-500/15 text-red-400;
+    @apply bg-red-500/15 text-red-400;
   }
   .badge-info {
-    @apply badge bg-blurple-soft text-blurple;
+    @apply bg-blurple-soft text-blurple;
   }
   .badge-muted {
-    @apply badge bg-slate-500/15 text-slate-400;
+    @apply bg-slate-500/15 text-slate-400;
   }
 
   /* Skeleton loader */
@@ -163,5 +172,5 @@ kbd,
 
 /* Kbd */
 kbd {
-  @apply inline-flex h-5 items-center rounded border border-line-strong bg-surface-2 px-1.5 text-[10px] font-medium text-slate-400;
+  @apply inline-flex h-5 items-center rounded-sm border border-line-strong bg-surface-2 px-1.5 text-[10px] font-medium text-slate-400;
 }

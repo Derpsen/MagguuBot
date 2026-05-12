@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { Plus, Trash2, Edit3 } from 'lucide-vue-next';
 import { api } from '../lib/api';
@@ -85,7 +85,7 @@ onMounted(load);
             v-model="formName"
             :disabled="!!editing.createdBy"
             maxlength="30"
-            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none disabled:opacity-50"
+            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden disabled:opacity-50"
           />
         </div>
         <div>
@@ -94,7 +94,7 @@ onMounted(load);
             v-model="formResponse"
             rows="5"
             maxlength="2000"
-            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-none"
+            class="mt-1 w-full rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
           ></textarea>
         </div>
         <div class="flex gap-2">
@@ -114,7 +114,7 @@ onMounted(load);
         <div v-for="t in rows" :key="t.name" class="table-row">
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <code class="rounded bg-slate-800 px-2 py-0.5 text-sm font-semibold text-white">{{ t.name }}</code>
+              <code class="rounded-sm bg-slate-800 px-2 py-0.5 text-sm font-semibold text-white">{{ t.name }}</code>
               <span class="text-xs text-slate-500">{{ t.uses }} uses</span>
             </div>
             <div class="mt-1 truncate text-sm text-slate-300">{{ t.response }}</div>

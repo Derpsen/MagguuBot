@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 
@@ -33,10 +33,10 @@ const STYLES = {
         <div
           v-for="t in toasts"
           :key="t.id"
-          class="pointer-events-auto flex items-start gap-3 rounded-xl border bg-surface-1 p-3.5 shadow-pop backdrop-blur"
+          class="pointer-events-auto flex items-start gap-3 rounded-xl border bg-surface-1 p-3.5 shadow-pop backdrop-blur-sm"
           :class="STYLES[t.kind]"
         >
-          <component :is="ICONS[t.kind]" class="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <component :is="ICONS[t.kind]" class="mt-0.5 h-4 w-4 shrink-0" />
           <div class="min-w-0 flex-1">
             <div class="text-sm font-semibold">{{ t.title }}</div>
             <div v-if="t.description" class="mt-0.5 text-xs opacity-80">{{ t.description }}</div>

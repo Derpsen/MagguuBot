@@ -2,7 +2,6 @@ import {
   AttachmentBuilder,
   EmbedBuilder,
   type GuildMember,
-  type TextChannel,
 } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { renderWelcomeCard } from '../cards/welcome-card.js';
@@ -130,7 +129,7 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
             isReturning: history.isReturning,
             accountAgeDays,
           });
-          await (channel as TextChannel).send({
+          await channel.send({
             content: history.isReturning
               ? `↩️ ${member.toString()} ist zurück.`
               : `🎉 ${member.toString()} hat den Server betreten!`,
@@ -166,7 +165,7 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
               { name: 'Join count', value: `${history.joinCount}`, inline: true },
             )
             .setTimestamp(new Date());
-          await (channel as TextChannel).send({ embeds: [auditEmbed] });
+          await channel.send({ embeds: [auditEmbed] });
         }
       }
 
@@ -175,12 +174,12 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
         if (modLogId) {
           const channel = await member.guild.channels.fetch(modLogId).catch(() => null);
           if (channel && channel.isSendable()) {
-            await (channel as TextChannel).send({
+            await channel.send({
               embeds: [
                 new EmbedBuilder()
                   .setColor(Colors.warn)
                   .setAuthor({
-                    name: 'Junges Account joined',
+                    name: 'Junger Account joined',
                     iconURL: member.user.displayAvatarURL(),
                   })
                   .setDescription(
