@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
+import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
@@ -164,9 +164,9 @@ export function buildApp(): Hono {
 
 function serveStatic(pathname: string): Response {
   const cleaned = pathname.replace(/^\/+/, '');
-  const candidate = cleaned ? join(FRONTEND_DIR, cleaned) : '';
+  const candidate = cleaned ? resolve(FRONTEND_DIR, cleaned) : '';
 
-  if (candidate && candidate.startsWith(FRONTEND_DIR) && existsSync(candidate)) {
+  if (candidate && isInsideFrontendDir(candidate) && existsSync(candidate)) {
     try {
       if (statSync(candidate).isFile()) return fileResponse(candidate);
     } catch {
@@ -177,6 +177,11 @@ function serveStatic(pathname: string): Response {
   const indexHtml = join(FRONTEND_DIR, 'index.html');
   if (existsSync(indexHtml)) return fileResponse(indexHtml);
   return new Response('not found', { status: 404 });
+}
+
+function isInsideFrontendDir(candidate: string): boolean {
+  const rel = relative(FRONTEND_DIR, candidate);
+  return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
 }
 
 function fileResponse(filePath: string): Response {

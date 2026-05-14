@@ -1,10 +1,13 @@
-import { serve } from '@hono/node-server';
+import { serve, type ServerType } from '@hono/node-server';
 import { config } from './config.js';
-import './db/client.js';
-import { startDiscord } from './discord/client.js';
+import { sqliteHandle } from './db/client.js';
+import { getClient, startDiscord } from './discord/client.js';
 import { startScheduler, stopScheduler } from './discord/scheduler.js';
 import { buildApp } from './server/app.js';
 import { logger } from './utils/logger.js';
+
+let server: ServerType | null = null;
+let shuttingDown = false;
 
 async function main(): Promise<void> {
   logger.info({ env: config.NODE_ENV }, 'magguu-bot starting');
@@ -24,18 +27,38 @@ async function main(): Promise<void> {
   startScheduler();
 
   const app = buildApp();
-  serve({ fetch: app.fetch, hostname: config.HTTP_HOST, port: config.HTTP_PORT }, (info) => {
+  server = serve({ fetch: app.fetch, hostname: config.HTTP_HOST, port: config.HTTP_PORT }, (info) => {
     logger.info({ host: info.address, port: info.port }, 'http server listening');
   });
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', () => void shutdown());
+  process.on('SIGINT', () => void shutdown());
 }
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   logger.info('shutting down');
   stopScheduler();
+  await closeHttpServer();
+  try {
+    getClient().destroy();
+  } catch {
+    /* discord may not have finished startup */
+  }
+  sqliteHandle.close();
   process.exit(0);
+}
+
+function closeHttpServer(): Promise<void> {
+  if (!server) return Promise.resolve();
+  return new Promise((resolve) => {
+    server?.close((err) => {
+      if (err) logger.warn({ err }, 'http server close failed');
+      resolve();
+    });
+  });
 }
 
 main().catch((err) => {

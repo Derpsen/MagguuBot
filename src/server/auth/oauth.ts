@@ -4,6 +4,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
+import { sanitizePayload } from '../webhook-payload-redactor.js';
 import { isAdmin } from './middleware.js';
 import { clearSessionCookie, setSessionCookie } from './session.js';
 
@@ -127,7 +128,7 @@ authRouter.get('/callback', async (c) => {
 
   if (!tokenRes.ok) {
     const body = await tokenRes.text();
-    logger.error({ status: tokenRes.status, body }, 'oauth token exchange failed');
+    logger.error({ status: tokenRes.status, body: redactOAuthErrorBody(body) }, 'oauth token exchange failed');
     return c.text('Token exchange failed.', 502);
   }
 
@@ -175,3 +176,14 @@ authRouter.get('/logout', (c) => {
   clearSessionCookie(c);
   return c.redirect('/login');
 });
+
+function redactOAuthErrorBody(raw: string): string {
+  const trimmed = raw.slice(0, 2_000);
+  try {
+    return JSON.stringify(sanitizePayload(JSON.parse(trimmed))).slice(0, 1_000);
+  } catch {
+    return trimmed
+      .replace(/(access_token|refresh_token|client_secret|token|secret)=([^&\s]+)/gi, '$1=[redacted]')
+      .slice(0, 1_000);
+  }
+}

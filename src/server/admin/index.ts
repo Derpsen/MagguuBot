@@ -415,6 +415,8 @@ const CHANNEL_KEYS: { key: ChannelKey; label: string; description: string }[] = 
   { key: 'blueTracker', label: 'Blue Tracker', description: 'WoW Blue-Tracker RSS' },
   { key: 'addonUpdates', label: 'Addon Updates', description: 'GitHub Addon-Repo Feed' },
   { key: 'faq', label: 'FAQ', description: 'FAQ Channel' },
+  { key: 'suggestions', label: 'Suggestions', description: 'Community Suggestions' },
+  { key: 'ticketLogs', label: 'Ticket Logs', description: 'Ticket Close/Transcript Logs' },
 ];
 
 adminRouter.get('/channels', async (c) => {

@@ -135,39 +135,51 @@ export const reminders = sqliteTable('reminders', {
     .$defaultFn(() => new Date()),
 });
 
-export const userXp = sqliteTable('user_xp', {
-  guildId: text('guild_id').notNull(),
-  userId: text('user_id').notNull(),
-  xp: integer('xp').notNull().default(0),
-  level: integer('level').notNull().default(0),
-  messagesCounted: integer('messages_counted').notNull().default(0),
-  lastGrantedAt: integer('last_granted_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const userXp = sqliteTable(
+  'user_xp',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    xp: integer('xp').notNull().default(0),
+    level: integer('level').notNull().default(0),
+    messagesCounted: integer('messages_counted').notNull().default(0),
+    lastGrantedAt: integer('last_granted_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.userId] }) }),
+);
 
-export const rolePanels = sqliteTable('role_panels', {
-  guildId: text('guild_id').notNull(),
-  channelId: text('channel_id').notNull(),
-  messageId: text('message_id').notNull(),
-  title: text('title').notNull(),
-  description: text('description'),
-  roles: text('roles', { mode: 'json' }).notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const rolePanels = sqliteTable(
+  'role_panels',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    roles: text('roles', { mode: 'json' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.messageId] }) }),
+);
 
-export const starboardPosts = sqliteTable('starboard_posts', {
-  guildId: text('guild_id').notNull(),
-  originalMessageId: text('original_message_id').notNull(),
-  originalChannelId: text('original_channel_id').notNull(),
-  starboardMessageId: text('starboard_message_id').notNull(),
-  starCount: integer('star_count').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const starboardPosts = sqliteTable(
+  'starboard_posts',
+  {
+    guildId: text('guild_id').notNull(),
+    originalMessageId: text('original_message_id').notNull(),
+    originalChannelId: text('original_channel_id').notNull(),
+    starboardMessageId: text('starboard_message_id').notNull(),
+    starCount: integer('star_count').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.originalMessageId] }) }),
+);
 
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
@@ -186,30 +198,38 @@ export interface RolePanelEntry {
   emoji?: string;
 }
 
-export const botSettings = sqliteTable('bot_settings', {
-  guildId: text('guild_id').notNull(),
-  key: text('key').notNull(),
-  value: text('value').notNull(),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const botSettings = sqliteTable(
+  'bot_settings',
+  {
+    guildId: text('guild_id').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.key] }) }),
+);
 
 export type BotSetting = typeof botSettings.$inferSelect;
 
-export const customCommands = sqliteTable('custom_commands', {
-  guildId: text('guild_id').notNull(),
-  name: text('name').notNull(),
-  response: text('response').notNull(),
-  createdBy: text('created_by').notNull(),
-  uses: integer('uses').notNull().default(0),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const customCommands = sqliteTable(
+  'custom_commands',
+  {
+    guildId: text('guild_id').notNull(),
+    name: text('name').notNull(),
+    response: text('response').notNull(),
+    createdBy: text('created_by').notNull(),
+    uses: integer('uses').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.name] }) }),
+);
 
 export const autoresponders = sqliteTable('autoresponders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -264,14 +284,18 @@ export const tickets = sqliteTable('tickets', {
     .$defaultFn(() => new Date()),
 });
 
-export const reputation = sqliteTable('reputation', {
-  guildId: text('guild_id').notNull(),
-  userId: text('user_id').notNull(),
-  rep: integer('rep').notNull().default(0),
-  updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const reputation = sqliteTable(
+  'reputation',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    rep: integer('rep').notNull().default(0),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.userId] }) }),
+);
 
 export const reputationLog = sqliteTable('reputation_log', {
   id: integer('id').primaryKey({ autoIncrement: true }),

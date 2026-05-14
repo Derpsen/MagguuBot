@@ -118,14 +118,14 @@ function isActive(item: NavItem): boolean {
       class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-surface-1 transition-all duration-200"
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-        collapsed ? 'w-16' : 'w-60',
+        mobileOpen ? 'w-60' : collapsed ? 'w-16' : 'w-60',
       ]"
     >
       <div class="flex h-[52px] shrink-0 items-center gap-3 border-b border-line px-4">
         <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blurple font-bold text-white">
           M
         </div>
-        <div v-if="!collapsed" class="min-w-0 flex-1">
+        <div v-if="!collapsed || mobileOpen" class="min-w-0 flex-1">
           <div class="truncate text-sm font-semibold text-white">MagguuBot</div>
           <div class="text-[11px] text-slate-500">Admin Dashboard</div>
         </div>
@@ -140,7 +140,7 @@ function isActive(item: NavItem): boolean {
 
       <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
         <div v-for="section in sections" :key="section.title">
-          <div v-if="!collapsed" class="nav-section-label">
+          <div v-if="!collapsed || mobileOpen" class="nav-section-label">
             {{ section.title }}
           </div>
           <div v-else class="mx-3 my-2 h-px bg-line" />
@@ -151,19 +151,20 @@ function isActive(item: NavItem): boolean {
               :key="item.name"
               :to="item.to"
               class="nav-item"
-              :class="[isActive(item) ? 'nav-item-active' : '', collapsed ? 'justify-center px-0' : '']"
-              :title="collapsed ? item.label : undefined"
+              :class="[isActive(item) ? 'nav-item-active' : '', collapsed && !mobileOpen ? 'justify-center px-0' : '']"
+              :title="collapsed && !mobileOpen ? item.label : undefined"
+              @click="mobileOpen = false"
             >
               <component :is="item.icon" class="h-[18px] w-[18px] shrink-0" />
-              <span v-if="!collapsed" class="truncate">{{ item.label }}</span>
+              <span v-if="!collapsed || mobileOpen" class="truncate">{{ item.label }}</span>
             </router-link>
           </div>
         </div>
       </nav>
 
       <div class="shrink-0 border-t border-line p-3">
-        <div class="flex items-center gap-2" :class="collapsed ? 'flex-col' : ''">
-          <div class="flex min-w-0 items-center gap-2" :class="collapsed ? '' : 'flex-1'">
+        <div class="flex items-center gap-2" :class="collapsed && !mobileOpen ? 'flex-col' : ''">
+          <div class="flex min-w-0 items-center gap-2" :class="collapsed && !mobileOpen ? '' : 'flex-1'">
             <img
               v-if="user.avatarUrl"
               :src="user.avatarUrl"
@@ -176,7 +177,7 @@ function isActive(item: NavItem): boolean {
             >
               {{ userInitial }}
             </div>
-            <div v-if="!collapsed" class="min-w-0">
+            <div v-if="!collapsed || mobileOpen" class="min-w-0">
               <div class="truncate text-xs font-medium text-slate-100">{{ displayName }}</div>
               <div class="text-[10px] uppercase tracking-wider text-slate-500">Admin</div>
             </div>

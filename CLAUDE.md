@@ -8,7 +8,7 @@ Install on Unraid via the community-template XML (no docker-compose). Image is p
 
 ## Stack
 
-Node 24 · TypeScript 5.7 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle 0.36 · Zod · Pino
+Node 24 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle 0.45 · Zod · Pino
 
 No ESLint/Prettier. No test framework yet.
 
@@ -30,9 +30,9 @@ Discord user → button → Seerr approve/decline → Seerr REST API
 
 ```bash
 npm run dev          # tsx watch
-npm run build        # tsc → dist/
+npm run build        # Vite frontend → dist-frontend/, then tsc → dist/
 npm run start        # node dist/index.js
-npm run typecheck    # tsc --noEmit
+npm run typecheck    # backend tsc --noEmit + frontend vue-tsc --noEmit
 npm run db:generate  # drizzle-kit
 npm run db:push      # drizzle-kit sync
 ```
@@ -40,7 +40,7 @@ npm run db:push      # drizzle-kit sync
 ## Verification after changes
 
 1. `npm run typecheck` — strict TS, no errors, no `any`
-2. `npm run build` — must succeed, outputs `dist/`
+2. `npm run build` — must succeed, outputs `dist/` and `dist-frontend/`
 3. Docker changes: locally buildable with `docker build .`; CI publishes to GHCR
 
 ## Critical gotchas
@@ -69,7 +69,7 @@ npm run db:push      # drizzle-kit sync
 
 **SABnzbd does NOT emit native webhooks** — use the bash script in `scripts/sabnzbd-webhook.sh` as a post-processing script in SAB. It POSTs to `/webhook/sabnzbd` with a typed Zod payload.
 
-**No cache-control/rate-limit layer** — webhooks are internal (Docker network). Never expose port 3000 publicly without mTLS + rate-limiting + IP allowlist.
+**Rate limit is intentionally small and in-process** — webhooks are expected to be internal (Docker network). Never expose port 3000 publicly without mTLS + stronger edge rate-limiting + IP allowlist.
 
 ## Conventions
 

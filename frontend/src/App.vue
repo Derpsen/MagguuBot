@@ -1,19 +1,10 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { useSession } from './composables/useSession';
 import AppShell from './components/AppShell.vue';
 
 const route = useRoute();
-const router = useRouter();
 const session = useSession();
-
-onMounted(async () => {
-  await session.refresh();
-  if (!session.user.value && route.name !== 'login') {
-    router.replace({ name: 'login', query: { next: route.fullPath } });
-  }
-});
 </script>
 
 <template>

@@ -8,7 +8,7 @@ const REDACTED = '[redacted]';
 const MAX_DEPTH = 12;
 const MAX_NODES = 5_000;
 
-const SENSITIVE_KEY = /(?:^|[._-])(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|password|passwd|authorization|auth|bearer|cookie|session|private[_-]?key|webhook[_-]?secret|x[_-]?api[_-]?key|x[_-]?magguu[_-]?token)$/i;
+const SENSITIVE_KEY = /(?:^|[._-])(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|client[_-]?secret|secret|password|passwd|authorization|auth|bearer|cookie|session|private[_-]?key|webhook[_-]?secret|x[_-]?api[_-]?key|x[_-]?magguu[_-]?token)$/i;
 
 interface Counter {
   n: number;

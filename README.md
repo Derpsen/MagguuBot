@@ -18,7 +18,7 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
 
 ## Stack
 
-Node 24 · TypeScript 5.7 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
+Node 24 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
 
 ## Install on Unraid (via the custom template)
 
@@ -163,7 +163,7 @@ unraid/
 - Bot token never logged; config validation fails loud on missing required vars
 - `.env` / `.env.*` / `data/` / `dist/` are gitignored — **never commit secrets**
 - Don't expose port 3000 publicly — stay on the internal Docker network, or wrap with Cloudflared + mTLS
-- Image is multi-stage (build chain dropped); runtime runs as `node` user, not root
+- Image is multi-stage (build chain dropped) and exposes `/healthz` for container health checks
 - Webhook payloads are validated with Zod before being touched
 
 ## Publishing the image (CI)
