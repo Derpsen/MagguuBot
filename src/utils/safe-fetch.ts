@@ -2,8 +2,13 @@ import { lookup } from 'node:dns/promises';
 
 function isPrivateIp(ip: string): boolean {
   if (!ip) return true;
-  if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return true;
-  const lower = ip.toLowerCase();
+  let lower = ip.toLowerCase();
+  // URL.hostname wraps IPv6 literals in brackets ("[::1]"); strip them so the
+  // literal comparisons below match, otherwise every bracketed IPv6 host slips
+  // through to `return false` and bypasses the guard.
+  if (lower.startsWith('[') && lower.endsWith(']')) lower = lower.slice(1, -1);
+  // 100.64.0.0/10 is CGNAT/RFC6598 — also used by Tailscale, common on homelabs.
+  if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|172\.(1[6-9]|2\d|3[01])\.)/.test(lower)) return true;
   if (lower === '::1' || lower === '::') return true;
   if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
   if (lower.startsWith('fe8') || lower.startsWith('fe9') || lower.startsWith('fea') || lower.startsWith('feb')) return true;

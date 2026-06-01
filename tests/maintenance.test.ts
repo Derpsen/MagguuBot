@@ -31,8 +31,14 @@ test('isPrivateIp recognizes local and private address ranges', () => {
   assert.equal(isPrivateIp('192.168.178.2'), true);
   assert.equal(isPrivateIp('::1'), true);
   assert.equal(isPrivateIp('::ffff:192.168.1.50'), true);
+  assert.equal(isPrivateIp('100.64.0.1'), true);
+  // Bracketed IPv6 literals as returned by URL.hostname must not bypass the guard.
+  assert.equal(isPrivateIp('[::1]'), true);
+  assert.equal(isPrivateIp('[fd00::1]'), true);
+  assert.equal(isPrivateIp('[fe80::abcd]'), true);
   assert.equal(isPrivateIp('8.8.8.8'), false);
   assert.equal(isPrivateIp('2606:4700:4700::1111'), false);
+  assert.equal(isPrivateIp('[2606:4700:4700::1111]'), false);
 });
 
 test('embed helpers keep output inside Discord-friendly bounds', () => {
