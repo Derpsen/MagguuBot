@@ -123,7 +123,6 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
       source: 'tautulli',
       eventType: 'recently_added',
       payload: body,
-      thread: { name: `💬 ${body.title ?? 'Neu'}${body.year ? ` (${body.year})` : ''}`, archiveMinutes: 4320 },
     });
     return;
   }

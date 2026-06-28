@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { enforceEmbedTotalSize, formatBytes, truncate } from '../src/embeds/colors.ts';
+import { buildReleaseEmbed, cleanAddonReleaseNotes } from '../src/embeds/github.ts';
 import { sanitizePayload } from '../src/server/webhook-payload-redactor.ts';
+import { isAddonRepository, parseAddonRepositories } from '../src/utils/github-routing.ts';
+import { createRecentKeyCache } from '../src/utils/recent-key-cache.ts';
 import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 
 test('sanitizePayload redacts sensitive nested fields', () => {
@@ -69,4 +72,45 @@ test('embed helpers keep output inside Discord-friendly bounds', () => {
     embed.data.fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
 
   assert.equal(total <= 20, true);
+});
+
+test('addon repositories default to MagguuUI and only match exact names', () => {
+  const repositories = parseAddonRepositories(undefined);
+  assert.equal(isAddonRepository('Derpsen/MagguuUI', repositories), true);
+  assert.equal(isAddonRepository('derpsen/magguuui', repositories), true);
+  assert.equal(isAddonRepository('Derpsen/MagguuUI-Website', repositories), false);
+});
+
+test('recent key cache suppresses duplicate events and accepts them after expiry', () => {
+  let now = 1_000;
+  const cache = createRecentKeyCache({
+    maxEntries: 2,
+    ttlMs: 100,
+    now: () => now,
+  });
+
+  assert.equal(cache.remember('Derpsen/MagguuUI\u0000v12.0.24-fix'), true);
+  assert.equal(cache.remember('Derpsen/MagguuUI\u0000v12.0.24-fix'), false);
+
+  now = 1_101;
+  assert.equal(cache.remember('Derpsen/MagguuUI\u0000v12.0.24-fix'), true);
+});
+
+test('addon release embeds remove duplicate changelog headers and show update links', () => {
+  const body = '# Changelog\n\nAll notable changes to the latest MagguuUI release are documented here.\n\n## v12.0.24 (2026-06-24)\n\n### Fixed\n\n- Installer works.';
+  assert.equal(cleanAddonReleaseNotes(body), '### Fixed\n\n- Installer works.');
+
+  const embed = buildReleaseEmbed({
+    repo: { full_name: 'Derpsen/MagguuUI', html_url: 'https://github.com/Derpsen/MagguuUI' },
+    tag: 'v12.0.24-fix',
+    author: 'Derpsen',
+    body,
+    url: 'https://github.com/Derpsen/MagguuUI/releases/tag/v12.0.24-fix',
+    prerelease: false,
+    addonRelease: true,
+  }).toJSON();
+
+  assert.match(embed.title ?? '', /v12\.0\.24-fix ist verfügbar/);
+  assert.doesNotMatch(embed.description ?? '', /# Changelog/);
+  assert.match(embed.fields?.find((field) => field.name === 'Downloads')?.value ?? '', /CurseForge/);
 });

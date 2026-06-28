@@ -8,7 +8,7 @@ Install on Unraid via the community-template XML (no docker-compose). Image is p
 
 ## Stack
 
-Node 24 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle 0.45 · Zod · Pino
+Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 12 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
 
 No ESLint/Prettier. No test framework yet.
 
@@ -101,7 +101,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | Member join/leave + role changes | `auditLog` |
 | Moderation actions (warn/timeout/kick/ban/purge) | `modLog` |
 | GitHub events (default) | `github` |
-| GitHub events for repos listed in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
+| Stable/prerelease announcements for repos in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
 | WoW Blue-Tracker RSS | `blueTracker` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` |
@@ -117,7 +117,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 
 `/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), `issues` (`opened`/`closed`/`reopened`), and `ping`. Anything else is logged + ignored.
 
-Per-repo routing: `ADDON_REPO_FULL_NAMES` (comma-separated `owner/repo`) routes those repos to `addonUpdates`; everything else stays in `github`.
+Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only release announcements for those repos go to `addonUpdates`; pushes, workflows, pull requests, and issues stay in the technical `github` channel. Release announcements are deduplicated by repository and tag because GitHub can deliver both `published` and `released` for one release. Bot posts must not create discussion threads automatically.
 
 ## Discord intents
 

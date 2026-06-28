@@ -1,4 +1,4 @@
-import { ChannelType, type ActionRowBuilder, type ButtonBuilder, type EmbedBuilder, type Message } from 'discord.js';
+import { type ActionRowBuilder, type ButtonBuilder, type EmbedBuilder, type Message } from 'discord.js';
 import { config } from '../config.js';
 import { getClient } from '../discord/client.js';
 import { db } from '../db/client.js';
@@ -15,11 +15,10 @@ interface PostArgs {
   eventType: string;
   payload: unknown;
   pingRoles?: string[];
-  thread?: { name: string; archiveMinutes?: 60 | 1440 | 4320 | 10080 };
 }
 
 export async function postEmbed(args: PostArgs): Promise<Message | null> {
-  const { channelId, embed, components, source, eventType, payload, pingRoles, thread } = args;
+  const { channelId, embed, components, source, eventType, payload, pingRoles } = args;
   const safePayload = sanitizePayload(payload) as object;
 
   if (!channelId) {
@@ -61,18 +60,6 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
       messageId: message.id,
       status: 'posted',
     }).run();
-
-    if (thread && channel.type === ChannelType.GuildText) {
-      try {
-        await message.startThread({
-          name: thread.name.slice(0, 100),
-          autoArchiveDuration: thread.archiveMinutes ?? 1440,
-          reason: `auto-thread for ${source}/${eventType}`,
-        });
-      } catch (err) {
-        logger.debug({ err, source, eventType }, 'auto-thread create failed (non-fatal)');
-      }
-    }
 
     return message;
   } catch (err) {

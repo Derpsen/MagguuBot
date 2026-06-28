@@ -13,6 +13,7 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
 - **Seerr approve / decline buttons** — straight from Discord (Administrator only)
+- **MagguuUI release feed** — user-friendly addon releases go to `#addon-updates`; technical pushes and workflows stay in `#github`
 - **Activity log** — every posted embed is written to SQLite for audit/debug
 - **One container** — Node 24 + TS + Hono + discord.js + SQLite (WAL)
 
@@ -49,15 +50,14 @@ In Unraid:
 3. Fill in the required fields:
    - `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID`
    - `WEBHOOK_SECRET` — generate with `openssl rand -hex 32`
-   - Leave channel IDs empty for now
+   - `ADDON_REPO_FULL_NAMES` already defaults to `Derpsen/MagguuUI`
 4. *Apply* — the image pulls from `ghcr.io/derpsen/magguu-bot:latest` and the container starts.
 
 ### 3. First boot
 
 - Check the logs: `docker logs -f magguu-bot`
 - In Discord, run `/setup-server` (as server owner / admin) — creates categories, channels, roles, welcome banners
-- Copy the channel IDs (right-click each channel → *Copy Channel ID*) and paste into the template env vars: `DISCORD_CHANNEL_GRABS`, `DISCORD_CHANNEL_IMPORTS`, etc.
-- Apply → the container restarts
+- Channel IDs are discovered and stored in SQLite automatically; environment overrides are only needed for unusual custom routing
 
 ### 4. Wire up the services
 
@@ -82,6 +82,12 @@ SAB does not emit native webhooks — use the post-processing script:
 4. In SAB: Config → Categories → set **Script** = `sabnzbd-webhook.sh` on the categories you want notified (or globally on the default category)
 
 Events: `complete` → `imports` channel · `failed` → `failures` channel.
+
+### 6. GitHub and MagguuUI releases
+
+Set `GITHUB_WEBHOOK_SECRET` in the container, then add a GitHub webhook that points to `<your dashboard URL>/webhook/github` with the same secret and JSON content type. Subscribe to releases plus whichever technical events you want in `#github`.
+
+`Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically.
 
 ## Development
 

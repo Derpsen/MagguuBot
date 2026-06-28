@@ -97,9 +97,30 @@ export interface ReleaseEmbedInput {
   body?: string;
   url: string;
   prerelease: boolean;
+  addonRelease?: boolean;
 }
 
 export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
+  if (i.addonRelease) {
+    const notes = cleanAddonReleaseNotes(i.body);
+    return new EmbedBuilder()
+      .setColor(i.prerelease ? Colors.warn : Colors.brand)
+      .setAuthor({ name: 'MagguuUI', url: 'https://ui.magguu.xyz' })
+      .setTitle(`🎨  ${i.tag} ist verfügbar${i.prerelease ? '  ·  Vorabversion' : ''}`)
+      .setURL(i.url)
+      .setDescription(truncate(notes || '_Für dieses Update gibt es noch keine Beschreibung._', 3500))
+      .addFields(
+        { name: 'WoW-Version', value: 'Retail 12.0.7', inline: true },
+        { name: 'Installation', value: 'Addon-Manager aktualisieren oder beide Ordner aus der ZIP ersetzen.', inline: true },
+        {
+          name: 'Downloads',
+          value: `[GitHub](${i.url}) · [CurseForge](https://www.curseforge.com/wow/addons/magguuui) · [Wago](https://addons.wago.io/addons/5NR84pK3) · [WoWInterface](https://www.wowinterface.com/downloads/info27061)`,
+        },
+      )
+      .setFooter({ text: `MagguuUI  ·  ${i.prerelease ? 'Vorabversion' : 'stabiles Update'}` })
+      .setTimestamp(new Date());
+  }
+
   return new EmbedBuilder()
     .setColor(i.prerelease ? Colors.warn : Colors.success)
     .setAuthor({ name: i.repo.full_name, url: i.repo.html_url })
@@ -109,6 +130,21 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
     .addFields({ name: 'By', value: i.author, inline: true }, { name: 'Tag', value: `\`${i.tag}\``, inline: true })
     .setFooter({ text: 'GitHub  ·  release' })
     .setTimestamp(new Date());
+}
+
+export function cleanAddonReleaseNotes(body: string | undefined): string {
+  if (!body) return '';
+  return body
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed !== '# Changelog'
+        && trimmed !== 'All notable changes to the latest MagguuUI release are documented here.'
+        && !/^## v?\d+\.\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?(?:\s+\(\d{4}-\d{2}-\d{2}\))?$/.test(trimmed)
+        && trimmed !== '---';
+    })
+    .join('\n')
+    .trim();
 }
 
 export interface PullRequestEmbedInput {

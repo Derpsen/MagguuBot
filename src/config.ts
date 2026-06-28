@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_ADDON_REPOSITORIES } from './utils/github-routing.js';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
@@ -27,7 +28,7 @@ const schema = z.object({
   DISCORD_CHANNEL_FAQ: z.string().optional(),
 
   WOW_BLUE_TRACKER_URL: z.string().url().optional(),
-  ADDON_REPO_FULL_NAMES: z.string().optional(),
+  ADDON_REPO_FULL_NAMES: z.string().default(DEFAULT_ADDON_REPOSITORIES),
 
   OPENAI_API_KEY: z.string().optional(),
 

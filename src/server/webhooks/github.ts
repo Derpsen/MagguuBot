@@ -10,6 +10,8 @@ import {
   buildWorkflowEmbed,
 } from '../../embeds/github.js';
 import { logger } from '../../utils/logger.js';
+import { isAddonRepository, parseAddonRepositories } from '../../utils/github-routing.js';
+import { createRecentKeyCache } from '../../utils/recent-key-cache.js';
 import { postEmbed } from '../discord-poster.js';
 
 interface PushPayload {
@@ -100,23 +102,17 @@ const MAX_GITHUB_BODY_BYTES = 1 * 1024 * 1024;
 // payload is rejected as a duplicate. Bounded LRU keeps memory predictable.
 const SEEN_DELIVERIES_MAX = 2_000;
 const SEEN_DELIVERIES_TTL_MS = 60 * 60 * 1000;
-const seenDeliveries = new Map<string, number>();
+const seenDeliveries = createRecentKeyCache({
+  maxEntries: SEEN_DELIVERIES_MAX,
+  ttlMs: SEEN_DELIVERIES_TTL_MS,
+});
 
-function rememberDelivery(id: string): boolean {
-  const now = Date.now();
-  // Lazy expiry: evict entries older than TTL on each call.
-  for (const [key, at] of seenDeliveries) {
-    if (now - at > SEEN_DELIVERIES_TTL_MS) seenDeliveries.delete(key);
-    else break; // Map preserves insertion order
-  }
-  if (seenDeliveries.has(id)) return false;
-  if (seenDeliveries.size >= SEEN_DELIVERIES_MAX) {
-    const oldest = seenDeliveries.keys().next().value;
-    if (oldest !== undefined) seenDeliveries.delete(oldest);
-  }
-  seenDeliveries.set(id, now);
-  return true;
-}
+// GitHub can send both `published` and `released` with different delivery IDs
+// for one release. Repository and tag identify the user-visible announcement.
+const seenReleases = createRecentKeyCache({
+  maxEntries: 1_000,
+  ttlMs: 24 * 60 * 60 * 1000,
+});
 
 export const githubWebhook = new Hono().post('/', async (c) => {
   const secret = config.GITHUB_WEBHOOK_SECRET;
@@ -153,7 +149,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     return c.json({ ok: false, error: 'invalid signature' }, 401);
   }
 
-  if (deliveryId && !rememberDelivery(deliveryId)) {
+  if (deliveryId && !seenDeliveries.remember(deliveryId)) {
     logger.warn({ deliveryId, eventName }, 'github webhook replay rejected');
     return c.json({ ok: true, skipped: 'duplicate delivery' });
   }
@@ -165,9 +161,9 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     return c.json({ ok: false, error: 'invalid JSON' }, 400);
   }
 
-  const addonRepos = parseAddonRepos(config.ADDON_REPO_FULL_NAMES);
-  const resolveChannel = (repo: { full_name: string } | undefined): string | undefined => {
-    if (repo && addonRepos.has(repo.full_name.toLowerCase())) {
+  const addonRepos = parseAddonRepositories(config.ADDON_REPO_FULL_NAMES);
+  const resolveReleaseChannel = (repo: { full_name: string } | undefined): string | undefined => {
+    if (isAddonRepository(repo?.full_name, addonRepos)) {
       return getChannel('addonUpdates') ?? getChannel('github');
     }
     return getChannel('github');
@@ -183,7 +179,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as PushPayload;
     if (p.commits.length === 0) return c.json({ ok: true, skipped: 'no commits' });
     await postEmbed({
-      channelId: resolveChannel(p.repository),
+      channelId: getChannel('github'),
       source: 'github',
       eventType: 'push',
       payload: p,
@@ -203,7 +199,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as WorkflowRunPayload;
     if (p.action !== 'completed' || !p.workflow_run.conclusion) return c.json({ ok: true, skipped: 'not completed' });
     await postEmbed({
-      channelId: resolveChannel(p.repository),
+      channelId: getChannel('github'),
       source: 'github',
       eventType: `workflow_run.${p.workflow_run.conclusion}`,
       payload: p,
@@ -225,8 +221,16 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   if (eventName === 'release') {
     const p = body as ReleasePayload;
     if (p.action !== 'published' && p.action !== 'released') return c.json({ ok: true, skipped: 'ignored action' });
+    const releaseIdentity = `${p.repository.full_name.trim().toLowerCase()}\u0000${p.release.tag_name.trim().toLowerCase()}`;
+    if (!seenReleases.remember(releaseIdentity)) {
+      logger.info(
+        { repo: p.repository.full_name, tag: p.release.tag_name, action: p.action },
+        'duplicate github release announcement skipped',
+      );
+      return c.json({ ok: true, skipped: 'duplicate release' });
+    }
     await postEmbed({
-      channelId: resolveChannel(p.repository),
+      channelId: resolveReleaseChannel(p.repository),
       source: 'github',
       eventType: `release.${p.action}`,
       payload: p,
@@ -238,14 +242,9 @@ export const githubWebhook = new Hono().post('/', async (c) => {
         body: p.release.body,
         url: p.release.html_url,
         prerelease: p.release.prerelease,
+        addonRelease: isAddonRepository(p.repository.full_name, addonRepos),
       }),
       pingRoles: p.release.prerelease ? [] : ['ping-github'],
-      thread: p.release.prerelease
-        ? undefined
-        : {
-            name: `💬 ${p.release.tag_name} — ${p.repository.full_name.split('/').pop() ?? p.repository.full_name}`,
-            archiveMinutes: 4320,
-          },
     });
     return c.json({ ok: true });
   }
@@ -256,7 +255,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
     await postEmbed({
-      channelId: resolveChannel(p.repository),
+      channelId: getChannel('github'),
       source: 'github',
       eventType: `pull_request.${p.action}`,
       payload: p,
@@ -280,7 +279,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
     await postEmbed({
-      channelId: resolveChannel(p.repository),
+      channelId: getChannel('github'),
       source: 'github',
       eventType: `issues.${p.action}`,
       payload: p,
@@ -301,16 +300,6 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   logger.debug({ eventName }, 'github event ignored');
   return c.json({ ok: true, skipped: eventName });
 });
-
-function parseAddonRepos(raw: string | undefined): Set<string> {
-  if (!raw) return new Set();
-  return new Set(
-    raw
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean),
-  );
-}
 
 function verifySignature(rawBody: string, signatureHeader: string, secret: string): boolean {
   const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');

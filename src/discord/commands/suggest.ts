@@ -1,4 +1,4 @@
-import { ChannelType, MessageFlags, SlashCommandBuilder, type TextChannel } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder, type TextChannel } from 'discord.js';
 import { db } from '../../db/client.js';
 import { suggestions } from '../../db/schema.js';
 import { buildSuggestionButtons, buildSuggestionEmbed } from '../../embeds/suggestion.js';
@@ -79,18 +79,6 @@ export const suggestCommand: SlashCommand = {
       const message = await channel.send({ embeds: [embed], components: [buttons] });
 
       db.update(suggestions).set({ messageId: message.id, updatedAt: new Date() }).run();
-
-      try {
-        if (channel.type === ChannelType.GuildText) {
-          await message.startThread({
-            name: `Diskussion #${inserted.id}: ${text.slice(0, 60)}`.slice(0, 100),
-            autoArchiveDuration: 1440,
-            reason: 'auto-thread for suggestion discussion',
-          });
-        }
-      } catch (err) {
-        logger.debug({ err, suggestionId: inserted.id }, 'suggestion auto-thread failed (non-fatal)');
-      }
 
       await interaction.editReply(`✅ Vorschlag #${inserted.id} eingereicht: ${message.url}`);
     } catch (err) {
