@@ -15,6 +15,11 @@ import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { seerrPayloadSchema } from './schemas.js';
 
+function firstDiscordId(value: string | string[] | undefined): string | undefined {
+  const candidates = Array.isArray(value) ? value : value?.split(',');
+  return candidates?.map((id) => id.trim()).find((id) => /^\d{17,20}$/.test(id));
+}
+
 function updateRequestStatus(requestId: number, status: SeerrRequestStatus): void {
   if (!requestId) return;
   db.update(seerrRequests)
@@ -87,7 +92,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
         title: plainTitle,
         year,
         overview: body.message,
-        posterUrl: body.image ?? null,
+        posterUrl,
         requestedBy: body.request?.requestedBy_username,
         status: 'pending',
       });
@@ -243,8 +248,12 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           posterUrl,
           reportedBy: body.issue?.reportedBy_username,
           commentedBy: body.comment?.commentedBy_username,
-          reporterDiscordId: body.issue?.reportedBy_settings_discordId,
-          commenterDiscordId: body.comment?.commentedBy_settings_discordId,
+          reporterDiscordId: firstDiscordId(
+            body.issue?.reportedBy_settings_discordIds ?? body.issue?.reportedBy_settings_discordId,
+          ),
+          commenterDiscordId: firstDiscordId(
+            body.comment?.commentedBy_settings_discordIds ?? body.comment?.commentedBy_settings_discordId,
+          ),
         }),
         source: 'seerr',
         eventType: body.notification_type,

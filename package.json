@@ -15,7 +15,7 @@
     "build:backend": "tsc",
     "start": "node dist/index.js",
     "check": "npm run typecheck && npm test && npm run build",
-    "test": "node --import tsx --test tests/maintenance.test.ts",
+    "test": "node --import tsx --test tests/maintenance.test.ts tests/seerr-webhook.test.ts",
     "security:audit": "npm audit",
     "deps:outdated": "npm outdated",
     "typecheck": "tsc --noEmit && vue-tsc --noEmit -p frontend/tsconfig.json",
