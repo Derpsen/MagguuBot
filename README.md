@@ -61,7 +61,7 @@ In Unraid:
 
 ### 4. Wire up the services
 
-For each service below, set the webhook URL to `http://magguu-bot:3000/webhook/<service>` (same Docker network) and add header `X-Magguu-Token: <your WEBHOOK_SECRET>`.
+For each service below, set the webhook URL to `http://MagguuBot:3000/webhook/<service>` when both containers share a user-defined Docker network. Otherwise use `http://<UNRAID-IP>:3000/webhook/<service>`. Add the header `X-Magguu-Token: <your WEBHOOK_SECRET>`.
 
 | Service | Where | Path | Notes |
 |---|---|---|---|
@@ -69,6 +69,18 @@ For each service below, set the webhook URL to `http://magguu-bot:3000/webhook/<
 | Radarr | Settings → Connect → Webhook | `/webhook/radarr` | Same triggers as Sonarr |
 | Seerr | Settings → Notifications → Webhook | `/webhook/seerr` | Use the default JSON payload template |
 | Tautulli | Settings → Notification Agents → Webhook | `/webhook/tautulli` | JSON payload: `{"event":"recently_added","title":"{title}","year":"{year}","mediaType":"{media_type}","summary":"{summary}","posterUrl":"{poster_url}","serverName":"{server_name}"}` |
+
+#### Seerr notification setup
+
+Use Seerr's **Webhook** agent rather than its **Discord** agent. The Discord agent posts directly through a Discord webhook and bypasses MagguuBot's routing, approval buttons, validation, and activity log.
+
+1. Open *Settings → Notifications → Webhook* and enable the agent.
+2. Set **Webhook URL** to `http://MagguuBot:3000/webhook/seerr` on the same user-defined Docker network, or `http://<UNRAID-IP>:3000/webhook/seerr` otherwise.
+3. Leave **Authorization Header** empty. Under **Custom Headers**, add `X-Magguu-Token` with the exact `WEBHOOK_SECRET` value from the MagguuBot container.
+4. Keep the default JSON payload (use **Reset to Default** if it was customized).
+5. Enable the request and issue notification types you want, save, then run Seerr's test.
+
+Routing is automatic after `/setup-server`: pending approvals go to `⏳・freigaben`, approved/declined/available/failed requests go to `📝・anfragen`, and issues go to `⚠️・fehler`. `SEERR_URL` and `SEERR_API_KEY` are additionally required if the Approve/Decline buttons in Discord should call back into Seerr.
 
 ### 5. SABnzbd
 

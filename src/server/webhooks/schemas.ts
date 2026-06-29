@@ -137,13 +137,16 @@ export const seerrPayloadSchema = z
         status: z.string().optional(),
       })
       .passthrough()
+      .nullable()
       .optional(),
     request: z
       .object({
         request_id: z.union([z.string(), z.number()]).optional(),
         requestedBy_username: z.string().optional(),
+        requestedBy_settings_discordIds: z.union([z.string(), z.array(z.string())]).optional(),
       })
       .passthrough()
+      .nullable()
       .optional(),
     issue: z
       .object({
@@ -152,16 +155,20 @@ export const seerrPayloadSchema = z
         issue_status: z.string().optional(),
         reportedBy_username: z.string().optional(),
         reportedBy_settings_discordId: z.string().optional(),
+        reportedBy_settings_discordIds: z.union([z.string(), z.array(z.string())]).optional(),
       })
       .passthrough()
+      .nullable()
       .optional(),
     comment: z
       .object({
         comment_message: z.string().optional(),
         commentedBy_username: z.string().optional(),
         commentedBy_settings_discordId: z.string().optional(),
+        commentedBy_settings_discordIds: z.union([z.string(), z.array(z.string())]).optional(),
       })
       .passthrough()
+      .nullable()
       .optional(),
     extra: z.array(z.object({ name: z.string(), value: z.string() }).passthrough()).optional(),
   })
