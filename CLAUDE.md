@@ -63,6 +63,8 @@ npm run db:push      # drizzle-kit sync
 
 **Plex activity lifecycle** — Tautulli playback events correlate by `sessionKey`, falling back to user/player/media identity. Play creates a tracked card; subsequent events edit it. A watched state takes precedence over a later stop. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion.
 
+**Generic lifecycle cards** — `event_lifecycle_messages` and `postOrEditLifecycleEmbed` keep one Discord card per stable upstream resource. It is used for Seerr issues, GitHub PRs/issues, and typed Sonarr/Radarr health checks. Do not apply it to append-only feeds such as imports, releases, RSS, or audit/mod logs.
+
 **Channel IDs are optional** — a webhook without a mapped channel is logged as `skipped` in `webhook_events`, not thrown. First boot ships empty, run `/setup-server`, copy IDs, restart.
 
 **Seerr approval buttons require Administrator** — hardcoded in `interactions/seerr-buttons.ts`. If you open this up to a custom role, also gate the command data via `setDefaultMemberPermissions`.

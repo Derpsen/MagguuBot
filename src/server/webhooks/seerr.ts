@@ -13,6 +13,7 @@ import {
 import { getTmdbPosterUrl } from '../../services/tmdb.js';
 import { logger } from '../../utils/logger.js';
 import { editEmbed, postEmbed } from '../discord-poster.js';
+import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
 import { parsePositiveInteger, seerrPayloadSchema } from './schemas.js';
 
 function firstDiscordId(value: string | string[] | undefined): string | undefined {
@@ -341,31 +342,41 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
     case 'ISSUE_RESOLVED': {
       const issueId = parsePositiveInteger(body.issue?.issue_id);
       const issueMessage = body.comment?.comment_message ?? body.message;
-      await postEmbed({
+      const issueEmbed = buildSeerrIssueEmbed({
+        notification: body.notification_type,
+        issueId,
+        mediaType,
+        title: plainTitle,
+        year,
+        issueType: body.issue?.issue_type,
+        issueStatus: body.issue?.issue_status,
+        message: issueMessage,
+        posterUrl,
+        reportedBy: body.issue?.reportedBy_username,
+        commentedBy: body.comment?.commentedBy_username,
+        reporterDiscordId: firstDiscordId(
+          body.issue?.reportedBy_settings_discordIds ?? body.issue?.reportedBy_settings_discordId,
+        ),
+        commenterDiscordId: firstDiscordId(
+          body.comment?.commentedBy_settings_discordIds ?? body.comment?.commentedBy_settings_discordId,
+        ),
+      });
+      const common = {
         channelId: getChannel('failures'),
-        embed: buildSeerrIssueEmbed({
-          notification: body.notification_type,
-          issueId,
-          mediaType,
-          title: plainTitle,
-          year,
-          issueType: body.issue?.issue_type,
-          issueStatus: body.issue?.issue_status,
-          message: issueMessage,
-          posterUrl,
-          reportedBy: body.issue?.reportedBy_username,
-          commentedBy: body.comment?.commentedBy_username,
-          reporterDiscordId: firstDiscordId(
-            body.issue?.reportedBy_settings_discordIds ?? body.issue?.reportedBy_settings_discordId,
-          ),
-          commenterDiscordId: firstDiscordId(
-            body.comment?.commentedBy_settings_discordIds ?? body.comment?.commentedBy_settings_discordId,
-          ),
-        }),
+        embed: issueEmbed,
         source: 'seerr',
         eventType: body.notification_type,
         payload: body,
-      });
+      };
+      if (issueId) {
+        await postOrEditLifecycleEmbed({
+          ...common,
+          lifecycleKey: `seerr:issue:${issueId}`,
+          state: body.notification_type,
+        });
+      } else {
+        await postEmbed(common);
+      }
       break;
     }
     default:

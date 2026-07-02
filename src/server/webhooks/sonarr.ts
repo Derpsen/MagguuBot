@@ -10,6 +10,7 @@ import {
 } from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
+import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
 import { healthLevelForEvent, sonarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
@@ -158,7 +159,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     }
     case 'Health':
     case 'HealthRestored': {
-      await postEmbed({
+      const common = {
         channelId: getChannel('health'),
         embed: buildHealthEmbed({
           service: 'Sonarr',
@@ -169,7 +170,16 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
         source: 'sonarr',
         eventType: body.eventType,
         payload: body,
-      });
+      };
+      if (body.type) {
+        await postOrEditLifecycleEmbed({
+          ...common,
+          lifecycleKey: `health:sonarr:${body.type.toLowerCase()}`,
+          state: body.eventType,
+        });
+      } else {
+        await postEmbed(common);
+      }
       break;
     }
     case 'Rename':

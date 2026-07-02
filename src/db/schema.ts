@@ -487,6 +487,21 @@ export const plexActivityMessages = sqliteTable(
   ],
 );
 
+export const eventLifecycleMessages = sqliteTable(
+  'event_lifecycle_messages',
+  {
+    guildId: text('guild_id').notNull(),
+    lifecycleKey: text('lifecycle_key').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id').notNull(),
+    state: text('state').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.lifecycleKey] }) }),
+);
+
 export const movieNights = sqliteTable('movie_nights', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guildId: text('guild_id').notNull(),
@@ -534,6 +549,7 @@ export type JtcRoom = typeof jtcRooms.$inferSelect;
 export type TicketCategory = typeof ticketCategories.$inferSelect;
 export type LivePanel = typeof livePanels.$inferSelect;
 export type PlexActivityMessage = typeof plexActivityMessages.$inferSelect;
+export type EventLifecycleMessage = typeof eventLifecycleMessages.$inferSelect;
 export type MovieNight = typeof movieNights.$inferSelect;
 export type MovieNightNomination = typeof movieNightNominations.$inferSelect;
 

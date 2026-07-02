@@ -13,6 +13,7 @@ import { logger } from '../../utils/logger.js';
 import { isAddonRepository, parseAddonRepositories } from '../../utils/github-routing.js';
 import { createRecentKeyCache } from '../../utils/recent-key-cache.js';
 import { postEmbed } from '../discord-poster.js';
+import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
 
 interface PushPayload {
   ref: string;
@@ -255,10 +256,12 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     if (!['opened', 'closed', 'reopened', 'ready_for_review'].includes(p.action)) {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
-    await postEmbed({
+    await postOrEditLifecycleEmbed({
+      lifecycleKey: `github:pr:${p.repository.full_name.toLowerCase()}:${p.number}`,
       channelId: getChannel('github'),
       source: 'github',
       eventType: `pull_request.${p.action}`,
+      state: p.action,
       payload: p,
       embed: buildPullRequestEmbed({
         repo: p.repository,
@@ -279,10 +282,12 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     if (!['opened', 'closed', 'reopened'].includes(p.action)) {
       return c.json({ ok: true, skipped: 'ignored action' });
     }
-    await postEmbed({
+    await postOrEditLifecycleEmbed({
+      lifecycleKey: `github:issue:${p.repository.full_name.toLowerCase()}:${p.issue.number}`,
       channelId: getChannel('github'),
       source: 'github',
       eventType: `issues.${p.action}`,
+      state: p.action,
       payload: p,
       embed: buildIssueEmbed({
         repo: p.repository,

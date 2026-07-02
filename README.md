@@ -91,6 +91,8 @@ Failed webhook events are retried automatically after 1, 5, and 15 minutes, then
 
 Plex playback notifications are lifecycle cards: play creates one Discord message, while pause, resume, buffer, watched, and stop update that same message. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. A later stop never overwrites an already watched state. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever).
 
+Other high-volume status channels use the same principle where identity is reliable: Seerr issue comments/resolution update one issue card, GitHub pull requests and issues update one card from open to closed/reopened, and Sonarr/Radarr health restoration updates the original warning. Content feeds, imports, releases, and audit/moderation logs remain append-only so history is not lost.
+
 ### 5. SABnzbd
 
 SAB does not emit native webhooks — use the post-processing script:
