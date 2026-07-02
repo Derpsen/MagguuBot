@@ -15,6 +15,38 @@ body {
   color: #e2e8f0;
 }
 
+.theme-amoled {
+  background: #000;
+}
+.theme-amoled .bg-surface-0,
+.theme-amoled .bg-surface-1 {
+  background-color: #000 !important;
+}
+.theme-amoled .bg-surface-2 {
+  background-color: #080808 !important;
+}
+.theme-aurora {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(88, 101, 242, 0.2), transparent 35%),
+    radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.16), transparent 32%),
+    radial-gradient(circle at 60% 90%, rgba(6, 182, 212, 0.12), transparent 38%),
+    #090d16;
+  background-attachment: fixed;
+}
+.theme-aurora .bg-surface-0 {
+  background-color: rgba(9, 13, 22, 0.82) !important;
+}
+.theme-aurora .bg-surface-1 {
+  background-color: rgba(17, 24, 39, 0.78) !important;
+  backdrop-filter: blur(18px);
+}
+.theme-aurora .card,
+.theme-aurora .card-flush,
+.theme-aurora .stat-card {
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+}
+
 code,
 kbd,
 .mono {

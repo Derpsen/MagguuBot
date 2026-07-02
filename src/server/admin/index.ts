@@ -9,6 +9,7 @@ import {
   autoresponders,
   customCommands,
   reminders,
+  livePanels,
   reputation,
   rolePanels,
   rssFeeds,
@@ -30,10 +31,17 @@ import { logger } from '../../utils/logger.js';
 import { recordAdminAudit } from '../auth/audit.js';
 import { getSession, requireAdmin } from '../auth/middleware.js';
 import { revokeUserSessions } from '../auth/revocations.js';
+import { clearSessionCookie } from '../auth/session.js';
+import { replayWebhook } from '../webhook-replay.js';
 
 export const adminRouter = new Hono();
 
 adminRouter.use('*', requireAdmin);
+
+function parsePositiveId(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 adminRouter.get('/me', (c) => {
   const session = getSession(c);
@@ -45,9 +53,19 @@ adminRouter.get('/me', (c) => {
   });
 });
 
+adminRouter.post('/logout', (c) => {
+  recordAdminAudit(c, { action: 'session.logout' });
+  clearSessionCookie(c);
+  return c.json({ ok: true });
+});
+
 adminRouter.get('/stats', async (c) => {
   const warningsCount =
-    db.select({ count: sql<number>`count(*)` }).from(warnings).get()?.count ?? 0;
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(warnings)
+      .where(eq(warnings.guildId, config.DISCORD_GUILD_ID))
+      .get()?.count ?? 0;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const webhooksLast24h =
@@ -57,7 +75,13 @@ adminRouter.get('/stats', async (c) => {
       .where(gt(webhookEvents.createdAt, since))
       .get()?.count ?? 0;
 
-  const topXp = db.select().from(userXp).orderBy(desc(userXp.xp)).limit(1).get();
+  const topXp = db
+    .select()
+    .from(userXp)
+    .where(eq(userXp.guildId, config.DISCORD_GUILD_ID))
+    .orderBy(desc(userXp.xp))
+    .limit(1)
+    .get();
 
   let topUser: { username: string; xp: number; level: number } | null = null;
   if (topXp) {
@@ -68,6 +92,7 @@ adminRouter.get('/stats', async (c) => {
   const recentWarnings = db
     .select()
     .from(warnings)
+    .where(eq(warnings.guildId, config.DISCORD_GUILD_ID))
     .orderBy(desc(warnings.createdAt))
     .limit(5)
     .all();
@@ -83,7 +108,11 @@ adminRouter.get('/stats', async (c) => {
   );
 
   const remindersCount =
-    db.select({ count: sql<number>`count(*)` }).from(reminders).get()?.count ?? 0;
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(reminders)
+      .where(eq(reminders.guildId, config.DISCORD_GUILD_ID))
+      .get()?.count ?? 0;
   const pendingSeerrCount =
     db
       .select({ count: sql<number>`count(*)` })
@@ -111,6 +140,11 @@ adminRouter.get('/stats', async (c) => {
         ),
       )
       .get()?.count ?? 0;
+  const downloadPanel = db
+    .select({ enabled: livePanels.enabled })
+    .from(livePanels)
+    .where(and(eq(livePanels.guildId, config.DISCORD_GUILD_ID), eq(livePanels.kind, 'downloads')))
+    .get();
 
   return c.json({
     uptimeSeconds: Math.floor(process.uptime()),
@@ -124,6 +158,11 @@ adminRouter.get('/stats', async (c) => {
     tagsCount,
     openTicketsCount,
     scheduledPending,
+    automations: {
+      weeklyDigest: config.WEEKLY_DIGEST_ENABLED && Boolean(getChannel('weeklyDigest')),
+      downloadLive: Boolean(getChannel('downloadLive')) && downloadPanel?.enabled !== false,
+      movieNight: Boolean(getChannel('movieNight')),
+    },
   });
 });
 
@@ -131,6 +170,7 @@ adminRouter.get('/warnings', async (c) => {
   const rows = db
     .select()
     .from(warnings)
+    .where(eq(warnings.guildId, config.DISCORD_GUILD_ID))
     .orderBy(desc(warnings.createdAt))
     .limit(200)
     .all();
@@ -150,15 +190,23 @@ adminRouter.get('/warnings', async (c) => {
 });
 
 adminRouter.delete('/warnings/:id', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
-  db.delete(warnings).where(eq(warnings.id, id)).run();
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
+  db.delete(warnings)
+    .where(and(eq(warnings.guildId, config.DISCORD_GUILD_ID), eq(warnings.id, id)))
+    .run();
   recordAdminAudit(c, { action: 'warning.delete', target: String(id) });
   return c.json({ ok: true });
 });
 
 adminRouter.get('/xp', async (c) => {
-  const rows = db.select().from(userXp).orderBy(desc(userXp.xp)).limit(50).all();
+  const rows = db
+    .select()
+    .from(userXp)
+    .where(eq(userXp.guildId, config.DISCORD_GUILD_ID))
+    .orderBy(desc(userXp.xp))
+    .limit(50)
+    .all();
   const enriched = await Promise.all(
     rows.map(async (r) => ({
       userId: r.userId,
@@ -241,15 +289,52 @@ adminRouter.get('/webhooks/health', (c) => {
   });
 });
 
+adminRouter.post('/webhooks/:id/replay', async (c) => {
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
+  const event = db.select().from(webhookEvents).where(eq(webhookEvents.id, id)).get();
+  if (!event) return c.json({ ok: false, error: 'event not found' }, 404);
+  if (event.status === 'posted') {
+    return c.json({ ok: false, error: 'successfully posted events cannot be replayed' }, 409);
+  }
+  try {
+    const response = await replayWebhook(event.source, event.eventType, event.payload);
+    const result = await response.json().catch(() => null) as unknown;
+    recordAdminAudit(c, {
+      action: 'webhook.replay',
+      target: String(id),
+      detail: { source: event.source, eventType: event.eventType, status: response.status },
+    });
+    if (!response.ok) {
+      return c.json({ ok: false, error: 'replay rejected', status: response.status, result }, 502);
+    }
+    return c.json({ ok: true, status: response.status, result });
+  } catch (err) {
+    logger.warn({ err, eventId: id, source: event.source }, 'webhook replay failed');
+    return c.json({ ok: false, error: err instanceof Error ? err.message : 'replay failed' }, 422);
+  }
+});
+
 // ─── RSS feeds ───────────────────────────────────────────────────────────────
 
 const rssFeedInput = z.object({
-  name: z.string().min(1).max(60),
-  url: z.string().url().max(500),
-  channelId: z.string().min(1).max(30),
-  excludeKeywords: z.array(z.string().min(1).max(60)).max(30).optional(),
+  name: z.string().trim().min(1).max(60),
+  url: z.string().trim().url().max(500).refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  }, 'feed URL must use http or https'),
+  channelId: z.string().regex(/^\d{17,20}$/),
+  excludeKeywords: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
   enabled: z.boolean().optional(),
 });
+
+async function isConfiguredGuildTextChannel(channelId: string): Promise<boolean> {
+  const guild = await getClient().guilds.fetch(config.DISCORD_GUILD_ID).catch(() => null);
+  if (!guild) return false;
+  const channel = guild.channels.cache.get(channelId)
+    ?? await guild.channels.fetch(channelId).catch(() => null);
+  return channel?.type === ChannelType.GuildText || channel?.type === ChannelType.GuildAnnouncement;
+}
 
 adminRouter.get('/rss', (c) => {
   const rows = db
@@ -278,6 +363,9 @@ adminRouter.post('/rss', async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = rssFeedInput.safeParse(body);
   if (!parsed.success) return c.json({ ok: false, error: 'invalid input' }, 400);
+  if (!await isConfiguredGuildTextChannel(parsed.data.channelId)) {
+    return c.json({ ok: false, error: 'channel not found in configured guild' }, 422);
+  }
   const row = db
     .insert(rssFeeds)
     .values({
@@ -295,11 +383,14 @@ adminRouter.post('/rss', async (c) => {
 });
 
 adminRouter.patch('/rss/:id', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   const body = await c.req.json().catch(() => null);
   const parsed = rssFeedInput.partial().safeParse(body);
   if (!parsed.success) return c.json({ ok: false, error: 'invalid input' }, 400);
+  if (parsed.data.channelId !== undefined && !await isConfiguredGuildTextChannel(parsed.data.channelId)) {
+    return c.json({ ok: false, error: 'channel not found in configured guild' }, 422);
+  }
   const update: Partial<typeof rssFeeds.$inferInsert> = {};
   if (parsed.data.name !== undefined) update.name = parsed.data.name;
   if (parsed.data.url !== undefined) update.url = parsed.data.url;
@@ -311,14 +402,19 @@ adminRouter.patch('/rss/:id', async (c) => {
   }
   if (parsed.data.enabled !== undefined) update.enabled = parsed.data.enabled;
   if (Object.keys(update).length === 0) return c.json({ ok: true });
-  db.update(rssFeeds).set(update).where(eq(rssFeeds.id, id)).run();
+  db.update(rssFeeds)
+    .set(update)
+    .where(and(eq(rssFeeds.guildId, config.DISCORD_GUILD_ID), eq(rssFeeds.id, id)))
+    .run();
   return c.json({ ok: true });
 });
 
 adminRouter.delete('/rss/:id', (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
-  db.delete(rssFeeds).where(eq(rssFeeds.id, id)).run();
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
+  db.delete(rssFeeds)
+    .where(and(eq(rssFeeds.guildId, config.DISCORD_GUILD_ID), eq(rssFeeds.id, id)))
+    .run();
   return c.json({ ok: true });
 });
 
@@ -350,7 +446,7 @@ const settingsSchema = z.object({
   automodMentionThreshold: z.number().int().min(1).max(100).optional(),
   automodExternalLinkFilter: z.boolean().optional(),
   automodBlockedPhrases: z.string().max(2000).optional(),
-  autoRoleId: z.string().nullable().optional(),
+  autoRoleId: z.string().regex(/^\d{17,20}$/).nullable().optional(),
   aiModerationEnabled: z.boolean().optional(),
   aiModerationThreshold: z.number().min(0).max(1).optional(),
   welcomeDmTemplate: z.string().max(2000).optional(),
@@ -417,6 +513,9 @@ const CHANNEL_KEYS: { key: ChannelKey; label: string; description: string }[] = 
   { key: 'faq', label: 'FAQ', description: 'FAQ Channel' },
   { key: 'suggestions', label: 'Suggestions', description: 'Community Suggestions' },
   { key: 'ticketLogs', label: 'Ticket Logs', description: 'Ticket Close/Transcript Logs' },
+  { key: 'weeklyDigest', label: 'Wochenrückblick', description: 'Automatischer Wochen-Digest' },
+  { key: 'downloadLive', label: 'Live Downloads', description: 'Aktualisierte Queue-Karte' },
+  { key: 'movieNight', label: 'Movie Night', description: 'Nominierungen und Abstimmungen' },
 ];
 
 adminRouter.get('/channels', async (c) => {
@@ -458,7 +557,7 @@ adminRouter.put('/channels/:key', async (c) => {
   const client = getClient();
   const guild = client.guilds.cache.get(config.DISCORD_GUILD_ID);
   const ch = guild?.channels.cache.get(parsed.data.channelId);
-  if (!ch || ch.type !== ChannelType.GuildText) {
+  if (!ch || (ch.type !== ChannelType.GuildText && ch.type !== ChannelType.GuildAnnouncement)) {
     return c.json({ ok: false, error: 'channel not found or not a text channel' }, 422);
   }
 
@@ -471,7 +570,13 @@ adminRouter.put('/channels/:key', async (c) => {
 // ─── Reminders ───────────────────────────────────────────────────────────────
 
 adminRouter.get('/reminders', async (c) => {
-  const rows = db.select().from(reminders).orderBy(reminders.dueAt).limit(100).all();
+  const rows = db
+    .select()
+    .from(reminders)
+    .where(eq(reminders.guildId, config.DISCORD_GUILD_ID))
+    .orderBy(reminders.dueAt)
+    .limit(100)
+    .all();
   return c.json(
     await Promise.all(
       rows.map(async (r) => ({
@@ -488,9 +593,11 @@ adminRouter.get('/reminders', async (c) => {
 });
 
 adminRouter.delete('/reminders/:id', (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
-  db.delete(reminders).where(eq(reminders.id, id)).run();
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
+  db.delete(reminders)
+    .where(and(eq(reminders.guildId, config.DISCORD_GUILD_ID), eq(reminders.id, id)))
+    .run();
   return c.json({ ok: true });
 });
 
@@ -569,8 +676,8 @@ adminRouter.get('/seerr/weekly', (c) => {
 });
 
 adminRouter.post('/seerr/:id/approve', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   try {
     await approveSeerrRequest(id);
     db.update(seerrRequests).set({ status: 'approved' }).where(eq(seerrRequests.seerrRequestId, id)).run();
@@ -583,8 +690,8 @@ adminRouter.post('/seerr/:id/approve', async (c) => {
 });
 
 adminRouter.post('/seerr/:id/decline', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   try {
     await declineSeerrRequest(id);
     db.update(seerrRequests).set({ status: 'declined' }).where(eq(seerrRequests.seerrRequestId, id)).run();
@@ -763,6 +870,17 @@ adminRouter.get('/autoresponders', (c) => {
 });
 
 const AUTO_DELETE_MAX = 3600;
+const REDOS_DENYLIST = /(\.\*|\.\+|\w\*|\w\+)\s*[+*]|\(\s*(\.\*|\.\+|\w\*|\w\+)\s*\)[+*]|\([^)]*[+*][^)]*\)[+*]/;
+
+function isValidRegexPattern(pattern: string): boolean {
+  if (REDOS_DENYLIST.test(pattern)) return false;
+  try {
+    new RegExp(pattern, 'i');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const autoresponderSchema = z.object({
   pattern: z.string().min(1).max(200),
@@ -777,10 +895,8 @@ adminRouter.post('/autoresponders', async (c) => {
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
 
   if (parsed.data.matchType === 'regex') {
-    try {
-      new RegExp(parsed.data.pattern, 'i');
-    } catch {
-      return c.json({ ok: false, error: 'invalid regex' }, 400);
+    if (!isValidRegexPattern(parsed.data.pattern)) {
+      return c.json({ ok: false, error: 'invalid or unsafe regex' }, 400);
     }
   }
 
@@ -814,20 +930,25 @@ const autoresponderPatchSchema = z.object({
 });
 
 adminRouter.patch('/autoresponders/:id', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   const parsed = autoresponderPatchSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
 
   const patch = parsed.data;
   if (Object.keys(patch).length === 0) return c.json({ ok: false, error: 'no fields' }, 400);
 
-  if (patch.matchType === 'regex' && patch.pattern !== undefined) {
-    try {
-      new RegExp(patch.pattern, 'i');
-    } catch {
-      return c.json({ ok: false, error: 'invalid regex' }, 400);
-    }
+  const current = db
+    .select({ pattern: autoresponders.pattern, matchType: autoresponders.matchType })
+    .from(autoresponders)
+    .where(and(eq(autoresponders.guildId, config.DISCORD_GUILD_ID), eq(autoresponders.id, id)))
+    .get();
+  if (!current) return c.json({ ok: false, error: 'not found' }, 404);
+
+  const resultingMatchType = patch.matchType ?? current.matchType;
+  const resultingPattern = patch.pattern ?? current.pattern;
+  if (resultingMatchType === 'regex' && !isValidRegexPattern(resultingPattern)) {
+    return c.json({ ok: false, error: 'invalid or unsafe regex' }, 400);
   }
 
   const updates = { ...patch };
@@ -842,8 +963,8 @@ adminRouter.patch('/autoresponders/:id', async (c) => {
 });
 
 adminRouter.delete('/autoresponders/:id', (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   db.delete(autoresponders)
     .where(and(eq(autoresponders.guildId, config.DISCORD_GUILD_ID), eq(autoresponders.id, id)))
     .run();
@@ -883,8 +1004,8 @@ const scheduledPatchSchema = z.object({
 });
 
 adminRouter.patch('/scheduled/:id', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   const parsed = scheduledPatchSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
 
@@ -909,8 +1030,8 @@ adminRouter.patch('/scheduled/:id', async (c) => {
 });
 
 adminRouter.delete('/scheduled/:id', (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   db.delete(scheduledAnnouncements)
     .where(
       and(
@@ -949,8 +1070,8 @@ adminRouter.get('/tickets', async (c) => {
 });
 
 adminRouter.post('/tickets/:id/close', async (c) => {
-  const id = Number(c.req.param('id'));
-  if (!Number.isFinite(id)) return c.json({ ok: false, error: 'bad id' }, 400);
+  const id = parsePositiveId(c.req.param('id'));
+  if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   const ticket = db
     .select()
     .from(tickets)
@@ -996,12 +1117,13 @@ adminRouter.get('/reputation', async (c) => {
 // ─── Audit log + session revocation ─────────────────────────────────────────
 
 adminRouter.get('/audit-log', (c) => {
-  const limit = Math.min(Number(c.req.query('limit') ?? 200), 1000);
+  const parsedLimit = z.coerce.number().int().min(1).max(1000).safeParse(c.req.query('limit') ?? 200);
+  if (!parsedLimit.success) return c.json({ ok: false, error: 'invalid limit' }, 400);
   const rows = db
     .select()
     .from(adminAuditLog)
     .orderBy(desc(adminAuditLog.createdAt))
-    .limit(limit)
+    .limit(parsedLimit.data)
     .all();
   return c.json(
     rows.map((r) => ({

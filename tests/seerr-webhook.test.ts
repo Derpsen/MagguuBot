@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { seerrPayloadSchema } from '../src/server/webhooks/schemas.ts';
+import {
+  parsePositiveInteger,
+  radarrPayloadSchema,
+  seerrPayloadSchema,
+  sonarrPayloadSchema,
+} from '../src/server/webhooks/schemas.ts';
 
 test('Seerr default test notification accepts null special objects', () => {
   const parsed = seerrPayloadSchema.safeParse({
@@ -41,4 +46,23 @@ test('Seerr current default payload accepts plural Discord ID fields', () => {
   });
 
   assert.equal(parsed.success, true);
+});
+
+test('webhook integer coercion rejects invalid, fractional, and unsafe ids', () => {
+  assert.equal(parsePositiveInteger('42'), 42);
+  assert.equal(parsePositiveInteger(7), 7);
+  assert.equal(parsePositiveInteger('nope'), undefined);
+  assert.equal(parsePositiveInteger('1.5'), undefined);
+  assert.equal(parsePositiveInteger(Number.MAX_SAFE_INTEGER + 1), undefined);
+});
+
+test('arr webhook schemas tolerate null remote poster URLs', () => {
+  assert.equal(sonarrPayloadSchema.safeParse({
+    eventType: 'Grab',
+    series: { title: 'Example', images: [{ coverType: 'poster', remoteUrl: null }] },
+  }).success, true);
+  assert.equal(radarrPayloadSchema.safeParse({
+    eventType: 'Grab',
+    movie: { title: 'Example', images: [{ coverType: 'poster', remoteUrl: null }] },
+  }).success, true);
 });

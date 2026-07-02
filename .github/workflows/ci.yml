@@ -24,4 +24,5 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm audit --omit=dev
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build

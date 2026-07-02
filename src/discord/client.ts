@@ -21,6 +21,7 @@ import { handleSeerrButton } from './interactions/seerr-buttons.js';
 import { handleTicketButton } from './interactions/ticket-buttons.js';
 import { handleTicketCategorySelect } from './interactions/ticket-category-select.js';
 import { handleTicketModalSubmit } from './interactions/ticket-modal.js';
+import { handleMovieNightVote } from './movie-night.js';
 
 let client: Client | null = null;
 
@@ -45,6 +46,7 @@ export async function startDiscord(): Promise<void> {
       GatewayIntentBits.MessageContent,
     ],
     partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+    allowedMentions: { parse: [], repliedUser: false },
   });
   client = c;
 
@@ -86,6 +88,17 @@ export async function startDiscord(): Promise<void> {
           await interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
           return;
         }
+        const requiredPermissions = cmd.data.toJSON().default_member_permissions;
+        if (
+          requiredPermissions &&
+          !interaction.memberPermissions?.has(BigInt(requiredPermissions))
+        ) {
+          await interaction.reply({
+            content: 'Du hast keine Berechtigung für diesen Command.',
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
         await cmd.execute(interaction);
       } else if (interaction.isAutocomplete()) {
         if (interaction.commandName === 'tag' && interaction.guildId) {
@@ -106,19 +119,58 @@ export async function startDiscord(): Promise<void> {
           await handleSuggestionButton(interaction);
         } else if (interaction.customId.startsWith('giveaway:')) {
           await handleGiveawayButton(interaction);
+        } else {
+          await interaction.reply({
+            content: 'Diese Schaltfläche wird nicht mehr unterstützt.',
+            flags: MessageFlags.Ephemeral,
+          });
         }
       } else if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith('ticket-category:')) {
+        if (interaction.customId.startsWith('movie-night:')) {
+          await handleMovieNightVote(interaction);
+        } else if (interaction.customId.startsWith('ticket-category:')) {
           await handleTicketCategorySelect(interaction);
+        } else {
+          await interaction.reply({
+            content: 'Dieses Auswahlmenü wird nicht mehr unterstützt.',
+            flags: MessageFlags.Ephemeral,
+          });
         }
       } else if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('ticket-modal:')) {
           await handleTicketModalSubmit(interaction);
+        } else {
+          await interaction.reply({
+            content: 'Dieses Formular wird nicht mehr unterstützt.',
+            flags: MessageFlags.Ephemeral,
+          });
         }
       }
     } catch (err) {
       logger.error({ err }, 'interaction handler failed');
-      if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+      if (interaction.isRepliable() && interaction.deferred && interaction.isMessageComponent()) {
+        await interaction
+          .followUp({
+            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
+      } else if (interaction.isRepliable() && interaction.deferred) {
+        await interaction
+          .editReply({
+            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+            embeds: [],
+            components: [],
+          })
+          .catch(() => {});
+      } else if (interaction.isRepliable() && interaction.replied) {
+        await interaction
+          .followUp({
+            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
+      } else if (interaction.isRepliable()) {
         await interaction
           .reply({ content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral })
           .catch(() => {});

@@ -8,7 +8,7 @@ import { maintainerrPayloadSchema, type MaintainerrEmbed } from './schemas.js';
 
 function classify(input: MaintainerrEmbed | undefined): string {
   if (!input) return 'handled';
-  const text = `${input.title ?? ''} ${input.description ?? ''}`.toLowerCase();
+  const text = `${input.title ?? ''} ${input.description ?? ''}`.toLowerCase().replace(/[_-]+/g, ' ');
   if (/\bdelete(d)?\b|gelöscht/.test(text)) return 'deleted';
   if (/\bhandled\b|\bverarbeitet\b/.test(text)) return 'handled';
   if (/\babout to\b|\bin kürze\b|\bbald\b/.test(text)) return 'pending';
@@ -36,6 +36,10 @@ export const maintainerrWebhook = new Hono().post('/', async (c) => {
   }
   const body = parsed.data;
   const source = body.embeds?.[0];
+  if (!source && !body.content?.trim()) {
+    logger.debug('empty maintainerr webhook ignored');
+    return c.json({ ok: true, skipped: 'empty payload' });
+  }
   const kind = classify(source);
 
   const rebuilt = new EmbedBuilder()
@@ -44,16 +48,19 @@ export const maintainerrWebhook = new Hono().post('/', async (c) => {
     .setFooter({ text: 'MagguuBot · Maintainerr' });
 
   if (source?.author?.name) {
-    rebuilt.setAuthor({ name: source.author.name, iconURL: source.author.icon_url });
+    rebuilt.setAuthor({ name: source.author.name, iconURL: validHttpUrl(source.author.icon_url) });
   } else {
     rebuilt.setAuthor({ name: 'Maintainerr' });
   }
 
   if (source?.title) rebuilt.setTitle(source.title.slice(0, 256));
   if (source?.description) rebuilt.setDescription(source.description.slice(0, 4000));
-  if (source?.url) rebuilt.setURL(source.url);
-  if (source?.thumbnail?.url) rebuilt.setThumbnail(source.thumbnail.url);
-  if (source?.image?.url) rebuilt.setImage(source.image.url);
+  const sourceUrl = validHttpUrl(source?.url);
+  const thumbnailUrl = validHttpUrl(source?.thumbnail?.url);
+  const imageUrl = validHttpUrl(source?.image?.url);
+  if (sourceUrl) rebuilt.setURL(sourceUrl);
+  if (thumbnailUrl) rebuilt.setThumbnail(thumbnailUrl);
+  if (imageUrl) rebuilt.setImage(imageUrl);
   if (source?.fields?.length) {
     rebuilt.addFields(
       source.fields.slice(0, 25).map((f) => ({
@@ -76,3 +83,13 @@ export const maintainerrWebhook = new Hono().post('/', async (c) => {
 
   return c.json({ ok: true });
 });
+
+function validHttpUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}

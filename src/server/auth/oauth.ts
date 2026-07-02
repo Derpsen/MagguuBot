@@ -6,7 +6,7 @@ import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 import { sanitizePayload } from '../webhook-payload-redactor.js';
 import { isAdmin } from './middleware.js';
-import { clearSessionCookie, setSessionCookie } from './session.js';
+import { setSessionCookie } from './session.js';
 
 const STATE_COOKIE = '__Host-magguu_oauth_state';
 const NEXT_COOKIE = '__Host-magguu_oauth_next';
@@ -170,11 +170,6 @@ authRouter.get('/callback', async (c) => {
 
   logger.info({ userId: user.id, username: user.username }, 'oauth login ok');
   return c.redirect(next);
-});
-
-authRouter.get('/logout', (c) => {
-  clearSessionCookie(c);
-  return c.redirect('/login');
 });
 
 function redactOAuthErrorBody(raw: string): string {

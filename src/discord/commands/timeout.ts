@@ -24,14 +24,15 @@ export const timeoutCommand: SlashCommand = {
     const user = interaction.options.getUser('user', true);
     const minutes = interaction.options.getInteger('minutes', true);
     const reason = interaction.options.getString('reason') ?? undefined;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'Guild only.' });
       return;
     }
 
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     if (!member) {
-      await interaction.reply({ content: 'User ist nicht im Server.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'User ist nicht im Server.' });
       return;
     }
 
@@ -48,17 +49,15 @@ export const timeoutCommand: SlashCommand = {
         extra: minutes === 0 ? [] : [{ name: 'Duration', value: `${minutes} min`, inline: true }],
       });
 
-      await interaction.reply({
+      await interaction.editReply({
         content:
           minutes === 0
             ? `🔊 Timeout von **${user.displayName}** aufgehoben.`
             : `🔇 **${user.displayName}** für **${minutes} Minuten** getimeoutet.`,
-        flags: MessageFlags.Ephemeral,
       });
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Konnte nicht timeouten — Bot-Rolle muss über der Ziel-Rolle stehen.',
-        flags: MessageFlags.Ephemeral,
       });
     }
   },

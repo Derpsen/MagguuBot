@@ -80,14 +80,14 @@ export const announceCommand: SlashCommand = {
       await interaction.reply({ content: 'Nur in einem Server.', flags: MessageFlags.Ephemeral });
       return;
     }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const ping = resolvePing(interaction.guild, pingPreset, pingRoleOverride?.id, pingRoleOverride?.name);
 
     if (ping.parseTypes.includes('everyone') &&
         !interaction.memberPermissions?.has(PermissionFlagsBits.MentionEveryone)) {
-      await interaction.reply({
+      await interaction.editReply({
         content: '❌ Du brauchst `Mention @everyone/@here` Permission für diese Ping-Option.',
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -108,9 +108,8 @@ export const announceCommand: SlashCommand = {
       },
     });
 
-    await interaction.reply({
+    await interaction.editReply({
       content: `✅ Gepostet in ${channel.toString()}${ping.content ? ` — mit Ping: ${ping.content}` : ''}.`,
-      flags: MessageFlags.Ephemeral,
     });
   },
 };

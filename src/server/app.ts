@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { extname, isAbsolute, join, relative, resolve } from 'node:path';
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
@@ -43,11 +43,8 @@ export function buildApp(): Hono {
   app.use('*', secureHeaders({
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      // Vue + Vite-built bundle: `unsafe-inline` covers the inline boot script
-      // produced by Vite. No remote scripts are loaded.
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      // Tailwind / generated <style> + Lucide icons inlined as <style>.
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com', 'https://image.tmdb.org'],
       fontSrc: ["'self'", 'data:'],
       connectSrc: ["'self'"],
@@ -92,11 +89,14 @@ export function buildApp(): Hono {
 
     if (c.req.path.startsWith('/webhook/maintainerr')) {
       const queryToken = c.req.query('token');
-      if (!queryToken) {
-        // Maintainerr's Discord-agent can't set headers and we accept the
-        // request, but flag it so an exposure becomes visible in the logs.
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook without ?token=');
-      } else if (!constantTimeEquals(queryToken, config.WEBHOOK_SECRET)) {
+      const authorization = c.req.header('authorization');
+      const headerToken = authorization?.replace(/^Bearer\s+/i, '').trim();
+      const token = queryToken || headerToken;
+      if (!token) {
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook missing auth token');
+        return c.json({ ok: false, error: 'unauthorized' }, 401);
+      }
+      if (!constantTimeEquals(token, config.WEBHOOK_SECRET)) {
         logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook bad token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
@@ -120,13 +120,20 @@ export function buildApp(): Hono {
   app.route('/webhook/github', githubWebhook);
   app.route('/webhook/maintainerr', maintainerrWebhook);
 
+  app.use('/auth/*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
+    await next();
+  });
+  app.use('/api/admin/*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
+    await next();
+  });
   app.use('/api/admin/*', bodyLimit({
     maxSize: ADMIN_BODY_LIMIT,
     onError: (c) => c.json({ ok: false, error: 'payload too large' }, 413),
   }));
-  // CSRF defence-in-depth: SameSite=Lax already blocks cross-site GETs from
-  // smuggling cookies on top-level navigations, but for state-changing methods
-  // the Origin/Referer must match the dashboard's own origin.
+  // SameSite=Lax protects cross-site subrequests; state-changing methods also
+  // require the dashboard's own Origin/Referer as defence-in-depth.
   app.use('/api/admin/*', async (c, next) => {
     const method = c.req.method;
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
@@ -147,6 +154,9 @@ export function buildApp(): Hono {
   app.route('/api/admin', adminRouter);
 
   app.get('*', (c) => {
+    if (/^\/(?:api|auth|webhook)(?:\/|$)/.test(c.req.path)) {
+      return c.json({ ok: false, error: 'not found' }, 404);
+    }
     if (!existsSync(FRONTEND_DIR)) {
       return c.json({ ok: false, error: 'not found' }, 404);
     }
@@ -174,6 +184,8 @@ function serveStatic(pathname: string): Response {
     }
   }
 
+  if (extname(pathname)) return new Response('not found', { status: 404 });
+
   const indexHtml = join(FRONTEND_DIR, 'index.html');
   if (existsSync(indexHtml)) return fileResponse(indexHtml);
   return new Response('not found', { status: 404 });
@@ -186,8 +198,14 @@ function isInsideFrontendDir(candidate: string): boolean {
 
 function fileResponse(filePath: string): Response {
   const body = readFileSync(filePath);
-  const mime = MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
-  return new Response(body, { headers: { 'Content-Type': mime } });
+  const extension = extname(filePath).toLowerCase();
+  const mime = MIME_TYPES[extension] ?? 'application/octet-stream';
+  const cacheControl = extension === '.html'
+    ? 'no-cache'
+    : filePath.includes(`${sep}assets${sep}`)
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=3600';
+  return new Response(body, { headers: { 'Content-Type': mime, 'Cache-Control': cacheControl } });
 }
 
 function constantTimeEquals(a: string, b: string): boolean {

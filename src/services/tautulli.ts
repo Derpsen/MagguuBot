@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { buildServiceUrl } from './service-url.js';
 
 export interface TautulliStatRow {
   title?: string;
@@ -31,7 +32,7 @@ const TAUTULLI_TIMEOUT_MS = 10_000;
 async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}): Promise<T | null> {
   if (!config.TAUTULLI_URL || !config.TAUTULLI_API_KEY) return null;
   const q = new URLSearchParams({ apikey: config.TAUTULLI_API_KEY, cmd, ...params });
-  const url = `${config.TAUTULLI_URL}/api/v2?${q.toString()}`;
+  const url = `${buildServiceUrl(config.TAUTULLI_URL, '/api/v2')}?${q.toString()}`;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TAUTULLI_TIMEOUT_MS);
   try {

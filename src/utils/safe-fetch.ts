@@ -12,8 +12,22 @@ function isPrivateIp(ip: string): boolean {
   if (lower === '::1' || lower === '::') return true;
   if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
   if (lower.startsWith('fe8') || lower.startsWith('fe9') || lower.startsWith('fea') || lower.startsWith('feb')) return true;
-  // IPv4-mapped IPv6
-  if (lower.startsWith('::ffff:')) return isPrivateIp(lower.slice(7));
+  if (lower.startsWith('fec') || lower.startsWith('fed') || lower.startsWith('fee') || lower.startsWith('fef')) return true;
+  if (lower.startsWith('ff')) return true;
+  // IPv4-mapped IPv6 may use dotted decimal or two hexadecimal groups.
+  if (lower.startsWith('::ffff:')) {
+    const mapped = lower.slice(7);
+    if (mapped.includes('.')) return isPrivateIp(mapped);
+
+    const groups = mapped.split(':');
+    if (groups.length === 2) {
+      const high = Number.parseInt(groups[0] ?? '', 16);
+      const low = Number.parseInt(groups[1] ?? '', 16);
+      if (Number.isInteger(high) && Number.isInteger(low) && high <= 0xffff && low <= 0xffff) {
+        return isPrivateIp(`${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`);
+      }
+    }
+  }
   return false;
 }
 

@@ -60,7 +60,11 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
             newLevel: result.newLevel,
           });
           const file = new AttachmentBuilder(buffer, { name: 'level-up.png' });
-          await message.channel.send({ content: `${message.author.toString()}`, files: [file] });
+          await message.channel.send({
+            content: `${message.author.toString()}`,
+            files: [file],
+            allowedMentions: { users: [message.author.id] },
+          });
         } catch (err) {
           logger.warn({ err, userId: message.author.id }, 'level-up card post failed');
         }

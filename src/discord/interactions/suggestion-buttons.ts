@@ -12,20 +12,21 @@ export async function handleSuggestionButton(interaction: ButtonInteraction): Pr
     await interaction.reply({ content: 'Unbekannte Aktion.', flags: MessageFlags.Ephemeral });
     return;
   }
+  await interaction.deferUpdate();
   const row = db.select().from(suggestions).where(eq(suggestions.id, id)).get();
   if (!row) {
-    await interaction.reply({ content: 'Vorschlag nicht gefunden.', flags: MessageFlags.Ephemeral });
+    await interaction.followUp({ content: 'Vorschlag nicht gefunden.', flags: MessageFlags.Ephemeral });
     return;
   }
   if (row.status === 'accepted' || row.status === 'denied') {
-    await interaction.reply({
+    await interaction.followUp({
       content: 'Voting für diesen Vorschlag ist geschlossen.',
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
   if (interaction.user.id === row.authorId) {
-    await interaction.reply({
+    await interaction.followUp({
       content: 'Du kannst nicht für deinen eigenen Vorschlag voten.',
       flags: MessageFlags.Ephemeral,
     });
@@ -42,18 +43,20 @@ export async function handleSuggestionButton(interaction: ButtonInteraction): Pr
       upvoters.delete(userId);
       action_taken = 'removed';
     } else {
+      const switched = downvoters.has(userId);
       upvoters.add(userId);
       downvoters.delete(userId);
-      action_taken = downvoters.has(userId) ? 'switched' : 'added';
+      action_taken = switched ? 'switched' : 'added';
     }
   } else {
     if (downvoters.has(userId)) {
       downvoters.delete(userId);
       action_taken = 'removed';
     } else {
+      const switched = upvoters.has(userId);
       downvoters.add(userId);
       upvoters.delete(userId);
-      action_taken = upvoters.has(userId) ? 'switched' : 'added';
+      action_taken = switched ? 'switched' : 'added';
     }
   }
 
@@ -77,10 +80,10 @@ export async function handleSuggestionButton(interaction: ButtonInteraction): Pr
       upvotes: upArr.length,
       downvotes: downArr.length,
     });
-    await interaction.update({ embeds: [embed], components: [buildSuggestionButtons(row.id)] });
+    await interaction.editReply({ embeds: [embed], components: [buildSuggestionButtons(row.id)] });
   } catch (err) {
     logger.warn({ err, id }, 'suggestion vote: embed update failed');
-    await interaction.reply({
+    await interaction.followUp({
       content: `Vote registriert (${action_taken}), Embed-Update fehlgeschlagen.`,
       flags: MessageFlags.Ephemeral,
     });

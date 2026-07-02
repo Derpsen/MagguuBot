@@ -10,7 +10,7 @@ import {
 } from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
-import { sonarrPayloadSchema } from './schemas.js';
+import { healthLevelForEvent, sonarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -162,7 +162,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
         channelId: getChannel('health'),
         embed: buildHealthEmbed({
           service: 'Sonarr',
-          level: body.level ?? 'warning',
+          level: healthLevelForEvent(body.eventType, body.level),
           message: body.message ?? body.eventType,
           type: body.type,
         }),

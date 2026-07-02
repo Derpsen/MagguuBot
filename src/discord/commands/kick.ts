@@ -13,14 +13,15 @@ export const kickCommand: SlashCommand = {
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? undefined;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'Guild only.' });
       return;
     }
 
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     if (!member) {
-      await interaction.reply({ content: 'User ist nicht im Server.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'User ist nicht im Server.' });
       return;
     }
 
@@ -33,11 +34,10 @@ export const kickCommand: SlashCommand = {
         target: user,
         reason,
       });
-      await interaction.reply({ content: `👢 **${user.displayName}** gekickt.`, flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: `👢 **${user.displayName}** gekickt.` });
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Konnte nicht kicken — Bot-Rolle muss über der Ziel-Rolle stehen.',
-        flags: MessageFlags.Ephemeral,
       });
     }
   },

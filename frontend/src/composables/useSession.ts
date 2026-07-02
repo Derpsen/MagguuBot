@@ -23,7 +23,13 @@ async function refresh(): Promise<void> {
 }
 
 async function logout(): Promise<void> {
-  window.location.href = '/auth/logout';
+  try {
+    await api('/api/admin/logout', { method: 'POST' });
+  } finally {
+    user.value = null;
+    loaded.value = true;
+    window.location.assign('/login');
+  }
 }
 
 export function useSession() {

@@ -1,5 +1,17 @@
 import { z } from 'zod';
 import { DEFAULT_ADDON_REPOSITORIES } from './utils/github-routing.js';
+import { emptyEnvToUndefined, envBoolean } from './utils/env.js';
+
+const httpUrl = z.string().url().refine((value) => {
+  const protocol = new URL(value).protocol;
+  return protocol === 'http:' || protocol === 'https:';
+}, 'URL must use HTTP or HTTPS');
+const optionalHttpUrl = z.preprocess(emptyEnvToUndefined, httpUrl.optional());
+const optionalHttpsUrl = z.preprocess(
+  emptyEnvToUndefined,
+  z.string().url().refine((value) => new URL(value).protocol === 'https:', 'URL must use HTTPS').optional(),
+);
+const optionalSecret = z.preprocess(emptyEnvToUndefined, z.string().min(16).optional());
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
@@ -26,48 +38,62 @@ const schema = z.object({
   DISCORD_CHANNEL_BLUE_TRACKER: z.string().optional(),
   DISCORD_CHANNEL_ADDON_UPDATES: z.string().optional(),
   DISCORD_CHANNEL_FAQ: z.string().optional(),
+  DISCORD_CHANNEL_WEEKLY_DIGEST: z.string().optional(),
+  DISCORD_CHANNEL_DOWNLOAD_LIVE: z.string().optional(),
+  DISCORD_CHANNEL_MOVIE_NIGHT: z.string().optional(),
 
-  WOW_BLUE_TRACKER_URL: z.string().url().optional(),
+  WOW_BLUE_TRACKER_URL: optionalHttpUrl,
   ADDON_REPO_FULL_NAMES: z.string().default(DEFAULT_ADDON_REPOSITORIES),
+  TIME_ZONE: z.string().default('Europe/Berlin').refine((value) => {
+    try {
+      new Intl.DateTimeFormat('de-DE', { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid IANA time zone'),
+  WEEKLY_DIGEST_ENABLED: envBoolean(true),
+  WEEKLY_DIGEST_DAY: z.coerce.number().int().min(0).max(6).default(0),
+  WEEKLY_DIGEST_HOUR: z.coerce.number().int().min(0).max(23).default(10),
 
   OPENAI_API_KEY: z.string().optional(),
 
   STARBOARD_THRESHOLD: z.coerce.number().int().positive().default(3),
   STARBOARD_EMOJI: z.string().default('⭐'),
-  AUTOMOD_INVITE_FILTER: z.coerce.boolean().default(true),
-  AUTOMOD_CAPS_FILTER: z.coerce.boolean().default(false),
+  AUTOMOD_INVITE_FILTER: envBoolean(true),
+  AUTOMOD_CAPS_FILTER: envBoolean(false),
   AUTOMOD_CAPS_THRESHOLD: z.coerce.number().min(0).max(100).default(70),
   AUTOMOD_CAPS_MIN_LEN: z.coerce.number().int().positive().default(10),
-  AUTOMOD_MENTION_SPAM: z.coerce.boolean().default(true),
+  AUTOMOD_MENTION_SPAM: envBoolean(true),
   AUTOMOD_MENTION_THRESHOLD: z.coerce.number().int().positive().default(5),
-  AUTOMOD_EXTERNAL_LINK_FILTER: z.coerce.boolean().default(false),
+  AUTOMOD_EXTERNAL_LINK_FILTER: envBoolean(false),
   AUTO_ROLE_ID: z.string().optional(),
 
-  HTTP_PORT: z.coerce.number().int().positive().default(3000),
+  HTTP_PORT: z.coerce.number().int().positive().max(65_535).default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),
   // Trust proxy headers (cf-connecting-ip / x-forwarded-for) only when the
   // bot is actually deployed behind one. Default off so a misconfigured
   // exposure doesn't let attackers spoof the rate-limit key with a header.
-  TRUST_PROXY: z.coerce.boolean().default(false),
+  TRUST_PROXY: envBoolean(false),
   WEBHOOK_SECRET: z.string().min(16),
   // GitHub webhook secret is enforced if any GitHub repo points at the bot.
   // Required >= 16 chars when present; absent disables the route at runtime.
-  GITHUB_WEBHOOK_SECRET: z.string().min(16).optional(),
+  GITHUB_WEBHOOK_SECRET: optionalSecret,
 
   DISCORD_CLIENT_SECRET: z.string().optional(),
-  SESSION_SECRET: z.string().min(16).optional(),
+  SESSION_SECRET: optionalSecret,
   ADMIN_USER_IDS: z.string().optional(),
-  DASHBOARD_BASE_URL: z.string().url().optional(),
+  DASHBOARD_BASE_URL: optionalHttpsUrl,
 
-  SONARR_URL: z.string().url().optional(),
+  SONARR_URL: optionalHttpUrl,
   SONARR_API_KEY: z.string().optional(),
-  RADARR_URL: z.string().url().optional(),
+  RADARR_URL: optionalHttpUrl,
   RADARR_API_KEY: z.string().optional(),
-  SEERR_URL: z.string().url().optional(),
+  SEERR_URL: optionalHttpUrl,
   SEERR_API_KEY: z.string().optional(),
-  SAB_URL: z.string().url().optional(),
+  SAB_URL: optionalHttpUrl,
   SAB_API_KEY: z.string().optional(),
-  TAUTULLI_URL: z.string().url().optional(),
+  TAUTULLI_URL: optionalHttpUrl,
   TAUTULLI_API_KEY: z.string().optional(),
 
   TMDB_API_KEY: z.string().optional(),

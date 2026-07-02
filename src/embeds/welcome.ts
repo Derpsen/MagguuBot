@@ -26,6 +26,9 @@ export interface ChannelRefs {
   addonUpdates?: string;
   faq?: string;
   suggestions?: string;
+  weeklyDigest?: string;
+  downloadLive?: string;
+  movieNight?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -585,7 +588,7 @@ export function buildMaintainerrChannelEmbed(): EmbedBuilder {
       {
         name: 'Setup in Maintainerr',
         value:
-          'Maintainerr → **Settings → Notifications → Add Agent** · Agent `Discord` · Webhook URL `http://<unraid-ip>:3000/webhook/maintainerr` · Types: alle sechs ✅ · Speichern + Test-Connection',
+          'Maintainerr → **Settings → Notifications → Add Agent** · Agent `Webhook` · URL `http://magguu-bot:3000/webhook/maintainerr` · Auth Header `Bearer <WEBHOOK_SECRET>` · Types: alle sechs ✅ · Regel mit Agent verbinden · Test',
       },
       {
         name: 'Setup in Sonarr/Radarr',

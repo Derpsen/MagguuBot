@@ -34,8 +34,21 @@ export const helpCommand: SlashCommand = {
     for (const [cat, cmds] of entries) {
       const meta = CATEGORY_META[cat];
       const sorted = [...cmds].sort((a, b) => a.data.name.localeCompare(b.data.name));
-      const value = sorted.map((c) => `**/${c.data.name}** — ${c.data.description}`).join('\n');
-      e.addFields({ name: `${meta.emoji} ${meta.label}`, value: value.slice(0, 1024) });
+      const lines = sorted.map((c) => `**/${c.data.name}** — ${c.data.description}`);
+      const chunks: string[] = [];
+      let chunk = '';
+      for (const line of lines) {
+        if (chunk && chunk.length + line.length + 1 > 1024) {
+          chunks.push(chunk);
+          chunk = '';
+        }
+        chunk += `${chunk ? '\n' : ''}${line}`;
+      }
+      if (chunk) chunks.push(chunk);
+      chunks.forEach((value, index) => e.addFields({
+        name: `${meta.emoji} ${meta.label}${index ? ` · ${index + 1}` : ''}`,
+        value,
+      }));
     }
 
     await interaction.reply({ embeds: [e], flags: MessageFlags.Ephemeral });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Heart } from 'lucide-vue-next';
+import { Heart } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface RepRow {

@@ -2,7 +2,7 @@ import { type ActionRowBuilder, type ButtonBuilder, type EmbedBuilder, type Mess
 import { config } from '../config.js';
 import { getClient } from '../discord/client.js';
 import { db } from '../db/client.js';
-import { webhookEvents } from '../db/schema.js';
+import { webhookEvents, type NewWebhookEvent } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { sanitizePayload } from './webhook-payload-redactor.js';
@@ -17,18 +17,23 @@ interface PostArgs {
   pingRoles?: string[];
 }
 
+interface EditArgs extends Omit<PostArgs, 'channelId' | 'pingRoles'> {
+  channelId: string;
+  messageId: string;
+}
+
 export async function postEmbed(args: PostArgs): Promise<Message | null> {
   const { channelId, embed, components, source, eventType, payload, pingRoles } = args;
   const safePayload = sanitizePayload(payload) as object;
 
   if (!channelId) {
-    db.insert(webhookEvents).values({
+    logWebhookEvent({
       source,
       eventType,
       payload: safePayload,
       status: 'skipped',
       error: 'no channel configured',
-    }).run();
+    });
     logger.warn({ source, eventType }, 'no channel configured, skipping');
     return null;
   }
@@ -52,28 +57,64 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
       components,
       allowedMentions: { parse: [], roles: ping.roleIds },
     });
-    db.insert(webhookEvents).values({
+    logWebhookEvent({
       source,
       eventType,
       payload: safePayload,
       channelId,
       messageId: message.id,
       status: 'posted',
-    }).run();
+    });
 
     return message;
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     logger.error({ source, eventType, error }, 'failed to post embed');
-    db.insert(webhookEvents).values({
+    logWebhookEvent({
       source,
       eventType,
       payload: safePayload,
       channelId,
       status: 'failed',
       error,
-    }).run();
+    });
     return null;
+  }
+}
+
+export async function editEmbed(args: EditArgs): Promise<Message | null> {
+  const { channelId, messageId, embed, components, source, eventType, payload } = args;
+  const safePayload = sanitizePayload(payload) as object;
+  try {
+    const channel = await getClient().channels.fetch(channelId);
+    if (!channel?.isTextBased()) throw new Error(`channel ${channelId} is not text-based`);
+    const message = await channel.messages.fetch(messageId);
+    enforceEmbedTotalSize(embed);
+    const edited = await message.edit({ embeds: [embed], components: components ?? [] });
+    logWebhookEvent({
+      source,
+      eventType,
+      payload: safePayload,
+      channelId,
+      messageId,
+      status: 'posted',
+    });
+    return edited;
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    logger.warn({ source, eventType, channelId, messageId, error }, 'failed to edit embed');
+    return null;
+  }
+}
+
+function logWebhookEvent(values: NewWebhookEvent): void {
+  try {
+    db.insert(webhookEvents).values(values).run();
+  } catch (err) {
+    logger.error(
+      { err, source: values.source, eventType: values.eventType, status: values.status },
+      'failed to write webhook activity log',
+    );
   }
 }
 

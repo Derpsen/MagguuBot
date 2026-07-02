@@ -52,10 +52,16 @@ export async function tickTicketAutoClose(): Promise<void> {
 
       const recent = await channel.messages.fetch({ limit: 1 }).catch(() => null);
       const lastMsg = recent?.first();
-      if (lastMsg && /Inaktivitäts-Warnung/.test(lastMsg.content) && lastMsg.author.bot) continue;
+      if (
+        lastMsg?.author.bot &&
+        lastMsg.embeds.some((embed) => embed.title?.includes('Inaktivitäts-Warnung'))
+      ) {
+        continue;
+      }
 
       await channel.send({
         content: `<@${ticket.openerId}>`,
+        allowedMentions: { users: [ticket.openerId] },
         embeds: [
           new EmbedBuilder()
             .setColor(Colors.warn)

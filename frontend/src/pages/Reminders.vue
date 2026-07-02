@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Trash2, Clock } from 'lucide-vue-next';
+import { Trash2, Clock } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface Reminder {

@@ -7,8 +7,8 @@ import { buildGiveawayEmbed } from '../giveaway.js';
 
 export async function handleGiveawayButton(interaction: ButtonInteraction): Promise<void> {
   const [, action, idRaw] = interaction.customId.split(':');
-  const id = Number.parseInt(idRaw ?? '', 10);
-  if (action !== 'enter' || !Number.isFinite(id)) {
+  const id = Number(idRaw);
+  if (action !== 'enter' || !Number.isInteger(id) || id <= 0) {
     await interaction.reply({ content: 'Unbekannte Aktion.', flags: MessageFlags.Ephemeral });
     return;
   }
@@ -47,6 +47,7 @@ export async function handleGiveawayButton(interaction: ButtonInteraction): Prom
   }
   const updatedParticipants = Array.from(set);
   db.update(giveaways).set({ participants: updatedParticipants }).where(eq(giveaways.id, g.id)).run();
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const fresh = { ...g, participants: updatedParticipants };
@@ -55,5 +56,5 @@ export async function handleGiveawayButton(interaction: ButtonInteraction): Prom
     logger.debug({ err, giveawayId: g.id }, 'giveaway message refresh failed');
   }
 
-  await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
+  await interaction.editReply({ content: message });
 }

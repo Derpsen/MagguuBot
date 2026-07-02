@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Trash2, Calendar, Repeat } from 'lucide-vue-next';
+import { Trash2, Calendar, Repeat } from '@lucide/vue';
 import { api } from '../lib/api';
 import { useToast } from '../composables/useToast';
 

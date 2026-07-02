@@ -72,9 +72,9 @@ async function processFeed(feed: RssFeed): Promise<void> {
     seen.add(item.guid);
     const normTitle = normalizeTitle(item.title);
     if (normTitle) seen.add(`title:${normTitle}`);
+    persistSeen(feed.id, trimSeen(seen));
   }
 
-  persistSeen(feed.id, trimSeen(seen));
   db.update(rssFeeds).set({ lastRunAt: new Date() }).where(eq(rssFeeds.id, feed.id)).run();
 }
 

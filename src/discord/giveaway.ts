@@ -5,6 +5,7 @@ import {
   EmbedBuilder,
   type TextChannel,
 } from 'discord.js';
+import { randomInt } from 'node:crypto';
 import { and, eq, lte } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { giveaways, type Giveaway } from '../db/schema.js';
@@ -57,7 +58,17 @@ export function buildGiveawayButtons(giveawayId: number, ended: boolean): Action
   return row;
 }
 
-export async function tickGiveaways(): Promise<void> {
+let activeGiveawayTick: Promise<void> | null = null;
+
+export function tickGiveaways(): Promise<void> {
+  if (activeGiveawayTick) return activeGiveawayTick.then(() => tickGiveaways());
+  activeGiveawayTick = runGiveawayTick().finally(() => {
+    activeGiveawayTick = null;
+  });
+  return activeGiveawayTick;
+}
+
+async function runGiveawayTick(): Promise<void> {
   const now = new Date();
   const due = db
     .select()
@@ -70,10 +81,12 @@ export async function tickGiveaways(): Promise<void> {
   for (const g of due) {
     try {
       const winners = pickWinners(g.participants, g.winnersCount);
-      db.update(giveaways).set({ ended: true, winners }).where(eq(giveaways.id, g.id)).run();
-
       const ch = (await client.channels.fetch(g.channelId).catch(() => null)) as TextChannel | null;
-      if (!ch?.isSendable()) continue;
+      if (!ch?.isSendable()) {
+        db.update(giveaways).set({ ended: true, winners }).where(eq(giveaways.id, g.id)).run();
+        logger.warn({ giveawayId: g.id }, 'giveaway channel unavailable, marking ended');
+        continue;
+      }
       const updated: Giveaway = { ...g, ended: true, winners };
       const message = await ch.messages.fetch(g.messageId).catch(() => null);
       if (message) {
@@ -90,6 +103,7 @@ export async function tickGiveaways(): Promise<void> {
       } else {
         await ch.send({ content: `Keine Teilnehmer beim Giveaway **${g.prize}**.` });
       }
+      db.update(giveaways).set({ ended: true, winners }).where(eq(giveaways.id, g.id)).run();
     } catch (err) {
       logger.error({ err, giveawayId: g.id }, 'giveaway end failed');
     }
@@ -101,7 +115,7 @@ function pickWinners(participants: string[], count: number): string[] {
   const winners: string[] = [];
   const target = Math.min(count, pool.length);
   while (winners.length < target && pool.length > 0) {
-    const idx = Math.floor(Math.random() * pool.length);
+    const idx = randomInt(pool.length);
     const winner = pool.splice(idx, 1)[0];
     if (winner) winners.push(winner);
   }

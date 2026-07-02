@@ -26,7 +26,7 @@ export interface RadarrMovie {
   year: number;
   tmdbId: number;
   imdbId?: string;
-  images: { coverType: string; remoteUrl?: string }[];
+  images: { coverType: string; remoteUrl?: string | null }[];
   overview?: string;
   status?: string;
 }

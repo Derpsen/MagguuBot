@@ -1,6 +1,6 @@
-import { readFile, stat, unlink } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   AttachmentBuilder,
   MessageFlags,
@@ -13,6 +13,7 @@ import { logger } from '../../utils/logger.js';
 import type { SlashCommand } from './index.js';
 
 const DISCORD_UPLOAD_LIMIT_MB = 10;
+const RETAINED_LARGE_BACKUPS = 5;
 
 export const dbBackupCommand: SlashCommand = {
   category: 'admin',
@@ -32,8 +33,16 @@ export const dbBackupCommand: SlashCommand = {
       const { size } = await stat(tmpPath);
       const sizeMb = size / (1024 * 1024);
       if (sizeMb > DISCORD_UPLOAD_LIMIT_MB) {
+        const backupDir = join(dirname(resolve(config.DATABASE_PATH)), 'backups');
+        await mkdir(backupDir, { recursive: true });
+        const fileName = `magguu-bot-${timestamp}.db`;
+        const savedPath = join(backupDir, fileName);
+        await rename(tmpPath, savedPath);
+        await pruneLargeBackups(backupDir);
         await interaction.editReply(
-          `⚠️ DB ist **${sizeMb.toFixed(1)} MB** — Discord-Upload-Limit ist ~${DISCORD_UPLOAD_LIMIT_MB} MB. Nutze stattdessen \`docker cp bot:/app${config.DATABASE_PATH.replace('./', '/')} ./backup.db\`.`,
+          `⚠️ DB ist **${sizeMb.toFixed(1)} MB** — zu groß für den Discord-Upload. `
+          + `Ein konsistenter Snapshot liegt unter \`${savedPath}\`. Kopiere ihn mit `
+          + `\`docker cp <container-name>:"${savedPath}" ./backup.db\`.`,
         );
         return;
       }
@@ -58,3 +67,12 @@ export const dbBackupCommand: SlashCommand = {
     }
   },
 };
+
+async function pruneLargeBackups(backupDir: string): Promise<void> {
+  const entries = (await readdir(backupDir, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && /^magguu-bot-.*\.db$/.test(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+  const expired = entries.slice(0, Math.max(0, entries.length - RETAINED_LARGE_BACKUPS));
+  await Promise.all(expired.map((name) => unlink(join(backupDir, name)).catch(() => {})));
+}

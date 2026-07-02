@@ -4,10 +4,13 @@ import {
   type Guild,
   type GuildMember,
 } from 'discord.js';
+import { config } from '../config.js';
 import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
+import { getClient } from './client.js';
+import { deleteFeatureState, getFeatureState, setFeatureState } from './feature-state.js';
 import { postModLog } from './mod-log.js';
 
 interface JoinTrack {
@@ -19,7 +22,10 @@ interface JoinTrack {
 }
 
 const STATE = new Map<string, JoinTrack>();
+const RELEASE_TIMERS = new Map<string, NodeJS.Timeout>();
 const RAID_COOLDOWN_MS = 15 * 60 * 1000;
+const RAID_RELEASE_RETRY_MS = 5 * 60 * 1000;
+const RAID_STATE_KEY = 'antiRaid:active';
 
 export async function checkAntiRaid(member: GuildMember): Promise<boolean> {
   if (!getSetting('antiRaidEnabled')) return false;
@@ -40,8 +46,10 @@ export async function checkAntiRaid(member: GuildMember): Promise<boolean> {
     return true;
   }
 
-  if (track.raidActive && track.raidTriggeredAt !== null && now - track.raidTriggeredAt > RAID_COOLDOWN_MS) {
-    await releaseRaidProtection(member.guild, track);
+  if (track.raidActive) {
+    track.raidTriggeredAt = now;
+    persistRaidState(track);
+    scheduleRaidRelease(member.guild, track);
   }
 
   return false;
@@ -54,12 +62,19 @@ async function triggerRaidProtection(
 ): Promise<void> {
   track.raidActive = true;
   track.raidTriggeredAt = Date.now();
+  track.previousLevel = guild.verificationLevel;
+  persistRaidState(track);
   try {
-    track.previousLevel = guild.verificationLevel;
     await guild.setVerificationLevel(GuildVerificationLevel.High, 'anti-raid auto-trigger');
+    scheduleRaidRelease(guild, track);
     logger.warn({ joins, guildId: guild.id }, 'anti-raid: verification raised to HIGH');
   } catch (err) {
     logger.warn({ err }, 'anti-raid: verification level change failed');
+    track.raidActive = false;
+    track.previousLevel = null;
+    track.raidTriggeredAt = null;
+    deleteFeatureState(RAID_STATE_KEY);
+    return;
   }
 
   const modLogId = getChannel('modLog');
@@ -95,6 +110,9 @@ async function triggerRaidProtection(
 async function releaseRaidProtection(guild: Guild, track: JoinTrack): Promise<void> {
   if (!track.raidActive) return;
   track.raidActive = false;
+  const timer = RELEASE_TIMERS.get(guild.id);
+  if (timer) clearTimeout(timer);
+  RELEASE_TIMERS.delete(guild.id);
   try {
     if (track.previousLevel !== null) {
       await guild.setVerificationLevel(track.previousLevel, 'anti-raid cooldown');
@@ -102,7 +120,81 @@ async function releaseRaidProtection(guild: Guild, track: JoinTrack): Promise<vo
     }
   } catch (err) {
     logger.warn({ err }, 'anti-raid: verification restore failed');
+    track.raidActive = true;
+    track.raidTriggeredAt = Date.now() - RAID_COOLDOWN_MS + RAID_RELEASE_RETRY_MS;
+    persistRaidState(track);
+    scheduleRaidRelease(guild, track);
+    return;
   }
+  deleteFeatureState(RAID_STATE_KEY);
+  track.previousLevel = null;
+  track.raidTriggeredAt = null;
+  track.events = [];
+}
+
+function scheduleRaidRelease(guild: Guild, track: JoinTrack): void {
+  const existing = RELEASE_TIMERS.get(guild.id);
+  if (existing) clearTimeout(existing);
+  const lastJoinAt = track.raidTriggeredAt ?? Date.now();
+  const delay = Math.max(1, RAID_COOLDOWN_MS - (Date.now() - lastJoinAt));
+  const timer = setTimeout(() => {
+    const remaining = RAID_COOLDOWN_MS - (Date.now() - (track.raidTriggeredAt ?? Date.now()));
+    if (remaining > 0) {
+      scheduleRaidRelease(guild, track);
+      return;
+    }
+    void releaseRaidProtection(guild, track).catch((err) =>
+      logger.error({ err, guildId: guild.id }, 'anti-raid automatic release failed'),
+    );
+  }, delay);
+  timer.unref();
+  RELEASE_TIMERS.set(guild.id, timer);
+}
+
+function persistRaidState(track: JoinTrack): void {
+  if (track.previousLevel === null || track.raidTriggeredAt === null) return;
+  setFeatureState(RAID_STATE_KEY, JSON.stringify({
+    previousLevel: track.previousLevel,
+    lastJoinAt: track.raidTriggeredAt,
+  }));
+}
+
+export async function recoverAntiRaidProtection(): Promise<void> {
+  const raw = getFeatureState(RAID_STATE_KEY);
+  if (!raw) return;
+  let parsed: { previousLevel?: unknown; lastJoinAt?: unknown };
+  try {
+    parsed = JSON.parse(raw) as { previousLevel?: unknown; lastJoinAt?: unknown };
+  } catch {
+    deleteFeatureState(RAID_STATE_KEY);
+    return;
+  }
+  if (
+    !Number.isInteger(parsed.previousLevel)
+    || Number(parsed.previousLevel) < GuildVerificationLevel.None
+    || Number(parsed.previousLevel) > GuildVerificationLevel.VeryHigh
+    || typeof parsed.lastJoinAt !== 'number'
+    || !Number.isFinite(parsed.lastJoinAt)
+  ) {
+    deleteFeatureState(RAID_STATE_KEY);
+    return;
+  }
+  const guild = await getClient().guilds.fetch(config.DISCORD_GUILD_ID).catch(() => null);
+  if (!guild) throw new Error('anti-raid recovery guild unavailable');
+  const track: JoinTrack = {
+    guildId: guild.id,
+    events: [],
+    raidActive: true,
+    raidTriggeredAt: parsed.lastJoinAt,
+    previousLevel: Number(parsed.previousLevel) as GuildVerificationLevel,
+  };
+  STATE.set(guild.id, track);
+  if (Date.now() - parsed.lastJoinAt >= RAID_COOLDOWN_MS) {
+    await releaseRaidProtection(guild, track);
+  } else {
+    scheduleRaidRelease(guild, track);
+  }
+  logger.info({ guildId: guild.id }, 'anti-raid state recovered after restart');
 }
 
 export async function checkUsernameFilter(member: GuildMember): Promise<boolean> {

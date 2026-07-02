@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js';
+import { buildServiceUrl } from './service-url.js';
 
 // Without a timeout, a hung Sonarr/Radarr keeps the slash-command interaction
 // pending until Discord's 15-minute token expires. 10s is generous for *arr
@@ -25,7 +26,7 @@ export class ArrClient {
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+    const url = buildServiceUrl(this.baseUrl, path);
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), REQUEST_TIMEOUT_MS);
     try {

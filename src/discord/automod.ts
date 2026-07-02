@@ -113,6 +113,7 @@ async function deleteAndLog(message: Message, reason: string, kind: string): Pro
     if ('send' in ch) {
       const warning = await ch.send({
         content: `${message.author.toString()} — ${reason}. (Auto-Moderation)`,
+        allowedMentions: { users: [message.author.id] },
       });
       setTimeout(() => {
         warning.delete().catch(() => {});

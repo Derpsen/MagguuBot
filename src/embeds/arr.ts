@@ -40,17 +40,17 @@ export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${serviceLabel}  ·  Grabbed` })
-    .setTitle(`${emoji}  ${i.title}${yearTag}${episodeTag}`)
+    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
-  if (i.indexer) fields.push({ name: 'Indexer', value: i.indexer, inline: true });
-  if (i.releaseGroup) fields.push({ name: 'Release Group', value: i.releaseGroup, inline: true });
+  if (i.indexer) fields.push({ name: 'Indexer', value: truncate(i.indexer), inline: true });
+  if (i.releaseGroup) fields.push({ name: 'Release Group', value: truncate(i.releaseGroup), inline: true });
   if (i.releaseTitle) fields.push({ name: 'Release', value: `\`${truncate(i.releaseTitle, 1000)}\``, inline: false });
   if (fields.length) e.addFields(fields);
 
@@ -79,16 +79,16 @@ export function buildImportEmbed(i: ImportEmbedInput): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${serviceLabel}  ·  ${label}` })
-    .setTitle(`${emoji}  ${i.title}${yearTag}${episodeTag}`)
+    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
-  if (i.releaseGroup) fields.push({ name: 'Release Group', value: i.releaseGroup, inline: true });
+  if (i.releaseGroup) fields.push({ name: 'Release Group', value: truncate(i.releaseGroup), inline: true });
   if (fields.length) e.addFields(fields);
 
   e.setFooter({ text: `MagguuUI  ·  available on Plex` });
@@ -123,14 +123,14 @@ export function buildFailureEmbed(i: FailureEmbedInput): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(Colors.danger)
     .setAuthor({ name: `${serviceLabel}  ·  ${meta.label}` })
-    .setTitle(`${meta.icon}  ${i.title}`)
+    .setTitle(truncate(`${meta.icon}  ${i.title}`, 256))
     .setDescription(truncate(i.reason ?? 'No reason provided.', 1500))
     .setFooter({ text: `MagguuUI  ·  ${meta.hint}` })
     .setTimestamp(new Date());
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
-  if (i.downloadClient) fields.push({ name: 'Download client', value: i.downloadClient, inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
+  if (i.downloadClient) fields.push({ name: 'Download client', value: truncate(i.downloadClient), inline: true });
   if (i.releaseTitle) fields.push({ name: 'Release', value: `\`${truncate(i.releaseTitle, 1000)}\``, inline: false });
   if (fields.length) e.addFields(fields);
 
@@ -156,8 +156,8 @@ export function buildAppUpdateEmbed(i: AppUpdateEmbedInput): EmbedBuilder {
     .setTimestamp(new Date());
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.previousVersion) fields.push({ name: 'Vorherige Version', value: `\`${i.previousVersion}\``, inline: true });
-  if (i.newVersion) fields.push({ name: 'Neue Version', value: `\`${i.newVersion}\``, inline: true });
+  if (i.previousVersion) fields.push({ name: 'Vorherige Version', value: `\`${truncate(i.previousVersion, 1022)}\``, inline: true });
+  if (i.newVersion) fields.push({ name: 'Neue Version', value: `\`${truncate(i.newVersion, 1022)}\``, inline: true });
   if (fields.length) e.addFields(fields);
   if (i.message) e.setDescription(truncate(i.message, 1500));
 
@@ -200,14 +200,14 @@ export function buildDeleteEmbed(i: DeleteEmbedInput): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(Colors.muted)
     .setAuthor({ name: `${serviceLabel}  ·  ${action}` })
-    .setTitle(`${icon}  ${i.title}${yearTag}${episodeTag}`)
+    .setTitle(truncate(`${icon}  ${i.title}${yearTag}${episodeTag}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
   if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
-  if (i.quality) fields.push({ name: 'Quality', value: qualityBadge(i.quality), inline: true });
+  if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
   if (i.size) fields.push({ name: 'Size', value: formatBytes(i.size), inline: true });
   if (i.reason) fields.push({ name: 'Grund', value: truncate(i.reason, 1000), inline: false });
   if (fields.length) e.addFields(fields);
@@ -234,7 +234,7 @@ export function buildHealthEmbed(i: HealthEmbedInput): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${i.service}  ·  Health` })
-    .setTitle(`${icon}  ${i.type ?? i.level.toUpperCase()}`)
+    .setTitle(truncate(`${icon}  ${i.type ?? i.level.toUpperCase()}`, 256))
     .setDescription(truncate(i.message, 1500))
     .setTimestamp(new Date());
 }

@@ -26,7 +26,7 @@ export interface SonarrSeries {
   year: number;
   tvdbId: number;
   imdbId?: string;
-  images: { coverType: string; remoteUrl?: string }[];
+  images: { coverType: string; remoteUrl?: string | null }[];
   status: string;
 }
 

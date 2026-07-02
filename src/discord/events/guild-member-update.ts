@@ -86,5 +86,6 @@ async function postBoostNotification(
   await channel.send({
     content: `🎉 ${member.toString()}`,
     embeds: [embed],
+    allowedMentions: { users: [member.id] },
   });
 }

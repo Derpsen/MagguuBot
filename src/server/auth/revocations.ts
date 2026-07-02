@@ -21,7 +21,7 @@ export function isSessionRevoked(userId: string, issuedAt: number): boolean {
   refreshCache();
   const notBefore = cache.get(userId);
   if (notBefore === undefined) return false;
-  return issuedAt < notBefore;
+  return issuedAt <= notBefore;
 }
 
 export function revokeUserSessions(userId: string): void {

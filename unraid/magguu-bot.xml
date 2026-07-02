@@ -15,7 +15,7 @@
   <Project>https://github.com/Derpsen/MagguuBot</Project>
   <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Maintainerr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, a GitHub webhook feed, and an optional WoW Blue-Tracker RSS channel (Retail + PTR only). Slash commands include /queue, /arr-status, /calendar, /search, /db-backup, /purge. Ships with an embedded admin dashboard (Discord OAuth2, warnings/XP/webhook views, filterable) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Role-gated channels: Newcomer sees only Info/Chat, Plex-User/Regular/VIP unlock MEDIA + DOWNLOADS. Single container, runs headless with an append-only activity log under /app/data.</Overview>
   <Category>Tools: MediaApp:Other Network:Messenger</Category>
-  <WebUI>http://[IP]:[PORT:3000]/healthz</WebUI>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL/>
   <Icon>https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/discord.png</Icon>
   <ExtraParams>--restart=unless-stopped</ExtraParams>
@@ -36,7 +36,7 @@
 
   <Config Name="DISCORD_GUILD_ID" Target="DISCORD_GUILD_ID" Default="" Mode="" Description="Your Discord server ID. Enable Developer Mode in Discord, right-click the server icon, Copy Server ID." Type="Variable" Display="always" Required="true" Mask="false"/>
 
-  <Config Name="WEBHOOK_SECRET" Target="WEBHOOK_SECRET" Default="" Mode="" Description="Shared secret required in X-Magguu-Token header on every /webhook/* call. Generate: openssl rand -hex 32 (minimum 16 chars)." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="WEBHOOK_SECRET" Target="WEBHOOK_SECRET" Default="" Mode="" Description="Shared secret required in X-Magguu-Token for Sonarr, Radarr, Seerr, Tautulli, and SABnzbd. Maintainerr can pass it as ?token=. GitHub uses GITHUB_WEBHOOK_SECRET. Generate: openssl rand -hex 32 (minimum 16 chars)." Type="Variable" Display="always" Required="true" Mask="true"/>
 
   <Config Name="GITHUB_WEBHOOK_SECRET" Target="GITHUB_WEBHOOK_SECRET" Default="" Mode="" Description="HMAC secret for the /webhook/github endpoint. Set the same value in each GitHub repo's Settings -&gt; Webhooks -&gt; Secret. Generate: openssl rand -hex 32. Leave empty to disable the GitHub feed." Type="Variable" Display="always" Required="false" Mask="true"/>
 
@@ -87,4 +87,12 @@
   <Config Name="HTTP_PORT" Target="HTTP_PORT" Default="3000" Mode="" Description="Internal port of the webhook server (must match the port mapping above)." Type="Variable" Display="advanced" Required="false" Mask="false">3000</Config>
 
   <Config Name="DATABASE_PATH" Target="DATABASE_PATH" Default="/app/data/bot.db" Mode="" Description="SQLite database path inside the container (maps through AppData)." Type="Variable" Display="advanced" Required="false" Mask="false">/app/data/bot.db</Config>
+
+  <Config Name="TIME_ZONE" Target="TIME_ZONE" Default="Europe/Berlin" Mode="" Description="IANA timezone used for weekly digest scheduling, e.g. Europe/Berlin." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Berlin</Config>
+
+  <Config Name="WEEKLY_DIGEST_ENABLED" Target="WEEKLY_DIGEST_ENABLED" Default="true" Mode="" Description="Enable the automatic weekly Discord digest." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="WEEKLY_DIGEST_DAY" Target="WEEKLY_DIGEST_DAY" Default="0" Mode="" Description="Digest weekday: 0=Sunday through 6=Saturday." Type="Variable" Display="advanced" Required="false" Mask="false">0</Config>
+
+  <Config Name="WEEKLY_DIGEST_HOUR" Target="WEEKLY_DIGEST_HOUR" Default="10" Mode="" Description="Local hour (0-23) after which the weekly digest is posted." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
 </Container>

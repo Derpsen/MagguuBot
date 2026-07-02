@@ -50,6 +50,8 @@ export async function handleTicketButton(interaction: ButtonInteraction): Promis
     case 'priority-set':
       await setPriority(interaction, rest[0] ?? 'normal');
       return;
+    default:
+      await interaction.reply({ content: 'Unbekannte Ticket-Aktion.', flags: MessageFlags.Ephemeral });
   }
 }
 
@@ -225,6 +227,15 @@ async function cyclePriority(interaction: ButtonInteraction): Promise<void> {
 }
 
 async function setPriority(interaction: ButtonInteraction, level: string): Promise<void> {
+  const isMod = interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages) ?? false;
+  if (!isMod) {
+    await interaction.reply({ content: 'Nur Mods.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (level !== 'low' && level !== 'normal' && level !== 'high') {
+    await interaction.reply({ content: 'Ungültige Priorität.', flags: MessageFlags.Ephemeral });
+    return;
+  }
   const ticket = await loadTicket(interaction);
   if (!ticket) return;
   const valid = ['low', 'normal', 'high'].includes(level) ? (level as 'low' | 'normal' | 'high') : 'normal';

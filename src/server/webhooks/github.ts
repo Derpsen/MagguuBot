@@ -133,6 +133,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   const signature = c.req.header('x-hub-signature-256');
   const eventName = c.req.header('x-github-event');
   const deliveryId = c.req.header('x-github-delivery');
+  const isReplay = c.req.header('x-magguu-replay') === '1';
   const raw = await c.req.text();
   if (Buffer.byteLength(raw) > MAX_GITHUB_BODY_BYTES) {
     return c.json({ ok: false, error: 'payload too large' }, 413);
@@ -222,7 +223,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     const p = body as ReleasePayload;
     if (p.action !== 'published' && p.action !== 'released') return c.json({ ok: true, skipped: 'ignored action' });
     const releaseIdentity = `${p.repository.full_name.trim().toLowerCase()}\u0000${p.release.tag_name.trim().toLowerCase()}`;
-    if (!seenReleases.remember(releaseIdentity)) {
+    if (!isReplay && !seenReleases.remember(releaseIdentity)) {
       logger.info(
         { repo: p.repository.full_name, tag: p.release.tag_name, action: p.action },
         'duplicate github release announcement skipped',

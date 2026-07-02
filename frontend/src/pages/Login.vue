@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { LogIn, ShieldCheck } from 'lucide-vue-next';
+import { LogIn, ShieldCheck } from '@lucide/vue';
 
 const route = useRoute();
 const next = typeof route.query.next === 'string' ? route.query.next : '/';

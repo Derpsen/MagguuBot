@@ -19,6 +19,7 @@ export const serverinfoCommand: SlashCommand = {
     const voice = channels.filter((c) => c.type === ChannelType.GuildVoice).size;
     const categories = channels.filter((c) => c.type === ChannelType.GuildCategory).size;
 
+    await interaction.deferReply();
     const owner = await g.fetchOwner().catch(() => null);
 
     const e = new EmbedBuilder()
@@ -42,6 +43,6 @@ export const serverinfoCommand: SlashCommand = {
     const banner = g.bannerURL({ size: 1024 });
     if (banner) e.setImage(banner);
 
-    await interaction.reply({ embeds: [e] });
+    await interaction.editReply({ embeds: [e] });
   },
 };

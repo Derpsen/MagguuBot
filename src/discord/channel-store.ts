@@ -22,7 +22,10 @@ export type ChannelKey =
   | 'addonUpdates'
   | 'faq'
   | 'suggestions'
-  | 'ticketLogs';
+  | 'ticketLogs'
+  | 'weeklyDigest'
+  | 'downloadLive'
+  | 'movieNight';
 
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
@@ -44,6 +47,9 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   faq: config.DISCORD_CHANNEL_FAQ,
   suggestions: undefined,
   ticketLogs: undefined,
+  weeklyDigest: config.DISCORD_CHANNEL_WEEKLY_DIGEST,
+  downloadLive: config.DISCORD_CHANNEL_DOWNLOAD_LIVE,
+  movieNight: config.DISCORD_CHANNEL_MOVIE_NIGHT,
 };
 
 export function getChannel(key: ChannelKey): string | undefined {

@@ -5,7 +5,7 @@ import {
   type Guild,
   type User,
 } from 'discord.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { warnings } from '../../db/schema.js';
 import { getSetting } from '../../settings.js';
@@ -26,8 +26,9 @@ export const warnCommand: SlashCommand = {
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? undefined;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'Guild only.' });
       return;
     }
 
@@ -41,10 +42,10 @@ export const warnCommand: SlashCommand = {
       .run();
 
     const count = db
-      .select()
+      .select({ count: sql<number>`count(*)` })
       .from(warnings)
       .where(and(eq(warnings.guildId, interaction.guild.id), eq(warnings.userId, user.id)))
-      .all().length;
+      .get()?.count ?? 0;
 
     const escalation = await maybeEscalate(interaction.guild, user, count);
 
@@ -61,9 +62,8 @@ export const warnCommand: SlashCommand = {
     });
 
     const escalationLine = escalation ? `\n${escalation}` : '';
-    await interaction.reply({
+    await interaction.editReply({
       content: `⚠️ **${user.displayName}** verwarnt. Insgesamt **${count}** Warnung(en).${escalationLine}`,
-      flags: MessageFlags.Ephemeral,
     });
   },
 };

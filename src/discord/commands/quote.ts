@@ -40,21 +40,20 @@ export const quoteCommand: SlashCommand = {
       }
     }
 
+    await interaction.deferReply();
     const channel = (await interaction.guild.channels.fetch(channelId).catch(() => null)) as
       | TextChannel
       | null;
     if (!channel || !channel.isTextBased()) {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Channel nicht gefunden.',
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
     const target = await channel.messages.fetch(messageId).catch(() => null);
     if (!target) {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Message nicht gefunden — falsche ID oder bereits gelöscht.',
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -77,6 +76,6 @@ export const quoteCommand: SlashCommand = {
       if (first?.contentType?.startsWith('image/')) embed.setImage(first.url);
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

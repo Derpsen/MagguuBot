@@ -57,7 +57,11 @@ export async function tickBirthdays(): Promise<void> {
         )
         .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
         .setTimestamp(new Date());
-      await channel.send({ content: `🎉 ${member.toString()}`, embeds: [embed] });
+      await channel.send({
+        content: `🎉 ${member.toString()}`,
+        embeds: [embed],
+        allowedMentions: { users: [member.id] },
+      });
 
       if (roleId) {
         await member.roles.add(roleId, 'birthday role').catch((err) => {

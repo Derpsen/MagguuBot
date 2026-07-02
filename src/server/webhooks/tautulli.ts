@@ -45,7 +45,7 @@ function classify(input: string): EventMeta {
 
 function isDiscordPayload(p: TautulliPayload): p is TautulliDiscordPayload {
   const candidate = p as TautulliDiscordPayload;
-  return Array.isArray(candidate.embeds) || typeof candidate.content === 'string';
+  return Boolean(candidate.embeds?.length) || Boolean(candidate.content?.trim());
 }
 
 export const tautulliWebhook = new Hono().post('/', async (c) => {
@@ -103,7 +103,11 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
 
 async function handleCustom(body: TautulliCustomPayload): Promise<void> {
   const event = (body.event ?? body.action ?? '').toLowerCase();
-  const meta = EVENT_META[event] ?? EVENT_META.recently_added!;
+  const meta = EVENT_META[event];
+  if (!meta) {
+    logger.debug({ event }, 'tautulli custom event ignored');
+    return;
+  }
 
   if (meta.kind === 'recently_added') {
     const embed = new EmbedBuilder()

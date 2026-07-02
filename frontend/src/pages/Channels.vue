@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Hash, Check } from 'lucide-vue-next';
+import { Hash, Check } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface Mapping {

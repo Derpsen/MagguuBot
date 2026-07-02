@@ -12,8 +12,8 @@ import {
 } from '../../embeds/seerr.js';
 import { getTmdbPosterUrl } from '../../services/tmdb.js';
 import { logger } from '../../utils/logger.js';
-import { postEmbed } from '../discord-poster.js';
-import { seerrPayloadSchema } from './schemas.js';
+import { editEmbed, postEmbed } from '../discord-poster.js';
+import { parsePositiveInteger, seerrPayloadSchema } from './schemas.js';
 
 function firstDiscordId(value: string | string[] | undefined): string | undefined {
   const candidates = Array.isArray(value) ? value : value?.split(',');
@@ -23,9 +23,76 @@ function firstDiscordId(value: string | string[] | undefined): string | undefine
 function updateRequestStatus(requestId: number, status: SeerrRequestStatus): void {
   if (!requestId) return;
   db.update(seerrRequests)
-    .set({ status })
+    .set({ status, updatedAt: new Date() })
     .where(eq(seerrRequests.seerrRequestId, requestId))
     .run();
+}
+
+async function updateLifecycleCard(args: {
+  requestId: number;
+  status: SeerrRequestStatus;
+  embed: ReturnType<typeof buildSeerrRequestEmbed>;
+  eventType: string;
+  payload: unknown;
+  request: {
+    mediaType: 'movie' | 'tv';
+    tmdbId: number | undefined;
+    title: string;
+    requestedBy: string | undefined;
+  };
+}): Promise<void> {
+  const { requestId, status, embed, eventType, payload, request } = args;
+  updateRequestStatus(requestId, status);
+  await disableSeerrPendingButtons(requestId);
+
+  const row = requestId
+    ? db.select().from(seerrRequests).where(eq(seerrRequests.seerrRequestId, requestId)).get()
+    : undefined;
+  if (row?.lifecycleChannelId && row.lifecycleMessageId) {
+    const edited = await editEmbed({
+      channelId: row.lifecycleChannelId,
+      messageId: row.lifecycleMessageId,
+      embed,
+      source: 'seerr',
+      eventType,
+      payload,
+    });
+    if (edited) return;
+  }
+
+  const message = await postEmbed({
+    channelId: getChannel('requests'),
+    embed,
+    source: 'seerr',
+    eventType,
+    payload,
+  });
+  if (message && requestId) {
+    db.insert(seerrRequests)
+      .values({
+        seerrRequestId: requestId,
+        messageId: message.id,
+        channelId: message.channelId,
+        mediaType: request.mediaType,
+        tmdbId: request.tmdbId,
+        title: request.title,
+        requestedBy: request.requestedBy,
+        status,
+        lifecycleChannelId: message.channelId,
+        lifecycleMessageId: message.id,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: seerrRequests.seerrRequestId,
+        set: {
+          status,
+          lifecycleChannelId: message.channelId,
+          lifecycleMessageId: message.id,
+          updatedAt: new Date(),
+        },
+      })
+      .run();
+  }
 }
 
 async function disableSeerrPendingButtons(requestId: number): Promise<void> {
@@ -71,13 +138,23 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
     return c.json({ ok: true, test: true });
   }
 
-  const requestId = Number(body.request?.request_id ?? 0);
+  const requestId = parsePositiveInteger(body.request?.request_id) ?? 0;
+  if (body.notification_type === 'MEDIA_PENDING' && !requestId) {
+    logger.warn('seerr pending request is missing a valid request id');
+    return c.json({ ok: false, error: 'invalid request id' }, 400);
+  }
   const mediaType = body.media?.media_type ?? 'movie';
   const title = body.subject ?? 'Unknown request';
-  const tmdbId = body.media?.tmdbId ? Number(body.media.tmdbId) : undefined;
+  const tmdbId = parsePositiveInteger(body.media?.tmdbId);
   const yearMatch = title.match(/\((\d{4})\)/);
   const year = yearMatch?.[1];
   const plainTitle = title.replace(/\s*\(\d{4}\)\s*$/, '');
+  const requestRecord = {
+    mediaType,
+    tmdbId,
+    title: plainTitle,
+    requestedBy: body.request?.requestedBy_username,
+  };
 
   let posterUrl: string | null = body.image ?? null;
   if (!posterUrl && tmdbId) {
@@ -97,37 +174,71 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
         status: 'pending',
       });
       const buttons = buildSeerrApprovalButtons(requestId);
-      const message = await postEmbed({
-        channelId: getChannel('approvals') ?? getChannel('requests'),
+      const approvalsChannel = getChannel('approvals') ?? getChannel('requests');
+      const requestsChannel = getChannel('requests');
+      const approvalMessage = await postEmbed({
+        channelId: approvalsChannel,
         embed,
         components: [buttons],
         source: 'seerr',
         eventType: body.notification_type,
         payload: body,
       });
-      if (message && requestId) {
+      let lifecycleMessage = approvalMessage;
+      if (requestsChannel && requestsChannel !== approvalsChannel) {
+        lifecycleMessage = await postEmbed({
+          channelId: requestsChannel,
+          embed: buildSeerrRequestEmbed({
+            requestId,
+            mediaType,
+            title: plainTitle,
+            year,
+            overview: body.message,
+            posterUrl,
+            requestedBy: body.request?.requestedBy_username,
+            status: 'pending',
+          }),
+          source: 'seerr',
+          eventType: `${body.notification_type}_LIFECYCLE`,
+          payload: body,
+        });
+      }
+      const trackedMessage = approvalMessage ?? lifecycleMessage;
+      if (trackedMessage && requestId) {
         db.insert(seerrRequests)
           .values({
             seerrRequestId: requestId,
-            messageId: message.id,
-            channelId: message.channelId,
+            messageId: trackedMessage.id,
+            channelId: trackedMessage.channelId,
             mediaType,
             tmdbId,
             title: plainTitle,
             status: 'pending',
             requestedBy: body.request?.requestedBy_username,
+            lifecycleMessageId: lifecycleMessage?.id,
+            lifecycleChannelId: lifecycleMessage?.channelId,
+            updatedAt: new Date(),
           })
-          .onConflictDoNothing()
+          .onConflictDoUpdate({
+            target: seerrRequests.seerrRequestId,
+            set: {
+              messageId: trackedMessage.id,
+              channelId: trackedMessage.channelId,
+              lifecycleMessageId: lifecycleMessage?.id,
+              lifecycleChannelId: lifecycleMessage?.channelId,
+              status: 'pending',
+              updatedAt: new Date(),
+            },
+          })
           .run();
       }
       break;
     }
     case 'MEDIA_APPROVED':
     case 'MEDIA_AUTO_APPROVED': {
-      updateRequestStatus(requestId, 'approved');
-      await disableSeerrPendingButtons(requestId);
-      await postEmbed({
-        channelId: getChannel('requests'),
+      await updateLifecycleCard({
+        requestId,
+        status: 'approved',
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -138,17 +249,16 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           requestedBy: body.request?.requestedBy_username,
           status: 'approved',
         }),
-        source: 'seerr',
         eventType: body.notification_type,
         payload: body,
+        request: requestRecord,
       });
       break;
     }
     case 'MEDIA_DECLINED': {
-      updateRequestStatus(requestId, 'declined');
-      await disableSeerrPendingButtons(requestId);
-      await postEmbed({
-        channelId: getChannel('requests'),
+      await updateLifecycleCard({
+        requestId,
+        status: 'declined',
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -159,17 +269,16 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           requestedBy: body.request?.requestedBy_username,
           status: 'declined',
         }),
-        source: 'seerr',
         eventType: body.notification_type,
         payload: body,
+        request: requestRecord,
       });
       break;
     }
     case 'MEDIA_AVAILABLE': {
-      updateRequestStatus(requestId, 'available');
-      await disableSeerrPendingButtons(requestId);
-      await postEmbed({
-        channelId: getChannel('requests'),
+      await updateLifecycleCard({
+        requestId,
+        status: 'available',
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -180,17 +289,16 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           requestedBy: body.request?.requestedBy_username,
           status: 'available',
         }),
-        source: 'seerr',
         eventType: body.notification_type,
         payload: body,
+        request: requestRecord,
       });
       break;
     }
     case 'MEDIA_FAILED': {
-      updateRequestStatus(requestId, 'failed');
-      await disableSeerrPendingButtons(requestId);
-      await postEmbed({
-        channelId: getChannel('requests'),
+      await updateLifecycleCard({
+        requestId,
+        status: 'failed',
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -201,17 +309,16 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           requestedBy: body.request?.requestedBy_username,
           status: 'failed',
         }),
-        source: 'seerr',
         eventType: body.notification_type,
         payload: body,
+        request: requestRecord,
       });
       break;
     }
     case 'MEDIA_DELETED': {
-      updateRequestStatus(requestId, 'deleted');
-      await disableSeerrPendingButtons(requestId);
-      await postEmbed({
-        channelId: getChannel('requests'),
+      await updateLifecycleCard({
+        requestId,
+        status: 'deleted',
         embed: buildSeerrRequestEmbed({
           requestId,
           mediaType,
@@ -222,9 +329,9 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           requestedBy: body.request?.requestedBy_username,
           status: 'deleted',
         }),
-        source: 'seerr',
         eventType: body.notification_type,
         payload: body,
+        request: requestRecord,
       });
       break;
     }
@@ -232,7 +339,7 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
     case 'ISSUE_COMMENT':
     case 'ISSUE_REOPENED':
     case 'ISSUE_RESOLVED': {
-      const issueId = body.issue?.issue_id ? Number(body.issue.issue_id) : undefined;
+      const issueId = parsePositiveInteger(body.issue?.issue_id);
       const issueMessage = body.comment?.comment_message ?? body.message;
       await postEmbed({
         channelId: getChannel('failures'),

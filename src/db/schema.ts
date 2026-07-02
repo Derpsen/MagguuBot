@@ -26,9 +26,12 @@ export const seerrRequests = sqliteTable('seerr_requests', {
     enum: ['pending', 'approved', 'declined', 'available', 'failed', 'deleted'],
   }).notNull(),
   requestedBy: text('requested_by'),
+  lifecycleMessageId: text('lifecycle_message_id'),
+  lifecycleChannelId: text('lifecycle_channel_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 });
 
 export const channelConfig = sqliteTable(
@@ -130,6 +133,7 @@ export const reminders = sqliteTable('reminders', {
   channelId: text('channel_id'),
   message: text('message').notNull(),
   dueAt: integer('due_at', { mode: 'timestamp_ms' }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -429,12 +433,82 @@ export const ticketCategories = sqliteTable('ticket_categories', {
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 });
 
+export const featureState = sqliteTable(
+  'feature_state',
+  {
+    guildId: text('guild_id').notNull(),
+    key: text('key').notNull(),
+    value: text('value').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.key] }) }),
+);
+
+export const livePanels = sqliteTable(
+  'live_panels',
+  {
+    guildId: text('guild_id').notNull(),
+    kind: text('kind', { enum: ['downloads'] }).notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id').notNull(),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.guildId, t.kind] }) }),
+);
+
+export const movieNights = sqliteTable('movie_nights', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  guildId: text('guild_id').notNull(),
+  channelId: text('channel_id').notNull(),
+  messageId: text('message_id'),
+  title: text('title').notNull(),
+  scheduledAt: integer('scheduled_at', { mode: 'timestamp_ms' }),
+  status: text('status', { enum: ['open', 'closed', 'finished'] }).notNull().default('open'),
+  createdBy: text('created_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+});
+
+export const movieNightNominations = sqliteTable('movie_night_nominations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  movieNightId: integer('movie_night_id').notNull(),
+  title: text('title').notNull(),
+  url: text('url'),
+  nominatedBy: text('nominated_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const movieNightVotes = sqliteTable(
+  'movie_night_votes',
+  {
+    movieNightId: integer('movie_night_id').notNull(),
+    nominationId: integer('nomination_id').notNull(),
+    userId: text('user_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.movieNightId, t.userId] }) }),
+);
+
 export type MemberHistory = typeof memberHistory.$inferSelect;
 export type Afk = typeof afk.$inferSelect;
 export type Giveaway = typeof giveaways.$inferSelect;
 export type Birthday = typeof birthdays.$inferSelect;
 export type JtcRoom = typeof jtcRooms.$inferSelect;
 export type TicketCategory = typeof ticketCategories.$inferSelect;
+export type LivePanel = typeof livePanels.$inferSelect;
+export type MovieNight = typeof movieNights.$inferSelect;
+export type MovieNightNomination = typeof movieNightNominations.$inferSelect;
 
 export type Autoresponder = typeof autoresponders.$inferSelect;
 export type ScheduledAnnouncement = typeof scheduledAnnouncements.$inferSelect;

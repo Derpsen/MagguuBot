@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { buildServiceUrl } from './service-url.js';
 
 export interface SabSlot {
   nzo_id: string;
@@ -34,7 +35,7 @@ async function sabFetch<T>(mode: string, extra: Record<string, string> = {}): Pr
     apikey: config.SAB_API_KEY,
     ...extra,
   });
-  const url = `${config.SAB_URL}/api?${params.toString()}`;
+  const url = `${buildServiceUrl(config.SAB_URL, '/api')}?${params.toString()}`;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), SAB_TIMEOUT_MS);
   try {

@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Save, Star, Shield, UserPlus, Sparkles, MessageSquare, Ban } from 'lucide-vue-next';
+import { Save, Star, Shield, UserPlus, Sparkles, MessageSquare, Ban } from '@lucide/vue';
 import { api } from '../lib/api';
 import { useToast } from '../composables/useToast';
 

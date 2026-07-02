@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Lock, Ticket } from 'lucide-vue-next';
+import { Lock, Ticket } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface TicketRow {

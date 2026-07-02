@@ -35,7 +35,7 @@ export const sonarrPayloadSchema = z
         year: z.number().optional(),
         path: z.string().optional(),
         images: z
-          .array(z.object({ coverType: z.string(), remoteUrl: z.string().optional() }).passthrough())
+          .array(z.object({ coverType: z.string(), remoteUrl: z.string().nullable().optional() }).passthrough())
           .optional(),
       })
       .passthrough()
@@ -67,6 +67,13 @@ export const sonarrPayloadSchema = z
 
 export type SonarrPayload = z.infer<typeof sonarrPayloadSchema>;
 
+export function healthLevelForEvent(
+  eventType: string,
+  level: 'ok' | 'warning' | 'error' | undefined,
+): 'ok' | 'warning' | 'error' {
+  return eventType === 'HealthRestored' ? 'ok' : level ?? 'warning';
+}
+
 // ─── Radarr ─────────────────────────────────────────
 
 const radarrMovieFile = z
@@ -87,7 +94,7 @@ export const radarrPayloadSchema = z
         year: z.number().optional(),
         path: z.string().optional(),
         images: z
-          .array(z.object({ coverType: z.string(), remoteUrl: z.string().optional() }).passthrough())
+          .array(z.object({ coverType: z.string(), remoteUrl: z.string().nullable().optional() }).passthrough())
           .optional(),
       })
       .passthrough()
@@ -175,6 +182,12 @@ export const seerrPayloadSchema = z
   .passthrough();
 
 export type SeerrPayload = z.infer<typeof seerrPayloadSchema>;
+
+export function parsePositiveInteger(value: string | number | null | undefined): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
 
 // ─── Tautulli ───────────────────────────────────────
 

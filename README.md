@@ -12,6 +12,9 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
   - `/queue` — live Sonarr + Radarr + SABnzbd download queue with progress bars
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
+  - `/doctor` — checks configuration, channels, permissions, database, and integrations
+  - `/profile` + `/wrapped` — XP, reputation, achievements, and shareable yearly cards
+  - `/movie-night` — nominations, voting, countdown, and automatic reminders
 - **Seerr approve / decline buttons** — straight from Discord (Administrator only)
 - **MagguuUI release feed** — user-friendly addon releases go to `#addon-updates`; technical pushes and workflows stay in `#github`
 - **Activity log** — every posted embed is written to SQLite for audit/debug
@@ -80,7 +83,11 @@ Use Seerr's **Webhook** agent rather than its **Discord** agent. The Discord age
 4. Keep the default JSON payload (use **Reset to Default** if it was customized).
 5. Enable the request and issue notification types you want, save, then run Seerr's test.
 
-Routing is automatic after `/setup-server`: pending approvals go to `⏳・freigaben`, approved/declined/available/failed requests go to `📝・anfragen`, and issues go to `⚠️・fehler`. `SEERR_URL` and `SEERR_API_KEY` are additionally required if the Approve/Decline buttons in Discord should call back into Seerr.
+Routing is automatic after `/setup-server`: pending approvals go to `⏳・freigaben`, while one public lifecycle card in `📝・anfragen` is updated from pending through approved/declined/available/failed. Issues go to `⚠️・fehler`. `SEERR_URL` and `SEERR_API_KEY` are additionally required if the Approve/Decline buttons in Discord should call back into Seerr.
+
+`/setup-server dry-run:true` previews all creates and renames without changing Discord. It also provisions `📊・wochenrückblick`, `📡・live-downloads`, and `🎬・movie-night`. The weekly digest runs according to `TIME_ZONE`, `WEEKLY_DIGEST_DAY`, and `WEEKLY_DIGEST_HOUR`; the live download card refreshes once per minute.
+
+Failed or skipped webhook events can be replayed from the dashboard. Database backups can be downloaded with `/db-backup`; oversized snapshots are retained under the database directory's `backups/` folder (latest five). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
 ### 5. SABnzbd
 
@@ -101,11 +108,18 @@ Set `GITHUB_WEBHOOK_SECRET` in the container, then add a GitHub webhook that poi
 
 `Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically.
 
+### 7. Optional admin dashboard
+
+Expose the dashboard through a trusted HTTPS reverse proxy, then configure `DISCORD_CLIENT_SECRET`, a random 32-byte `SESSION_SECRET`, the comma-separated `ADMIN_USER_IDS` allowlist, and the exact public `DASHBOARD_BASE_URL`. Add `<DASHBOARD_BASE_URL>/auth/callback` as a redirect in the Discord Developer Portal. The secure session cookies intentionally do not work over plain HTTP.
+
+Keep `TRUST_PROXY=false` unless every request reaches the bot through a proxy you control; otherwise clients could spoof forwarded IP headers.
+
 ## Development
 
 ```bash
 npm install --ignore-scripts   # skips native build; enough for typecheck
 npm run typecheck
+npm test
 npm run build
 ```
 
@@ -170,13 +184,14 @@ scripts/
 unraid/
 └── magguu-bot.xml                  # community template
 .github/workflows/
-├── ci.yml                          # typecheck + build
+├── ci.yml                          # audit + typecheck + tests + build
 └── docker.yml                      # build + push to GHCR
 ```
 
 ## Security
 
-- All `/webhook/*` routes require `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compare)
+- Sonarr, Radarr, Seerr, Tautulli, and SABnzbd require `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compare)
+- GitHub uses an HMAC signature with `GITHUB_WEBHOOK_SECRET`; Maintainerr requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or the shared secret as `?token=` and should remain internal/LAN-only
 - Seerr approve / decline buttons require Administrator in Discord
 - Bot token never logged; config validation fails loud on missing required vars
 - `.env` / `.env.*` / `data/` / `dist/` are gitignored — **never commit secrets**

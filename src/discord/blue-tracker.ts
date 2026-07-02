@@ -98,16 +98,17 @@ export async function runBlueTrackerTick(): Promise<void> {
       seen.add(item.guid);
       const normTitle = normalizeTitle(item.title);
       if (normTitle) seen.add(`title:${normTitle}`);
+      saveSeen(trimSeen(seen));
       continue;
     }
 
-    await postOne(item, enriched, channelId);
+    const posted = await postOne(item, enriched, channelId);
+    if (!posted) continue;
     seen.add(item.guid);
     const normTitle = normalizeTitle(item.title);
     if (normTitle) seen.add(`title:${normTitle}`);
+    saveSeen(trimSeen(seen));
   }
-
-  saveSeen(trimSeen(seen));
 }
 
 function normalizeTitle(title: string): string {
@@ -122,7 +123,7 @@ async function postOne(
   item: RssItem,
   enriched: EnrichedBluePost | null,
   channelId: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await postEmbed({
       channelId,
@@ -138,8 +139,10 @@ async function postOne(
       },
       pingRoles: classifyPings(item, enriched),
     });
+    return true;
   } catch (err) {
     logger.warn({ err, guid: item.guid }, 'blue-tracker post failed');
+    return false;
   }
 }
 

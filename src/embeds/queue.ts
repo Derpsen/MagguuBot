@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { RadarrQueueResponse } from '../services/radarr.js';
 import type { SabQueueResponse } from '../services/sabnzbd.js';
 import type { SonarrQueueResponse } from '../services/sonarr.js';
-import { Colors, formatBytes } from './colors.js';
+import { Colors, formatBytes, truncate } from './colors.js';
 
 interface Line {
   title: string;
@@ -44,13 +44,13 @@ export function buildQueueEmbed(i: BuildQueueEmbedInput): EmbedBuilder {
   }));
 
   if (sonarrLines.length > 0) {
-    e.addFields({ name: `📺 Sonarr  ·  ${i.sonarr?.totalRecords ?? 0}`, value: renderLines(sonarrLines) });
+    e.addFields({ name: `📺 Sonarr  ·  ${i.sonarr?.totalRecords ?? 0}`, value: truncate(renderLines(sonarrLines)) });
   }
   if (radarrLines.length > 0) {
-    e.addFields({ name: `🎬 Radarr  ·  ${i.radarr?.totalRecords ?? 0}`, value: renderLines(radarrLines) });
+    e.addFields({ name: `🎬 Radarr  ·  ${i.radarr?.totalRecords ?? 0}`, value: truncate(renderLines(radarrLines)) });
   }
   if (sabLines.length > 0) {
-    e.addFields({ name: `📦 SABnzbd  ·  ${i.sab?.queue.noofslots_total ?? 0}`, value: renderLines(sabLines) });
+    e.addFields({ name: `📦 SABnzbd  ·  ${i.sab?.queue.noofslots_total ?? 0}`, value: truncate(renderLines(sabLines)) });
   }
   if (!sonarrLines.length && !radarrLines.length && !sabLines.length) {
     e.setDescription('_Queue is empty._');
@@ -63,8 +63,9 @@ export function buildQueueEmbed(i: BuildQueueEmbedInput): EmbedBuilder {
 function renderLines(lines: Line[]): string {
   return lines
     .map((l) => {
-      const bar = progressBar(l.progress);
-      const pct = `${l.progress.toFixed(0)}%`.padStart(4, ' ');
+      const safeProgress = clampProgress(l.progress);
+      const bar = progressBar(safeProgress);
+      const pct = `${safeProgress.toFixed(0)}%`.padStart(4, ' ');
       const size = formatBytes(l.size);
       const tl = l.timeleft ? `  ·  ⏱ ${l.timeleft}` : '';
       const title = l.title.length > 58 ? l.title.slice(0, 57) + '…' : l.title;
@@ -75,6 +76,11 @@ function renderLines(lines: Line[]): string {
 
 function progressBar(pct: number): string {
   const width = 14;
-  const filled = Math.round((pct / 100) * width);
+  const safe = clampProgress(pct);
+  const filled = Math.round((safe / 100) * width);
   return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
+function clampProgress(pct: number): number {
+  return Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
 }

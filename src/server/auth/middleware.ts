@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono';
 import { config } from '../../config.js';
-import { readSession, type Session } from './session.js';
+import { clearSessionCookie, readSession, type Session } from './session.js';
 
 export function isAdmin(userId: string): boolean {
   if (!config.ADMIN_USER_IDS) return false;
@@ -11,6 +11,7 @@ export function isAdmin(userId: string): boolean {
 export async function requireAdmin(c: Context, next: Next): Promise<Response | void> {
   const session = readSession(c);
   if (!session || !isAdmin(session.userId)) {
+    clearSessionCookie(c);
     return c.json({ ok: false, error: 'unauthorized' }, 401);
   }
   c.set('session', session);

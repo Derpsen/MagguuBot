@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check } from 'lucide-vue-next';
+import { Plus, Trash2, Power, Pencil, MessageSquareText, Regex, Type, Hash, X, Sparkles, Timer, Palette, Copy, Check } from '@lucide/vue';
 import { api } from '../lib/api';
 
 type MatchType = 'substring' | 'word' | 'regex';

@@ -1,5 +1,5 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { warnings } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
@@ -18,14 +18,15 @@ export const userinfoCommand: SlashCommand = {
       await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
       return;
     }
+    await interaction.deferReply();
 
     const member = await interaction.guild.members.fetch(target.id).catch(() => null);
     const xp = getUserXp(interaction.guild.id, target.id);
     const warnCount = db
-      .select()
+      .select({ count: sql<number>`count(*)` })
       .from(warnings)
       .where(and(eq(warnings.guildId, interaction.guild.id), eq(warnings.userId, target.id)))
-      .all().length;
+      .get()?.count ?? 0;
 
     const roles = member
       ? member.roles.cache
@@ -55,6 +56,6 @@ export const userinfoCommand: SlashCommand = {
       )
       .setFooter({ text: 'MagguuBot  ·  userinfo' });
 
-    await interaction.reply({ embeds: [e] });
+    await interaction.editReply({ embeds: [e] });
   },
 };

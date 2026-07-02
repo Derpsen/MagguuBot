@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Plus, Trash2, Edit3 } from 'lucide-vue-next';
+import { Plus, Trash2, Edit3 } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface Tag {

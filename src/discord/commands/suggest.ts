@@ -1,4 +1,5 @@
 import { MessageFlags, SlashCommandBuilder, type TextChannel } from 'discord.js';
+import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { suggestions } from '../../db/schema.js';
 import { buildSuggestionButtons, buildSuggestionEmbed } from '../../embeds/suggestion.js';
@@ -78,7 +79,10 @@ export const suggestCommand: SlashCommand = {
 
       const message = await channel.send({ embeds: [embed], components: [buttons] });
 
-      db.update(suggestions).set({ messageId: message.id, updatedAt: new Date() }).run();
+      db.update(suggestions)
+        .set({ messageId: message.id, updatedAt: new Date() })
+        .where(eq(suggestions.id, inserted.id))
+        .run();
 
       await interaction.editReply(`✅ Vorschlag #${inserted.id} eingereicht: ${message.url}`);
     } catch (err) {

@@ -19,6 +19,7 @@ export const leaderboardCommand: SlashCommand = {
       await interaction.reply({ content: 'Noch keine XP-Daten.', flags: MessageFlags.Ephemeral });
       return;
     }
+    await interaction.deferReply();
 
     const medals = ['🥇', '🥈', '🥉'];
     const lines = await Promise.all(
@@ -36,6 +37,6 @@ export const leaderboardCommand: SlashCommand = {
       .setDescription(lines.join('\n'))
       .setFooter({ text: 'MagguuBot  ·  leaderboard' });
 
-    await interaction.reply({ embeds: [e] });
+    await interaction.editReply({ embeds: [e] });
   },
 };

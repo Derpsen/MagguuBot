@@ -21,8 +21,9 @@ export const banCommand: SlashCommand = {
     const user = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? undefined;
     const deleteDays = interaction.options.getInteger('delete-days') ?? 0;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'Guild only.' });
       return;
     }
 
@@ -36,11 +37,10 @@ export const banCommand: SlashCommand = {
         reason,
         extra: deleteDays > 0 ? [{ name: 'Msgs purged', value: `last ${deleteDays}d`, inline: true }] : [],
       });
-      await interaction.reply({ content: `🔨 **${user.displayName}** gebannt.`, flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: `🔨 **${user.displayName}** gebannt.` });
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Konnte nicht bannen — Bot-Rolle muss über der Ziel-Rolle stehen.',
-        flags: MessageFlags.Ephemeral,
       });
     }
   },
@@ -57,8 +57,9 @@ export const unbanCommand: SlashCommand = {
   async execute(interaction) {
     const userId = interaction.options.getString('user-id', true);
     const reason = interaction.options.getString('reason') ?? undefined;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: 'Guild only.' });
       return;
     }
 
@@ -72,14 +73,12 @@ export const unbanCommand: SlashCommand = {
         target: user,
         reason,
       });
-      await interaction.reply({
+      await interaction.editReply({
         content: `🕊️ Ban für **${user.displayName}** aufgehoben.`,
-        flags: MessageFlags.Ephemeral,
       });
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Konnte nicht unbannen — User nicht gebannt oder ID falsch.',
-        flags: MessageFlags.Ephemeral,
       });
     }
   },

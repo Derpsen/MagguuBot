@@ -10,7 +10,7 @@ import {
 } from '../../embeds/arr.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
-import { radarrPayloadSchema } from './schemas.js';
+import { healthLevelForEvent, radarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -155,7 +155,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
         channelId: getChannel('health'),
         embed: buildHealthEmbed({
           service: 'Radarr',
-          level: body.level ?? 'warning',
+          level: healthLevelForEvent(body.eventType, body.level),
           message: body.message ?? body.eventType,
           type: body.type,
         }),

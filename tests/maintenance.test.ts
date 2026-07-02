@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { enforceEmbedTotalSize, formatBytes, truncate } from '../src/embeds/colors.ts';
+import { buildGrabEmbed } from '../src/embeds/arr.ts';
 import { buildReleaseEmbed, cleanAddonReleaseNotes } from '../src/embeds/github.ts';
 import { sanitizePayload } from '../src/server/webhook-payload-redactor.ts';
+import { healthLevelForEvent } from '../src/server/webhooks/schemas.ts';
+import { buildServiceUrl } from '../src/services/service-url.ts';
 import { isAddonRepository, parseAddonRepositories } from '../src/utils/github-routing.ts';
+import { emptyEnvToUndefined, envBoolean } from '../src/utils/env.ts';
 import { createRecentKeyCache } from '../src/utils/recent-key-cache.ts';
 import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 
@@ -27,6 +31,18 @@ test('sanitizePayload redacts sensitive nested fields', () => {
   });
 });
 
+test('service URLs tolerate configured trailing slashes', () => {
+  assert.equal(buildServiceUrl('http://sonarr:8989/', '/api/v3/queue'), 'http://sonarr:8989/api/v3/queue');
+  assert.equal(buildServiceUrl('https://example.test/sonarr///', 'api/v3/queue'), 'https://example.test/sonarr/api/v3/queue');
+});
+
+test('restored arr health events are always reported as healthy', () => {
+  assert.equal(healthLevelForEvent('HealthRestored', undefined), 'ok');
+  assert.equal(healthLevelForEvent('HealthRestored', 'error'), 'ok');
+  assert.equal(healthLevelForEvent('Health', undefined), 'warning');
+  assert.equal(healthLevelForEvent('Health', 'error'), 'error');
+});
+
 test('isPrivateIp recognizes local and private address ranges', () => {
   assert.equal(isPrivateIp('127.0.0.1'), true);
   assert.equal(isPrivateIp('10.0.0.5'), true);
@@ -34,14 +50,32 @@ test('isPrivateIp recognizes local and private address ranges', () => {
   assert.equal(isPrivateIp('192.168.178.2'), true);
   assert.equal(isPrivateIp('::1'), true);
   assert.equal(isPrivateIp('::ffff:192.168.1.50'), true);
+  assert.equal(isPrivateIp('::ffff:7f00:1'), true);
   assert.equal(isPrivateIp('100.64.0.1'), true);
   // Bracketed IPv6 literals as returned by URL.hostname must not bypass the guard.
   assert.equal(isPrivateIp('[::1]'), true);
   assert.equal(isPrivateIp('[fd00::1]'), true);
   assert.equal(isPrivateIp('[fe80::abcd]'), true);
+  assert.equal(isPrivateIp('[ff02::1]'), true);
   assert.equal(isPrivateIp('8.8.8.8'), false);
   assert.equal(isPrivateIp('2606:4700:4700::1111'), false);
   assert.equal(isPrivateIp('[2606:4700:4700::1111]'), false);
+});
+
+test('environment booleans parse false-like strings without truthy coercion', () => {
+  const enabled = envBoolean(false);
+  const disabled = envBoolean(true);
+
+  assert.equal(enabled.parse('true'), true);
+  assert.equal(enabled.parse('1'), true);
+  assert.equal(disabled.parse('false'), false);
+  assert.equal(disabled.parse('0'), false);
+  assert.equal(enabled.parse(undefined), false);
+  assert.equal(disabled.parse(undefined), true);
+  assert.equal(enabled.safeParse('yes').success, false);
+  assert.equal(emptyEnvToUndefined(''), undefined);
+  assert.equal(emptyEnvToUndefined('   '), undefined);
+  assert.equal(emptyEnvToUndefined('value'), 'value');
 });
 
 test('embed helpers keep output inside Discord-friendly bounds', () => {
@@ -72,6 +106,16 @@ test('embed helpers keep output inside Discord-friendly bounds', () => {
     embed.data.fields.reduce((sum, field) => sum + field.name.length + field.value.length, 0);
 
   assert.equal(total <= 20, true);
+
+  const arrEmbed = buildGrabEmbed({
+    service: 'sonarr',
+    title: 'T'.repeat(400),
+    quality: 'Q'.repeat(2_000),
+    indexer: 'I'.repeat(2_000),
+    releaseGroup: 'R'.repeat(2_000),
+  }).toJSON();
+  assert.equal((arrEmbed.title?.length ?? 0) <= 256, true);
+  assert.equal(arrEmbed.fields?.every((field) => field.value.length <= 1_024), true);
 });
 
 test('addon repositories default to MagguuUI and only match exact names', () => {

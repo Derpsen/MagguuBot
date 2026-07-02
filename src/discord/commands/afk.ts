@@ -16,10 +16,10 @@ export const afkCommand: SlashCommand = {
       return;
     }
     const reason = interaction.options.getString('grund') ?? 'AFK';
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await setAfk(interaction.member as GuildMember, reason);
-    await interaction.reply({
+    await interaction.editReply({
       content: `💤 Du bist jetzt AFK — Grund: **${reason}**\n\n_Verschwindet automatisch wenn du wieder schreibst._`,
-      flags: MessageFlags.Ephemeral,
     });
   },
 };

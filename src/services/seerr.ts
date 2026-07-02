@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { buildServiceUrl } from './service-url.js';
 
 const SEERR_TIMEOUT_MS = 10_000;
 
@@ -15,7 +16,7 @@ async function seerrFetch<T>(path: string, opts: SeerrOpts = {}): Promise<T> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), SEERR_TIMEOUT_MS);
   try {
-    const res = await fetch(`${config.SEERR_URL}${path}`, {
+    const res = await fetch(buildServiceUrl(config.SEERR_URL, path), {
       method: opts.method ?? 'GET',
       headers: {
         'X-Api-Key': config.SEERR_API_KEY,

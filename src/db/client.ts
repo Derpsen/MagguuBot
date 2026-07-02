@@ -4,9 +4,11 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { config } from '../config.js';
 import * as schema from './schema.js';
+import { applyStagedDatabaseRestore } from './restore.js';
 
 const path = resolve(config.DATABASE_PATH);
 mkdirSync(dirname(path), { recursive: true });
+const restoredOnBoot = applyStagedDatabaseRestore();
 
 const sqlite = new Database(path);
 sqlite.pragma('journal_mode = WAL');
@@ -23,6 +25,10 @@ scheduleWebhookEventsRetention();
 
 export const db = drizzle(sqlite, { schema });
 export const sqliteHandle = sqlite;
+
+if (restoredOnBoot) {
+  void import('../utils/logger.js').then(({ logger }) => logger.warn('staged database restore applied'));
+}
 
 function pruneWebhookEvents(): void {
   const cutoff = Date.now() - WEBHOOK_EVENTS_RETENTION_MS;
@@ -66,6 +72,11 @@ function runMigrations(): void {
   addColumnIfMissing('tickets', 'last_activity_at', 'INTEGER');
   addColumnIfMissing('tickets', 'closed_by', 'TEXT');
   addColumnIfMissing('tickets', 'close_reason', 'TEXT');
+  addColumnIfMissing('seerr_requests', 'lifecycle_message_id', 'TEXT');
+  addColumnIfMissing('seerr_requests', 'lifecycle_channel_id', 'TEXT');
+  addColumnIfMissing('seerr_requests', 'updated_at', 'INTEGER');
+  addColumnIfMissing('reminders', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
+  sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
 }
 
 function ensureSchema(): void {
@@ -94,7 +105,10 @@ function ensureSchema(): void {
       title TEXT NOT NULL,
       status TEXT NOT NULL,
       requested_by TEXT,
-      created_at INTEGER NOT NULL
+      lifecycle_message_id TEXT,
+      lifecycle_channel_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_seerr_status ON seerr_requests(status);
 
@@ -175,6 +189,7 @@ function ensureSchema(): void {
       channel_id TEXT,
       message TEXT NOT NULL,
       due_at INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_at);
@@ -304,6 +319,7 @@ function ensureSchema(): void {
       updated_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_suggestions_guild_status ON suggestions(guild_id, status);
+    CREATE INDEX IF NOT EXISTS idx_suggestions_author ON suggestions(guild_id, author_id, created_at);
 
     CREATE TABLE IF NOT EXISTS admin_audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -390,5 +406,57 @@ function ensureSchema(): void {
       enabled INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS idx_ticket_categories ON ticket_categories(guild_id, enabled, sort_order);
+
+    CREATE TABLE IF NOT EXISTS feature_state (
+      guild_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, key)
+    );
+
+    CREATE TABLE IF NOT EXISTS live_panels (
+      guild_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, kind)
+    );
+
+    CREATE TABLE IF NOT EXISTS movie_nights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT,
+      title TEXT NOT NULL,
+      scheduled_at INTEGER,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      closed_at INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_movie_nights_status ON movie_nights(guild_id, status, scheduled_at);
+
+    CREATE TABLE IF NOT EXISTS movie_night_nominations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      movie_night_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT,
+      nominated_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_movie_nominations_night ON movie_night_nominations(movie_night_id);
+
+    CREATE TABLE IF NOT EXISTS movie_night_votes (
+      movie_night_id INTEGER NOT NULL,
+      nomination_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (movie_night_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_movie_votes_nomination ON movie_night_votes(nomination_id);
+    CREATE INDEX IF NOT EXISTS idx_movie_votes_user ON movie_night_votes(user_id, created_at);
   `);
 }

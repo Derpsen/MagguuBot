@@ -136,6 +136,7 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
             embeds: [embed],
             components: buildWelcomeOnboardingButtons(),
             files: cardAttachment ? [cardAttachment] : undefined,
+            allowedMentions: { users: [member.id] },
           });
         }
       }

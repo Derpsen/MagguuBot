@@ -64,7 +64,7 @@ export function buildSeerrRequestEmbed(i: SeerrRequestEmbedInput): EmbedBuilder 
   const e = new EmbedBuilder()
     .setColor(meta.color)
     .setAuthor({ name: `Seerr  ·  Request #${i.requestId}` })
-    .setTitle(`${emoji}  ${i.title}${yearTag}`)
+    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}`, 256))
     .setTimestamp(new Date());
 
   if (i.overview) e.setDescription(truncate(i.overview, 600));
@@ -74,7 +74,7 @@ export function buildSeerrRequestEmbed(i: SeerrRequestEmbedInput): EmbedBuilder 
     { name: 'Status', value: meta.label, inline: true },
     { name: 'Type', value: i.mediaType === 'movie' ? 'Movie' : 'TV Show', inline: true },
   ];
-  if (i.requestedBy) fields.push({ name: 'Requested by', value: i.requestedBy, inline: true });
+  if (i.requestedBy) fields.push({ name: 'Requested by', value: truncate(i.requestedBy), inline: true });
   e.addFields(fields);
 
   e.setFooter({ text: `MagguuUI  ·  ${meta.footerHint}` });
@@ -165,7 +165,7 @@ export function buildSeerrIssueEmbed(i: SeerrIssueEmbedInput): EmbedBuilder {
   const e = new EmbedBuilder()
     .setColor(meta.color)
     .setAuthor({ name: `Seerr  ·  ${meta.label}${issueRef}` })
-    .setTitle(`${meta.icon}  ${mediaEmoji}  ${i.title}${yearTag}`)
+    .setTitle(truncate(`${meta.icon}  ${mediaEmoji}  ${i.title}${yearTag}`, 256))
     .setTimestamp(new Date());
 
   if (i.message) e.setDescription(truncate(i.message, 1500));
@@ -174,19 +174,19 @@ export function buildSeerrIssueEmbed(i: SeerrIssueEmbedInput): EmbedBuilder {
   const fields: { name: string; value: string; inline?: boolean }[] = [];
   if (i.issueType) {
     const icon = ISSUE_TYPE_EMOJI[i.issueType] ?? '❓';
-    fields.push({ name: 'Typ', value: `${icon} ${i.issueType}`, inline: true });
+    fields.push({ name: 'Typ', value: truncate(`${icon} ${i.issueType}`), inline: true });
   }
   if (i.issueStatus) {
     const icon = i.issueStatus === 'RESOLVED' ? '🟢' : '🔴';
-    fields.push({ name: 'Status', value: `${icon} ${i.issueStatus}`, inline: true });
+    fields.push({ name: 'Status', value: truncate(`${icon} ${i.issueStatus}`), inline: true });
   }
   if (i.reportedBy) {
     const mention = i.reporterDiscordId ? `<@${i.reporterDiscordId}>` : i.reportedBy;
-    fields.push({ name: 'Gemeldet von', value: mention, inline: true });
+    fields.push({ name: 'Gemeldet von', value: truncate(mention), inline: true });
   }
   if (i.commentedBy && i.notification === 'ISSUE_COMMENT') {
     const mention = i.commenterDiscordId ? `<@${i.commenterDiscordId}>` : i.commentedBy;
-    fields.push({ name: 'Kommentar von', value: mention, inline: true });
+    fields.push({ name: 'Kommentar von', value: truncate(mention), inline: true });
   }
   if (fields.length) e.addFields(fields);
 

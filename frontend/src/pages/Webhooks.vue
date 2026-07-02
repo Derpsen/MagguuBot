@@ -1,6 +1,9 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { api } from '../lib/api';
+import { useToast } from '../composables/useToast';
+
+const toast = useToast();
 
 interface WebhookEvent {
   id: number;
@@ -93,13 +96,18 @@ const stats = computed(() => {
 
 async function reload(): Promise<void> {
   loading.value = true;
-  const [eventsResponse, healthResponse] = await Promise.all([
-    api<WebhookEvent[]>('/api/admin/webhooks'),
-    api<WebhookHealth>('/api/admin/webhooks/health'),
-  ]);
-  rows.value = eventsResponse;
-  health.value = healthResponse;
-  loading.value = false;
+  try {
+    const [eventsResponse, healthResponse] = await Promise.all([
+      api<WebhookEvent[]>('/api/admin/webhooks'),
+      api<WebhookHealth>('/api/admin/webhooks/health'),
+    ]);
+    rows.value = eventsResponse;
+    health.value = healthResponse;
+  } catch {
+    toast.error('Webhooks nicht geladen', 'Die API ist momentan nicht erreichbar.');
+  } finally {
+    loading.value = false;
+  }
 }
 
 const healthRows = computed<WebhookHealthSource[]>(() =>
@@ -115,6 +123,7 @@ function setSourceFilter(s: string): void {
 
 const clearMenuOpen = ref(false);
 const clearing = ref(false);
+const replayingId = ref<number | null>(null);
 
 async function clearEvents(scope: 'all' | 'failed' | 'skipped'): Promise<void> {
   const label = scope === 'all' ? 'ALLE' : scope === 'failed' ? 'alle FAILED' : 'alle SKIPPED';
@@ -130,9 +139,25 @@ async function clearEvents(scope: 'all' | 'failed' | 'skipped'): Promise<void> {
     );
     clearMenuOpen.value = false;
     await reload();
-    alert(`${res.deleted} Event${res.deleted === 1 ? '' : 's'} gelöscht.`);
+    toast.success('Events gelöscht', `${res.deleted} Event${res.deleted === 1 ? '' : 's'} entfernt.`);
+  } catch {
+    toast.error('Löschen fehlgeschlagen', 'Die Events wurden nicht verändert.');
   } finally {
     clearing.value = false;
+  }
+}
+
+async function replayEvent(event: WebhookEvent): Promise<void> {
+  if (!confirm(`${event.source} · ${event.eventType} wirklich erneut verarbeiten?`)) return;
+  replayingId.value = event.id;
+  try {
+    await api(`/api/admin/webhooks/${event.id}/replay`, { method: 'POST' });
+    await reload();
+    toast.success('Replay verarbeitet', `${event.source} · ${event.eventType}`);
+  } catch {
+    toast.error('Replay fehlgeschlagen', 'Details stehen im Bot-Log und im Eventstatus.');
+  } finally {
+    replayingId.value = null;
   }
 }
 
@@ -307,6 +332,15 @@ onMounted(reload);
               >
                 {{ r.status }}
               </span>
+
+              <button
+                class="btn-ghost btn-sm shrink-0"
+                :disabled="replayingId === r.id || r.source === 'blue-tracker' || r.status === 'posted'"
+                :title="r.status === 'posted' ? 'Erfolgreiche Events werden nicht erneut gesendet' : r.source === 'blue-tracker' ? 'Diese Quelle ist kein eingehender Webhook' : 'Event erneut verarbeiten'"
+                @click="replayEvent(r)"
+              >
+                {{ replayingId === r.id ? '…' : '↻ Replay' }}
+              </button>
 
               <span
                 v-if="r.channelId"

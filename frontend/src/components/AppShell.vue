@@ -22,8 +22,9 @@ import {
   ChevronsRight,
   Menu,
   ExternalLink,
+  Palette,
   type LucideIcon,
-} from 'lucide-vue-next';
+} from '@lucide/vue';
 import type { SessionUser } from '../composables/useSession';
 import { useSession } from '../composables/useSession';
 import ToastStack from './ToastStack.vue';
@@ -91,6 +92,15 @@ const collapsed = ref<boolean>(
   typeof window !== 'undefined' ? window.localStorage.getItem('mb-sidebar-collapsed') === '1' : false,
 );
 const mobileOpen = ref(false);
+type Theme = 'dark' | 'amoled' | 'aurora';
+const storedTheme = typeof window !== 'undefined' ? window.localStorage.getItem('mb-theme') : null;
+const theme = ref<Theme>(storedTheme === 'amoled' || storedTheme === 'aurora' ? storedTheme : 'dark');
+const themeLabel = computed(() => theme.value === 'dark' ? 'Dark' : theme.value === 'amoled' ? 'AMOLED' : 'Aurora');
+
+function cycleTheme(): void {
+  theme.value = theme.value === 'dark' ? 'amoled' : theme.value === 'amoled' ? 'aurora' : 'dark';
+  window.localStorage.setItem('mb-theme', theme.value);
+}
 
 function toggleCollapse(): void {
   collapsed.value = !collapsed.value;
@@ -113,7 +123,7 @@ function isActive(item: NavItem): boolean {
 </script>
 
 <template>
-  <div class="relative flex h-full bg-surface-0 text-slate-100">
+  <div class="relative flex h-full bg-surface-0 text-slate-100" :class="`theme-${theme}`">
     <aside
       class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-surface-1 transition-all duration-200"
       :class="[
@@ -214,6 +224,9 @@ function isActive(item: NavItem): boolean {
         </nav>
 
         <div class="ml-auto flex items-center gap-1">
+          <button class="btn-icon" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
+            <Palette class="h-4 w-4" />
+          </button>
           <a
             href="https://github.com/Derpsen/MagguuBot"
             target="_blank"

@@ -6,6 +6,7 @@ import {
   type Role,
   type TextChannel,
 } from 'discord.js';
+import { randomInt } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { giveaways } from '../../db/schema.js';
@@ -87,6 +88,7 @@ export const giveawayCommand: SlashCommand = {
         await interaction.reply({ content: 'Ungültiger Channel.', flags: MessageFlags.Ephemeral });
         return;
       }
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const endsAt = new Date(Date.now() + durationMs);
 
       const inserted = db
@@ -106,21 +108,20 @@ export const giveawayCommand: SlashCommand = {
         .returning({ id: giveaways.id })
         .get();
       if (!inserted) {
-        await interaction.reply({ content: 'Insert fehlgeschlagen.', flags: MessageFlags.Ephemeral });
+        await interaction.editReply({ content: 'Insert fehlgeschlagen.' });
         return;
       }
 
       const fresh = db.select().from(giveaways).where(eq(giveaways.id, inserted.id)).get();
-      if (!fresh) return;
+      if (!fresh) throw new Error('inserted giveaway could not be loaded');
       const message = await channel.send({
         embeds: [buildGiveawayEmbed(fresh, false)],
         components: [buildGiveawayButtons(fresh.id, false)],
       });
       db.update(giveaways).set({ messageId: message.id }).where(eq(giveaways.id, fresh.id)).run();
 
-      await interaction.reply({
+      await interaction.editReply({
         content: `✅ Giveaway gestartet: ${message.url}`,
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -132,9 +133,10 @@ export const giveawayCommand: SlashCommand = {
         await interaction.reply({ content: 'Giveaway nicht gefunden.', flags: MessageFlags.Ephemeral });
         return;
       }
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       db.update(giveaways).set({ endsAt: new Date() }).where(eq(giveaways.id, id)).run();
       await tickGiveaways();
-      await interaction.reply({ content: `✅ Giveaway #${id} beendet.`, flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: `✅ Giveaway #${id} beendet.` });
       return;
     }
 
@@ -156,8 +158,9 @@ export const giveawayCommand: SlashCommand = {
         });
         return;
       }
-      const newWinner = pool[Math.floor(Math.random() * pool.length)];
-      if (!newWinner) return;
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const newWinner = pool[randomInt(pool.length)];
+      if (!newWinner) throw new Error('winner pool unexpectedly empty');
       const channel = (await interaction.guild.channels.fetch(g.channelId).catch(() => null)) as
         | TextChannel
         | null;
@@ -167,7 +170,7 @@ export const giveawayCommand: SlashCommand = {
           allowedMentions: { users: [newWinner] },
         });
       }
-      await interaction.reply({ content: `✅ Reroll: <@${newWinner}>`, flags: MessageFlags.Ephemeral });
+      await interaction.editReply({ content: `✅ Reroll: <@${newWinner}>` });
       return;
     }
   },

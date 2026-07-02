@@ -1,4 +1,5 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
+import { sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { webhookEvents } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
@@ -27,7 +28,7 @@ export const botinfoCommand: SlashCommand = {
     .setDescription('Zeig Bot-Status, Uptime + Stats') as SlashCommandBuilder,
   async execute(interaction) {
     const mem = process.memoryUsage();
-    const eventsTotal = db.select().from(webhookEvents).all().length;
+    const eventsTotal = db.select({ count: sql<number>`count(*)` }).from(webhookEvents).get()?.count ?? 0;
     const e = new EmbedBuilder()
       .setColor(Colors.brand)
       .setAuthor({

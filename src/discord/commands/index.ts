@@ -10,6 +10,9 @@ import { banCommand, unbanCommand } from './ban.js';
 import { botinfoCommand } from './botinfo.js';
 import { cleanupServerCommand } from './cleanup-server.js';
 import { dbBackupCommand } from './db-backup.js';
+import { dbRestoreCommand } from './db-restore.js';
+import { doctorCommand } from './doctor.js';
+import { downloadsLiveCommand } from './downloads-live.js';
 import { editSnipeCommand, snipeCommand } from './snipe.js';
 import { giveawayCommand } from './giveaway.js';
 import { helpCommand } from './help.js';
@@ -17,9 +20,11 @@ import { jtcCommand } from './jtc.js';
 import { kickCommand } from './kick.js';
 import { leaderboardCommand } from './leaderboard.js';
 import { lockdownCommand } from './lockdown.js';
+import { movieNightCommand } from './movie-night.js';
 import { plexNowPlayingCommand } from './plex-now-playing.js';
 import { plexTopCommand } from './plex-top.js';
 import { pollCommand } from './poll.js';
+import { profileCommand } from './profile.js';
 import { purgeCommand } from './purge.js';
 import { purgeUserCommand } from './purge-user.js';
 import { queueCommand } from './queue.js';
@@ -42,6 +47,7 @@ import { suggestionStatusCommand } from './suggestion-status.js';
 import { timeoutCommand } from './timeout.js';
 import { userinfoCommand } from './userinfo.js';
 import { warnCommand } from './warn.js';
+import { wrappedCommand } from './wrapped.js';
 
 export type CommandCategory = 'downloads' | 'moderation' | 'utility' | 'admin';
 
@@ -61,6 +67,9 @@ const all: SlashCommand[] = [
   setupServerCommand,
   cleanupServerCommand,
   dbBackupCommand,
+  dbRestoreCommand,
+  doctorCommand,
+  downloadsLiveCommand,
   warnCommand,
   timeoutCommand,
   kickCommand,
@@ -70,9 +79,11 @@ const all: SlashCommand[] = [
   purgeUserCommand,
   slowmodeCommand,
   lockdownCommand,
+  movieNightCommand,
   helpCommand,
   announceCommand,
   pollCommand,
+  profileCommand,
   countdownCommand,
   remindmeCommand,
   rankCommand,
@@ -96,6 +107,7 @@ const all: SlashCommand[] = [
   quoteCommand,
   giveawayCommand,
   birthdayCommand,
+  wrappedCommand,
   jtcCommand,
 ];
 

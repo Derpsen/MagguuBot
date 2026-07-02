@@ -27,6 +27,8 @@ function matchesStar(reaction: MessageReaction | PartialMessageReaction): boolea
   return emoji === getSetting('starboardEmoji');
 }
 
+const messageQueues = new Map<string, Promise<void>>();
+
 async function countStars(message: Message | PartialMessage): Promise<number> {
   const starReaction = message.reactions?.cache.find((r) => matchesStar(r));
   if (!starReaction) return 0;
@@ -40,6 +42,20 @@ export async function handleStarboardReactionChange(
 ): Promise<void> {
   if (!matchesStar(reaction)) return;
 
+  const key = `${reaction.message.guildId ?? 'unknown'}:${reaction.message.id}`;
+  const previous = messageQueues.get(key) ?? Promise.resolve();
+  const current = previous.catch(() => {}).then(() => processStarboardReactionChange(reaction));
+  messageQueues.set(key, current);
+  try {
+    await current;
+  } finally {
+    if (messageQueues.get(key) === current) messageQueues.delete(key);
+  }
+}
+
+async function processStarboardReactionChange(
+  reaction: MessageReaction | PartialMessageReaction,
+): Promise<void> {
   const starboardChannelId = getChannel('starboard');
   if (!starboardChannelId) return;
 

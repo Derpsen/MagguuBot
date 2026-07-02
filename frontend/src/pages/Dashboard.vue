@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
   Clock,
   ShieldAlert,
@@ -10,8 +10,8 @@ import {
   Tag as TagIcon,
   Ticket,
   Calendar,
-} from 'lucide-vue-next';
-import { api } from '../lib/api';
+} from '@lucide/vue';
+import { api, ApiError } from '../lib/api';
 import Skeleton from '../components/Skeleton.vue';
 
 interface Stats {
@@ -26,6 +26,7 @@ interface Stats {
   tagsCount: number;
   openTicketsCount: number;
   scheduledPending: number;
+  automations: { weeklyDigest: boolean; downloadLive: boolean; movieNight: boolean };
 }
 
 interface SeerrWeekly {
@@ -41,15 +42,57 @@ interface SeerrWeekly {
 const stats = ref<Stats | null>(null);
 const seerrWeekly = ref<SeerrWeekly | null>(null);
 const loading = ref(true);
+const refreshing = ref(false);
+const loadError = ref('');
+const lastUpdated = ref<Date | null>(null);
+let refreshTimer: number | null = null;
 
-onMounted(async () => {
-  const [s, w] = await Promise.all([
-    api<Stats>('/api/admin/stats'),
-    api<SeerrWeekly>('/api/admin/seerr/weekly').catch(() => null),
-  ]);
-  stats.value = s;
-  seerrWeekly.value = w;
-  loading.value = false;
+async function load(): Promise<void> {
+  if (refreshing.value) return;
+  refreshing.value = true;
+  try {
+    const [s, w] = await Promise.all([
+      api<Stats>('/api/admin/stats'),
+      api<SeerrWeekly>('/api/admin/seerr/weekly').catch(() => null),
+    ]);
+    stats.value = s;
+    seerrWeekly.value = w;
+    lastUpdated.value = new Date();
+    loadError.value = '';
+  } catch (err) {
+    loadError.value = 'Live-Daten konnten gerade nicht aktualisiert werden.';
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+      window.location.assign('/login');
+    }
+  } finally {
+    loading.value = false;
+    refreshing.value = false;
+  }
+}
+
+onMounted(() => {
+  void load();
+  refreshTimer = window.setInterval(() => void load(), 30_000);
+});
+onUnmounted(() => {
+  if (refreshTimer !== null) window.clearInterval(refreshTimer);
+});
+
+const requestSegments = computed(() => {
+  const total = seerrWeekly.value?.total ?? 0;
+  if (!total || !seerrWeekly.value) return [];
+  let x = 0;
+  return [
+    { label: 'Approved', value: seerrWeekly.value.approved, color: 'bg-emerald-500', fill: '#10b981' },
+    { label: 'Pending', value: seerrWeekly.value.pending, color: 'bg-amber-500', fill: '#f59e0b' },
+    { label: 'Declined', value: seerrWeekly.value.declined, color: 'bg-red-500', fill: '#ef4444' },
+    { label: 'Failed', value: seerrWeekly.value.failed, color: 'bg-orange-500', fill: '#f97316' },
+  ].map((segment) => {
+    const width = Math.max(0, (segment.value / total) * 100);
+    const result = { ...segment, width, x };
+    x += width;
+    return result;
+  });
 });
 
 function formatUptime(sec: number): string {
@@ -69,6 +112,15 @@ function formatUptime(sec: number): string {
         <h1 class="page-title">Übersicht</h1>
         <p class="page-subtitle">Live-Status deines Bots und der letzten Aktivität.</p>
       </div>
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+        Live · {{ lastUpdated?.toLocaleTimeString() ?? 'verbinde …' }}
+        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load">↻</button>
+      </div>
+    </div>
+
+    <div v-if="loadError" class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+      {{ loadError }} Die letzte erfolgreiche Ansicht bleibt sichtbar.
     </div>
 
     <div v-if="loading" class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -177,6 +229,47 @@ function formatUptime(sec: number): string {
         <div>
           <div class="stat-label">Decline-Rate</div>
           <div class="stat-number">{{ seerrWeekly.declineRate }}%</div>
+        </div>
+      </div>
+      <svg class="mt-5 h-2 w-full overflow-hidden rounded-full bg-surface-3" viewBox="0 0 100 8" preserveAspectRatio="none" aria-label="Request-Verteilung">
+        <rect
+          v-for="segment in requestSegments"
+          :key="segment.label"
+          :x="segment.x"
+          y="0"
+          :width="segment.width"
+          height="8"
+          :fill="segment.fill"
+        ><title>{{ segment.label }}: {{ segment.value }}</title></rect>
+      </svg>
+      <div class="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-500">
+        <span v-for="segment in requestSegments" :key="segment.label" class="flex items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full" :class="segment.color" />
+          {{ segment.label }} {{ segment.value }}
+        </span>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <div class="card overflow-hidden">
+        <div class="stat-label">Discord-Vorschau · Request-Lifecycle</div>
+        <div class="mt-3 rounded-lg border-l-4 border-emerald-500 bg-surface-2 p-4">
+          <div class="text-xs font-medium text-violet-400">Seerr · Request #42</div>
+          <div class="mt-1 text-lg font-semibold text-white">🎬 Beispiel-Film · 2026</div>
+          <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div><span class="text-slate-500">Status</span><br /><span class="text-emerald-400">🎉 Available</span></div>
+            <div><span class="text-slate-500">Type</span><br />Movie</div>
+          </div>
+          <div class="mt-3 text-xs text-slate-500">Eine Nachricht · alle Statuswechsel</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Automationen</div>
+        <div class="mt-3 space-y-3 text-sm">
+          <div class="flex items-center justify-between"><span>📊 Wochenrückblick</span><span :class="stats?.automations.weeklyDigest ? 'badge-success' : 'badge-muted'">{{ stats?.automations.weeklyDigest ? 'aktiv' : 'nicht eingerichtet' }}</span></div>
+          <div class="flex items-center justify-between"><span>📡 Live-Downloads</span><span :class="stats?.automations.downloadLive ? 'badge-success' : 'badge-muted'">{{ stats?.automations.downloadLive ? 'aktiv · 60s' : 'deaktiviert' }}</span></div>
+          <div class="flex items-center justify-between"><span>🎬 Movie-Night Reminder</span><span :class="stats?.automations.movieNight ? 'badge-success' : 'badge-muted'">{{ stats?.automations.movieNight ? 'bereit' : 'nicht eingerichtet' }}</span></div>
+          <div class="flex items-center justify-between"><span>↻ Webhook-Replay</span><router-link to="/webhooks" class="text-blurple">öffnen →</router-link></div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { GlobalFonts, type Image, loadImage } from '@napi-rs/canvas';
 import { existsSync } from 'node:fs';
 import { logger } from '../../utils/logger.js';
+import { readResponseBytesLimited } from '../../utils/http-body.js';
 
 let fontsRegistered = false;
 
@@ -60,10 +61,14 @@ export const COLOR = {
 
 export async function fetchAvatar(url: string, size = 256): Promise<Image | null> {
   try {
-    const sizedUrl = url.includes('?') ? `${url}&size=${size}` : `${url}?size=${size}`;
-    const res = await fetch(sizedUrl);
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || !['cdn.discordapp.com', 'media.discordapp.net'].includes(parsed.hostname)) {
+      throw new Error('avatar URL is not a Discord CDN URL');
+    }
+    parsed.searchParams.set('size', String(size));
+    const res = await fetch(parsed, { signal: AbortSignal.timeout(8_000), redirect: 'error' });
     if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
+    const buf = Buffer.from(await readResponseBytesLimited(res, 5 * 1024 * 1024));
     return await loadImage(buf);
   } catch (err) {
     logger.debug({ err, url }, 'avatar fetch failed');

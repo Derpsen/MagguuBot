@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Plus, Trash2, Rss, AlertTriangle } from 'lucide-vue-next';
+import { Plus, Trash2, Rss, AlertTriangle } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface RssFeed {

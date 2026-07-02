@@ -10,7 +10,7 @@ Install on Unraid via the community-template XML (no docker-compose). Image is p
 
 Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 12 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
 
-No ESLint/Prettier. No test framework yet.
+No ESLint/Prettier. Tests use Node's built-in test runner.
 
 ## Architecture flow
 
@@ -33,6 +33,8 @@ npm run dev          # tsx watch
 npm run build        # Vite frontend → dist-frontend/, then tsc → dist/
 npm run start        # node dist/index.js
 npm run typecheck    # backend tsc --noEmit + frontend vue-tsc --noEmit
+npm test             # focused regression tests via node:test
+npm run check        # typecheck + tests + production build
 npm run db:generate  # drizzle-kit
 npm run db:push      # drizzle-kit sync
 ```
@@ -51,7 +53,7 @@ npm run db:push      # drizzle-kit sync
 
 **Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compared in `server/app.ts`), **except**:
 - `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead
-- `/webhook/maintainerr` — optional `?token=<WEBHOOK_SECRET>` query-param (Maintainerr can't set headers); LAN-only by default
+- `/webhook/maintainerr` — requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; keep internal/LAN-only
 
 `/webhook/*` is rate-limited at 120 req/min/IP. Client IP resolved from `cf-connecting-ip` → `x-forwarded-for` → `x-real-ip` → `unknown`. Don't downgrade the token check to plain `===`.
 
@@ -105,13 +107,16 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | WoW Blue-Tracker RSS | `blueTracker` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` |
+| Automatic weekly digest | `weeklyDigest` |
+| Auto-updating queue card | `downloadLive` |
+| Movie-Night voting | `movieNight` |
 
-## Slash commands (32 total, categorized in `/help`)
+## Slash commands (51 total, categorized in `/help`)
 
-- **Downloads**: `/queue`, `/arr-status`, `/calendar`, `/plex-top`, `/search movie|show`
-- **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge`, `/purge-user`
-- **Utility**: `/help`, `/announce` (with ping-presets), `/poll`, `/countdown create|list|remove`, `/remindme`, `/rank`, `/leaderboard`, `/userinfo`, `/serverinfo`, `/avatar`, `/botinfo`, `/tag get|list|add|edit|delete`, `/rep give|show|leaderboard`
-- **Admin**: `/setup-server`, `/cleanup-server`, `/sticky set|remove|list`, `/db-backup`, `/roles-panel`, `/autoresponder add|list|delete|toggle`, `/schedule-announce`, `/ticket-panel`
+- **Downloads**: `/queue`, `/arr-status`, `/calendar`, `/plex-top`, `/plex-now-playing`, `/search movie|show`
+- **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge`, `/purge-user`, `/slowmode`, `/lockdown`
+- **Utility**: `/help`, `/announce`, `/poll`, `/profile`, `/wrapped`, `/movie-night`, `/countdown`, `/remindme`, `/rank`, `/leaderboard`, `/userinfo`, `/serverinfo`, `/avatar`, `/botinfo`, `/tag`, `/rep`, `/suggest`, `/afk`, `/snipe`, `/editsnipe`, `/quote`, `/giveaway`, `/birthday`
+- **Admin**: `/setup-server` (supports `dry-run`), `/cleanup-server`, `/doctor`, `/downloads-live`, `/sticky`, `/db-backup`, `/db-restore`, `/roles-panel`, `/autoresponder`, `/schedule-announce`, `/ticket-panel`, `/suggestion-status`, `/jtc`
 
 ## GitHub webhook
 

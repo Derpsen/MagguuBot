@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Context } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { z } from 'zod';
 import { config } from '../../config.js';
 import { isSessionRevoked } from './revocations.js';
 
@@ -8,6 +9,7 @@ import { isSessionRevoked } from './revocations.js';
 // can't overwrite the cookie even if it's compromised.
 const COOKIE_NAME = '__Host-magguu_session';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export interface Session {
   userId: string;
@@ -16,6 +18,14 @@ export interface Session {
   avatarUrl: string | null;
   issuedAt: number;
 }
+
+const sessionSchema = z.object({
+  userId: z.string().regex(/^\d{17,20}$/),
+  username: z.string().min(1).max(100),
+  globalName: z.string().max(100).nullable(),
+  avatarUrl: z.string().url().max(500).nullable(),
+  issuedAt: z.number().int().positive(),
+}).strict();
 
 function secret(): string {
   if (!config.SESSION_SECRET) {
@@ -31,16 +41,21 @@ export function signSession(session: Session): string {
 }
 
 export function verifySession(value: string): Session | null {
+  if (!config.SESSION_SECRET || value.length > 8_192) return null;
   const parts = value.split('.');
   if (parts.length !== 2) return null;
   const [payload, sig] = parts as [string, string];
-  const expected = createHmac('sha256', secret()).update(payload).digest('base64url');
+  const expected = createHmac('sha256', config.SESSION_SECRET).update(payload).digest('base64url');
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
   try {
-    const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session;
-    if (Date.now() - session.issuedAt > COOKIE_MAX_AGE * 1000) return null;
+    const parsed = sessionSchema.safeParse(JSON.parse(Buffer.from(payload, 'base64url').toString()));
+    if (!parsed.success) return null;
+    const session = parsed.data;
+    const now = Date.now();
+    if (session.issuedAt > now + MAX_CLOCK_SKEW_MS) return null;
+    if (now - session.issuedAt > COOKIE_MAX_AGE * 1000) return null;
     if (isSessionRevoked(session.userId, session.issuedAt)) return null;
     return session;
   } catch {

@@ -37,26 +37,24 @@ export async function handleRoleButton(interaction: ButtonInteraction): Promise<
 
   const member = interaction.member as GuildMember;
   const hasRole = member.roles.cache.has(role.id);
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     if (hasRole) {
       await member.roles.remove(role, 'role-picker button');
-      await interaction.reply({
+      await interaction.editReply({
         content: `❌ **${roleName}** entfernt. Du bekommst keine Pings mehr dazu.`,
-        flags: MessageFlags.Ephemeral,
       });
     } else {
       await member.roles.add(role, 'role-picker button');
-      await interaction.reply({
+      await interaction.editReply({
         content: `✅ **${roleName}** zugewiesen. Du wirst ab jetzt gepingt.`,
-        flags: MessageFlags.Ephemeral,
       });
     }
   } catch (err) {
     logger.error({ err, roleName, userId: member.id }, 'role toggle failed');
-    await interaction.reply({
+    await interaction.editReply({
       content: 'Konnte die Rolle nicht ändern — Bot-Rolle muss über der Ziel-Rolle stehen.',
-      flags: MessageFlags.Ephemeral,
     });
   }
 }

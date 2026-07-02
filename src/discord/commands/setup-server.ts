@@ -174,6 +174,12 @@ const STRUCTURE: CategoryPlan[] = [
         topic: 'Film / Serie requesten.',
         allowedRoles: [...PLEX_ACCESS],
       },
+      {
+        name: '📊・wochenrückblick',
+        topic: 'Automatischer Wochenrückblick: neue Inhalte, Requests und Community-Highlights.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ACCESS],
+      },
       { name: '⏳・freigaben', oldNames: ['approvals'], topic: 'Admin-only Approvals.', readOnly: true, adminOnly: true },
       {
         name: '✨・neu-auf-plex',
@@ -215,6 +221,12 @@ const STRUCTURE: CategoryPlan[] = [
         readOnly: true,
         allowedRoles: [...PLEX_ACCESS],
       },
+      {
+        name: '📡・live-downloads',
+        topic: 'Eine automatisch aktualisierte Live-Karte für Sonarr, Radarr und SABnzbd.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ACCESS],
+      },
       { name: '⚠️・fehler', oldNames: ['failures'], topic: 'Failures + manual intervention.', readOnly: true, adminOnly: true },
     ],
   },
@@ -236,6 +248,11 @@ const STRUCTURE: CategoryPlan[] = [
         name: '🔇・spoiler-zone',
         oldNames: ['spoiler-zone'],
         topic: 'Spoiler erlaubt — Regular+.',
+        allowedRoles: [...TRUSTED_ROLES],
+      },
+      {
+        name: '🎬・movie-night',
+        topic: 'Filmabend planen, nominieren und gemeinsam abstimmen.',
         allowedRoles: [...TRUSTED_ROLES],
       },
     ],
@@ -322,6 +339,9 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '🎨・addon-updates': 'addonUpdates',
   '❓・faq': 'faq',
   '💡・vorschläge': 'suggestions',
+  '📊・wochenrückblick': 'weeklyDigest',
+  '📡・live-downloads': 'downloadLive',
+  '🎬・movie-night': 'movieNight',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -343,6 +363,9 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'addonUpdates',
   'faq',
   'suggestions',
+  'weeklyDigest',
+  'downloadLive',
+  'movieNight',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -378,11 +401,19 @@ export const setupServerCommand: SlashCommand = {
   data: new SlashCommandBuilder()
     .setName('setup-server')
     .setDescription('Kategorien, Channels + Rollen anlegen, umbennen, sortieren (idempotent)')
+    .addBooleanOption((option) => option
+      .setName('dry-run')
+      .setDescription('Nur anzeigen, was geändert würde – ohne Änderungen'))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
       await interaction.editReply('Guild only.');
+      return;
+    }
+
+    if (interaction.options.getBoolean('dry-run') ?? false) {
+      await interaction.editReply(buildSetupDryRun(interaction.guild));
       return;
     }
 
@@ -537,6 +568,79 @@ export const setupServerCommand: SlashCommand = {
     await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
   },
 };
+
+function buildSetupDryRun(guild: Guild): string {
+  const create: string[] = [];
+  const rename: string[] = [];
+  const existing: string[] = [];
+  const remove = RETIRED_ROLE_NAMES
+    .filter((name) => guild.roles.cache.some((role) => role.name === name))
+    .map((name) => `Rolle ${name}`);
+  const retiredWelcomeRows = db
+    .select({ planName: welcomeMessages.planName })
+    .from(welcomeMessages)
+    .where(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID))
+    .all();
+  for (const row of retiredWelcomeRows) {
+    if (RETIRED_WELCOME_PLAN_NAMES.includes(row.planName)) remove.push(`Welcome-Embed ${row.planName}`);
+  }
+  for (const role of ROLES) {
+    if (guild.roles.cache.some((candidate) => candidate.name === role.name)) {
+      existing.push(`Rolle ${role.name}`);
+    } else {
+      const old = role.oldNames?.find((name) => guild.roles.cache.some((candidate) => candidate.name === name));
+      if (old) rename.push(`Rolle ${old} → ${role.name}`);
+      else create.push(`Rolle ${role.name}`);
+    }
+  }
+  for (const category of STRUCTURE) {
+    const target = guild.channels.cache.find((channel) =>
+      channel.type === ChannelType.GuildCategory && channel.name === category.name,
+    );
+    const oldCategoryChannel = category.oldNames
+      ?.map((name) => guild.channels.cache.find((channel) =>
+        channel.type === ChannelType.GuildCategory && channel.name === name,
+      ))
+      .find((channel): channel is NonNullable<typeof channel> => Boolean(channel));
+    const oldCategory = oldCategoryChannel?.name;
+    if (target) existing.push(`Kategorie ${category.name}`);
+    else if (oldCategory) rename.push(`Kategorie ${oldCategory} → ${category.name}`);
+    else create.push(`Kategorie ${category.name}`);
+
+    const parent = target ?? oldCategoryChannel;
+    for (const channel of category.channels) {
+      const kind = channel.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
+      const statsPrefix = STATS_CHANNEL_PREFIXES.find((prefix) => channel.name.startsWith(prefix));
+      const currentMatches = parent
+        ? [...guild.channels.cache.filter((candidate) =>
+          candidate.parentId === parent.id
+          && candidate.type === kind
+          && (statsPrefix ? candidate.name.startsWith(statsPrefix) : candidate.name === channel.name),
+        ).values()]
+        : [];
+      const current = currentMatches[0];
+      for (const duplicate of currentMatches.slice(1)) remove.push(`#${duplicate.name} (Duplikat)`);
+      const old = parent
+        ? channel.oldNames?.find((name) => guild.channels.cache.some((candidate) =>
+          candidate.parentId === parent.id && candidate.type === kind && candidate.name === name,
+        ))
+        : undefined;
+      if (current) existing.push(`#${channel.name}`);
+      else if (old) rename.push(`#${old} → ${channel.name}`);
+      else create.push(`#${channel.name}`);
+    }
+  }
+  const section = (label: string, items: string[], fallback: string): string =>
+    `**${label} (${items.length})**\n${items.length ? items.slice(0, 18).map((item) => `• ${item}`).join('\n') : fallback}${items.length > 18 ? `\n… und ${items.length - 18} weitere` : ''}`;
+  return [
+    '🧪 **Setup Dry-Run – keine Änderungen vorgenommen**',
+    section('Würde erstellen', create, 'Nichts'),
+    section('Würde umbenennen', rename, 'Nichts'),
+    section('Würde entfernen', remove, 'Nichts'),
+    `**Bereits vorhanden:** ${existing.length}`,
+    '_Zusätzlich würden Reihenfolge, Berechtigungen und Welcome-Embeds idempotent abgeglichen._',
+  ].join('\n\n').slice(0, 1_950);
+}
 
 function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): void {
   const key = NAME_TO_REF_KEY[plan.name];

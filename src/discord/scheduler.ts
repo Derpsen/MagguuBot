@@ -5,7 +5,9 @@ import { db } from '../db/client.js';
 import { reminders, scheduledAnnouncements } from '../db/schema.js';
 import { Colors, truncate } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { nextReminderRetryAt } from '../utils/schedule.js';
 import { tickBirthdays } from './birthday.js';
+import { recoverAntiRaidProtection } from './anti-raid.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
@@ -14,6 +16,9 @@ import { tickGiveaways } from './giveaway.js';
 import { runRssFeedTick } from './rss-manager.js';
 import { updateStatsChannels } from './stats-channels.js';
 import { tickTicketAutoClose } from './ticket-autoclose.js';
+import { runWeeklyDigestTick } from './weekly-digest.js';
+import { tickMovieNights } from './movie-night.js';
+import { runDownloadLiveTick } from './download-live.js';
 
 const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
@@ -25,6 +30,9 @@ const RSS_TICK_MS = 15 * 60_000;
 const GIVEAWAY_TICK_MS = 30_000;
 const BIRTHDAY_TICK_MS = 15 * 60_000;
 const TICKET_AUTOCLOSE_TICK_MS = 30 * 60_000;
+const WEEKLY_DIGEST_TICK_MS = 60 * 60_000;
+const MOVIE_NIGHT_TICK_MS = 60_000;
+const DOWNLOAD_LIVE_TICK_MS = 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
@@ -36,61 +44,85 @@ let rssTimer: NodeJS.Timeout | null = null;
 let giveawayTimer: NodeJS.Timeout | null = null;
 let birthdayTimer: NodeJS.Timeout | null = null;
 let ticketAutoCloseTimer: NodeJS.Timeout | null = null;
+let weeklyDigestTimer: NodeJS.Timeout | null = null;
+let movieNightTimer: NodeJS.Timeout | null = null;
+let downloadLiveTimer: NodeJS.Timeout | null = null;
+const activeTicks = new Set<string>();
 
 export function startScheduler(): void {
+  if (remindersTimer) {
+    logger.warn('scheduler already running');
+    return;
+  }
   remindersTimer = setInterval(() => {
-    void processDueReminders().catch((err) => logger.error({ err }, 'reminder tick failed'));
+    runTick('reminders', processDueReminders, 'reminder tick failed');
   }, REMINDER_TICK_MS);
 
   statsTimer = setInterval(() => {
-    void updateStatsChannels().catch((err) => logger.error({ err }, 'stats tick failed'));
+    runTick('stats', updateStatsChannels, 'stats tick failed');
   }, STATS_TICK_MS);
 
   announceTimer = setInterval(() => {
-    void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce tick failed'));
+    runTick('announcements', processDueAnnouncements, 'announce tick failed');
   }, ANNOUNCE_TICK_MS);
 
   if (config.WOW_BLUE_TRACKER_URL) {
     blueTrackerTimer = setInterval(() => {
-      void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker tick failed'));
+      runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker tick failed');
     }, BLUE_TRACKER_TICK_MS);
   }
 
   topicsTimer = setInterval(() => {
-    void updateChannelTopics().catch((err) => logger.error({ err }, 'topics tick failed'));
+    runTick('topics', updateChannelTopics, 'topics tick failed');
   }, TOPICS_TICK_MS);
 
   countdownTimer = setInterval(() => {
-    void tickCountdowns().catch((err) => logger.error({ err }, 'countdown tick failed'));
+    runTick('countdowns', tickCountdowns, 'countdown tick failed');
   }, COUNTDOWN_TICK_MS);
 
   rssTimer = setInterval(() => {
-    void runRssFeedTick().catch((err) => logger.error({ err }, 'rss feed tick failed'));
+    runTick('rss', runRssFeedTick, 'rss feed tick failed');
   }, RSS_TICK_MS);
 
   giveawayTimer = setInterval(() => {
-    void tickGiveaways().catch((err) => logger.error({ err }, 'giveaway tick failed'));
+    runTick('giveaways', tickGiveaways, 'giveaway tick failed');
   }, GIVEAWAY_TICK_MS);
 
   birthdayTimer = setInterval(() => {
-    void tickBirthdays().catch((err) => logger.error({ err }, 'birthday tick failed'));
+    runTick('birthdays', tickBirthdays, 'birthday tick failed');
   }, BIRTHDAY_TICK_MS);
 
   ticketAutoCloseTimer = setInterval(() => {
-    void tickTicketAutoClose().catch((err) => logger.error({ err }, 'ticket autoclose tick failed'));
+    runTick('ticket-autoclose', tickTicketAutoClose, 'ticket autoclose tick failed');
   }, TICKET_AUTOCLOSE_TICK_MS);
 
+  weeklyDigestTimer = setInterval(() => {
+    runTick('weekly-digest', runWeeklyDigestTick, 'weekly digest tick failed');
+  }, WEEKLY_DIGEST_TICK_MS);
+
+  movieNightTimer = setInterval(() => {
+    runTick('movie-night', tickMovieNights, 'movie night tick failed');
+  }, MOVIE_NIGHT_TICK_MS);
+
+  downloadLiveTimer = setInterval(() => {
+    runTick('download-live', runDownloadLiveTick, 'download live tick failed');
+  }, DOWNLOAD_LIVE_TICK_MS);
+
   setImmediate(() => {
-    void processDueReminders().catch((err) => logger.error({ err }, 'reminder boot tick failed'));
-    void updateStatsChannels().catch((err) => logger.error({ err }, 'stats boot tick failed'));
-    void processDueAnnouncements().catch((err) => logger.error({ err }, 'announce boot tick failed'));
-    void updateChannelTopics().catch((err) => logger.error({ err }, 'topics boot tick failed'));
-    void tickCountdowns().catch((err) => logger.error({ err }, 'countdown boot tick failed'));
-    void runRssFeedTick().catch((err) => logger.error({ err }, 'rss boot tick failed'));
-    void tickGiveaways().catch((err) => logger.error({ err }, 'giveaway boot tick failed'));
-    void tickBirthdays().catch((err) => logger.error({ err }, 'birthday boot tick failed'));
+    runTick('reminders', processDueReminders, 'reminder boot tick failed');
+    runTick('stats', updateStatsChannels, 'stats boot tick failed');
+    runTick('announcements', processDueAnnouncements, 'announce boot tick failed');
+    runTick('topics', updateChannelTopics, 'topics boot tick failed');
+    runTick('countdowns', tickCountdowns, 'countdown boot tick failed');
+    runTick('rss', runRssFeedTick, 'rss boot tick failed');
+    runTick('giveaways', tickGiveaways, 'giveaway boot tick failed');
+    runTick('birthdays', tickBirthdays, 'birthday boot tick failed');
+    runTick('anti-raid-recovery', recoverAntiRaidProtection, 'anti-raid recovery failed');
+    runTick('weekly-digest', runWeeklyDigestTick, 'weekly digest boot tick failed');
+    runTick('movie-night', tickMovieNights, 'movie night boot tick failed');
+    runTick('download-live', runDownloadLiveTick, 'download live boot tick failed');
     if (config.WOW_BLUE_TRACKER_URL) {
-      void runBlueTrackerTick().catch((err) => logger.error({ err }, 'blue-tracker boot tick failed'));
+      runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
     }
   });
 
@@ -106,9 +138,23 @@ export function startScheduler(): void {
       birthdayMs: BIRTHDAY_TICK_MS,
       ticketAutoCloseMs: TICKET_AUTOCLOSE_TICK_MS,
       blueTrackerMs: config.WOW_BLUE_TRACKER_URL ? BLUE_TRACKER_TICK_MS : 'disabled',
+      weeklyDigestMs: config.WEEKLY_DIGEST_ENABLED ? WEEKLY_DIGEST_TICK_MS : 'disabled',
+      movieNightMs: MOVIE_NIGHT_TICK_MS,
+      downloadLiveMs: DOWNLOAD_LIVE_TICK_MS,
     },
     'scheduler started',
   );
+}
+
+function runTick(key: string, task: () => Promise<void>, failureMessage: string): void {
+  if (activeTicks.has(key)) {
+    logger.warn({ tick: key }, 'scheduler tick still running, skipping overlap');
+    return;
+  }
+  activeTicks.add(key);
+  void task()
+    .catch((err) => logger.error({ err }, failureMessage))
+    .finally(() => activeTicks.delete(key));
 }
 
 export function stopScheduler(): void {
@@ -122,6 +168,9 @@ export function stopScheduler(): void {
   if (giveawayTimer) clearInterval(giveawayTimer);
   if (birthdayTimer) clearInterval(birthdayTimer);
   if (ticketAutoCloseTimer) clearInterval(ticketAutoCloseTimer);
+  if (weeklyDigestTimer) clearInterval(weeklyDigestTimer);
+  if (movieNightTimer) clearInterval(movieNightTimer);
+  if (downloadLiveTimer) clearInterval(downloadLiveTimer);
   remindersTimer = null;
   statsTimer = null;
   announceTimer = null;
@@ -132,6 +181,9 @@ export function stopScheduler(): void {
   giveawayTimer = null;
   birthdayTimer = null;
   ticketAutoCloseTimer = null;
+  weeklyDigestTimer = null;
+  movieNightTimer = null;
+  downloadLiveTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {
@@ -155,16 +207,17 @@ async function processDueAnnouncements(): Promise<void> {
   for (const a of due) {
     try {
       const channel = (await client.channels.fetch(a.channelId).catch(() => null)) as TextChannel | null;
-      if (channel?.isTextBased()) {
-        const recurringFooter = a.recurrence !== 'none' ? `Scheduled · wiederholt ${a.recurrence}` : 'Scheduled announcement';
-        const embed = new EmbedBuilder()
-          .setColor(COLOR_MAP[a.color] ?? Colors.brand)
-          .setTitle(a.title)
-          .setDescription(truncate(a.message, 4000))
-          .setFooter({ text: recurringFooter })
-          .setTimestamp(new Date());
-        await channel.send({ embeds: [embed] });
+      if (!channel?.isSendable()) {
+        throw new Error(`scheduled announcement channel ${a.channelId} is unavailable`);
       }
+      const recurringFooter = a.recurrence !== 'none' ? `Scheduled · wiederholt ${a.recurrence}` : 'Scheduled announcement';
+      const embed = new EmbedBuilder()
+        .setColor(COLOR_MAP[a.color] ?? Colors.brand)
+        .setTitle(truncate(a.title, 256))
+        .setDescription(truncate(a.message, 4000))
+        .setFooter({ text: recurringFooter })
+        .setTimestamp(new Date());
+      await channel.send({ embeds: [embed] });
 
       if (a.recurrence === 'none') {
         db.update(scheduledAnnouncements)
@@ -211,6 +264,7 @@ async function processDueReminders(): Promise<void> {
   const client = getClient();
 
   for (const r of due) {
+    let delivered = false;
     try {
       const user = await client.users.fetch(r.userId);
       const embed = new EmbedBuilder()
@@ -220,7 +274,6 @@ async function processDueReminders(): Promise<void> {
         .setFooter({ text: `gesetzt am ${r.createdAt.toLocaleString('de-DE')}` })
         .setTimestamp(new Date());
 
-      let delivered = false;
       try {
         await user.send({ embeds: [embed] });
         delivered = true;
@@ -233,6 +286,7 @@ async function processDueReminders(): Promise<void> {
               await (channel as TextChannel).send({
                 content: user.toString(),
                 embeds: [embed],
+                allowedMentions: { users: [r.userId] },
               });
               delivered = true;
             }
@@ -240,11 +294,25 @@ async function processDueReminders(): Promise<void> {
         }
       }
 
-      if (!delivered) logger.warn({ reminderId: r.id }, 'could not deliver reminder');
+      if (!delivered) logger.warn({ reminderId: r.id, attempts: r.attempts }, 'could not deliver reminder');
     } catch (err) {
       logger.error({ err, reminderId: r.id }, 'reminder delivery error');
-    } finally {
-      db.delete(reminders).where(eq(reminders.id, r.id)).run();
     }
+
+    if (delivered) {
+      db.delete(reminders).where(eq(reminders.id, r.id)).run();
+      continue;
+    }
+
+    const retryAt = nextReminderRetryAt(r.attempts, now);
+    if (!retryAt) {
+      db.delete(reminders).where(eq(reminders.id, r.id)).run();
+      logger.error({ reminderId: r.id, attempts: r.attempts + 1 }, 'reminder abandoned after repeated delivery failures');
+      continue;
+    }
+    db.update(reminders)
+      .set({ attempts: r.attempts + 1, dueAt: retryAt })
+      .where(eq(reminders.id, r.id))
+      .run();
   }
 }

@@ -79,7 +79,7 @@ export async function handleAfkMessage(message: Message): Promise<void> {
       try {
         const sent = await message.reply({
           content: `Welcome back ${message.author.toString()} — AFK entfernt.`,
-          allowedMentions: { repliedUser: false },
+          allowedMentions: { parse: [], repliedUser: false },
         });
         setTimeout(() => {
           sent.delete().catch(() => {});
@@ -107,7 +107,7 @@ export async function handleAfkMessage(message: Message): Promise<void> {
     try {
       const sent = await message.reply({
         content: lines.join('\n'),
-        allowedMentions: { repliedUser: false },
+        allowedMentions: { parse: [], repliedUser: false },
       });
       setTimeout(() => {
         sent.delete().catch(() => {});

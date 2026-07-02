@@ -33,11 +33,11 @@ export async function handleRolePanelButton(interaction: ButtonInteraction): Pro
     return;
   }
 
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
   if (!role) {
-    await interaction.reply({
+    await interaction.editReply({
       content: 'Rolle existiert nicht mehr. Admin soll das Panel neu aufbauen.',
-      flags: MessageFlags.Ephemeral,
     });
     return;
   }
@@ -48,22 +48,19 @@ export async function handleRolePanelButton(interaction: ButtonInteraction): Pro
   try {
     if (hasRole) {
       await member.roles.remove(role, 'role-panel toggle');
-      await interaction.reply({
+      await interaction.editReply({
         content: `❌ ${role.toString()} entfernt.`,
-        flags: MessageFlags.Ephemeral,
       });
     } else {
       await member.roles.add(role, 'role-panel toggle');
-      await interaction.reply({
+      await interaction.editReply({
         content: `✅ ${role.toString()} zugewiesen.`,
-        flags: MessageFlags.Ephemeral,
       });
     }
   } catch (err) {
     logger.error({ err, roleId, userId: member.id }, 'role-panel toggle failed');
-    await interaction.reply({
+    await interaction.editReply({
       content: 'Konnte die Rolle nicht ändern — Bot-Rolle muss über der Ziel-Rolle stehen.',
-      flags: MessageFlags.Ephemeral,
     });
   }
 }

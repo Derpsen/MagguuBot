@@ -9,7 +9,7 @@ import {
   StringSelectMenuOptionBuilder,
   type TextChannel,
 } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, truncate } from '../../embeds/colors.js';
 import { listTicketCategories } from '../ticket-categories.js';
 import type { SlashCommand } from './index.js';
 
@@ -37,10 +37,15 @@ export const ticketPanelCommand: SlashCommand = {
       await interaction.reply({ content: 'Nur im Server.', flags: MessageFlags.Ephemeral });
       return;
     }
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const channel = interaction.options.getChannel('channel', true) as TextChannel;
     const title = interaction.options.getString('title') ?? '🎫 Support-Tickets';
-    const categories = listTicketCategories();
+    const categories = listTicketCategories().filter((category) => category.key.length <= 80).slice(0, 25);
+    if (categories.length === 0) {
+      await interaction.editReply('Keine gültige Ticket-Kategorie konfiguriert.');
+      return;
+    }
     const description =
       interaction.options.getString('description') ??
       [
@@ -55,7 +60,7 @@ export const ticketPanelCommand: SlashCommand = {
     const embed = new EmbedBuilder()
       .setColor(Colors.brand)
       .setTitle(title)
-      .setDescription(description)
+      .setDescription(truncate(description, 4000))
       .setFooter({ text: 'Eine offene Anfrage pro User · automatisch geschlossen nach 48h Inaktivität' });
 
     const select = new StringSelectMenuBuilder()
@@ -77,9 +82,8 @@ export const ticketPanelCommand: SlashCommand = {
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
     await channel.send({ embeds: [embed], components: [row] });
-    await interaction.reply({
+    await interaction.editReply({
       content: `✅ Ticket-Panel gepostet in ${channel.toString()}.`,
-      flags: MessageFlags.Ephemeral,
     });
   },
 };

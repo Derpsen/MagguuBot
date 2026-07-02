@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Check, X, Film, Tv } from 'lucide-vue-next';
+import { Check, X, Film, Tv } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface SeerrRequest {

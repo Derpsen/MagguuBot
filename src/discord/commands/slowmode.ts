@@ -41,13 +41,13 @@ export const slowmodeCommand: SlashCommand = {
 
     const seconds = interaction.options.getInteger('seconds', true);
     const reason = interaction.options.getString('reason') ?? undefined;
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
       await (channel as TextChannel).setRateLimitPerUser(seconds, reason ?? `slowmode by ${interaction.user.displayName}`);
     } catch {
-      await interaction.reply({
+      await interaction.editReply({
         content: 'Konnte Slowmode nicht setzen — fehlende Permissions?',
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -64,12 +64,11 @@ export const slowmodeCommand: SlashCommand = {
       ],
     });
 
-    await interaction.reply({
+    await interaction.editReply({
       content:
         seconds === 0
           ? `🔓 Slowmode in ${channel.toString()} ausgeschaltet.`
           : `🐌 Slowmode in ${channel.toString()} auf **${label}** gesetzt.`,
-      flags: MessageFlags.Ephemeral,
     });
   },
 };
