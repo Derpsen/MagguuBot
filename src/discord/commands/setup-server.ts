@@ -48,7 +48,7 @@ import { config } from '../../config.js';
 import { db } from '../../db/client.js';
 import { welcomeMessages } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
-import { saveChannel, type ChannelKey } from '../channel-store.js';
+import { getChannel, saveChannel, type ChannelKey } from '../channel-store.js';
 import { getClient } from '../client.js';
 import type { SlashCommand } from './index.js';
 
@@ -399,6 +399,14 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '💡・vorschläge': () => buildSuggestionsChannelEmbed(),
 };
 
+const REF_AWARE_WELCOME_NAMES = new Set([
+  '👋・willkommen',
+  '🤖・bot-hilfe',
+  '📝・anfragen',
+  '📥・grabs',
+  '❓・faq',
+]);
+
 export const setupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
@@ -407,6 +415,9 @@ export const setupServerCommand: SlashCommand = {
     .addBooleanOption((option) => option
       .setName('dry-run')
       .setDescription('Vorschau mit Bestätigungsbutton anzeigen (Standard: ja)'))
+    .addBooleanOption((option) => option
+      .setName('full')
+      .setDescription('Alles neu abgleichen, inklusive Berechtigungen und Embeds (langsamer)'))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -415,17 +426,18 @@ export const setupServerCommand: SlashCommand = {
       return;
     }
 
+    const fullSync = interaction.options.getBoolean('full') ?? false;
     if (interaction.options.getBoolean('dry-run') ?? true) {
       await interaction.editReply({
-        content: buildSetupDryRun(interaction.guild),
+        content: buildSetupDryRun(interaction.guild, fullSync),
         components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`setup-server:confirm:${interaction.user.id}`)
+            .setCustomId(`setup-server:confirm:${interaction.user.id}:${fullSync ? 'full' : 'fast'}`)
             .setLabel('Änderungen anwenden')
             .setEmoji('✅')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
-            .setCustomId(`setup-server:cancel:${interaction.user.id}`)
+            .setCustomId(`setup-server:cancel:${interaction.user.id}:${fullSync ? 'full' : 'fast'}`)
             .setLabel('Abbrechen')
             .setStyle(ButtonStyle.Secondary),
         )],
@@ -433,13 +445,13 @@ export const setupServerCommand: SlashCommand = {
       return;
     }
 
-    await applySetupServer(interaction);
+    await applySetupServer(interaction, fullSync);
   },
 };
 
 type SetupInteraction = ChatInputCommandInteraction | ButtonInteraction;
 
-async function applySetupServer(interaction: SetupInteraction): Promise<void> {
+async function applySetupServer(interaction: SetupInteraction, fullSync = false): Promise<void> {
     const guild = interaction.guild;
     if (!guild) {
       await interaction.editReply('Dieser Befehl ist nur auf einem Server verfügbar.');
@@ -465,6 +477,8 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
     const skipped: string[] = [];
     const renamed: string[] = [];
     const removed: string[] = [];
+    let rolesChanged = false;
+    const changedRoleNames = new Set<string>();
 
     // ─── Idempotent cleanup of retired surfaces ────────────────────────
     for (const retiredName of RETIRED_ROLE_NAMES) {
@@ -473,6 +487,7 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
       try {
         await role.delete('retired role removed by setup-server');
         removed.push(`role: ${retiredName}`);
+        rolesChanged = true;
       } catch (err) {
         logger.warn({ err, role: retiredName }, 'retired role deletion failed (likely above bot)');
       }
@@ -512,6 +527,8 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
         try {
           await oldRole.setName(r.name, 'setup-server role rename');
           renamed.push(`role: ${oldRole.name === r.name ? oldRole.name : `${oldRole.name} → ${r.name}`}`);
+          rolesChanged = true;
+          changedRoleNames.add(r.name);
           continue;
         } catch (err) {
           logger.warn({ err, old: oldRole.name, target: r.name }, 'role rename failed, creating new');
@@ -524,30 +541,49 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
         hoist: r.hoist ?? false,
       });
       created.push(`role: ${r.name}`);
+      rolesChanged = true;
+      changedRoleNames.add(r.name);
     }
 
-    const freshTextChannels: Array<{ plan: ChannelPlan; channel: TextChannel }> = [];
+    const freshTextChannels: Array<{ plan: ChannelPlan; channel: TextChannel; changed: boolean }> = [];
     const refs: ChannelRefs = {};
+    let structureChanged = false;
+    let refsChanged = false;
 
     const setupBotId = interaction.client.user?.id;
 
     for (const cat of STRUCTURE) {
-      const category = await ensureCategory(guild, cat, setupBotId);
-      if (category.created) created.push(`category: ${cat.name}`);
-      else if (category.renamed) renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
+      const category = await ensureCategory(guild, cat, setupBotId, fullSync);
+      if (category.created) {
+        created.push(`category: ${cat.name}`);
+        structureChanged = true;
+      } else if (category.renamed) {
+        renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
+        structureChanged = true;
+      }
       else skipped.push(`category: ${cat.name}`);
 
       for (const ch of cat.channels) {
         const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-        const result = await ensureChannel(guild, category.channel, ch, type, setupBotId);
+        const syncPermissions = fullSync || channelUsesAnyRole(ch, changedRoleNames);
+        const result = await ensureChannel(guild, category.channel, ch, type, setupBotId, syncPermissions);
 
-        if (result.created) created.push(`#${ch.name}`);
-        else if (result.renamed) renamed.push(`#${result.renamedFrom} → ${ch.name}`);
+        if (result.created) {
+          created.push(`#${ch.name}`);
+          structureChanged = true;
+        } else if (result.renamed) {
+          renamed.push(`#${result.renamedFrom} → ${ch.name}`);
+          structureChanged = true;
+        }
         else skipped.push(`#${ch.name}`);
 
         if (type === ChannelType.GuildText) {
-          captureRef(refs, ch, result.channel.id);
-          freshTextChannels.push({ plan: ch, channel: result.channel as TextChannel });
+          refsChanged = captureRef(refs, ch, result.channel.id) || refsChanged;
+          freshTextChannels.push({
+            plan: ch,
+            channel: result.channel as TextChannel,
+            changed: result.created || result.renamed,
+          });
         }
       }
     }
@@ -556,9 +592,22 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
     let embedsUpdated = 0;
     let pinsOk = 0;
     let pinsFailed = 0;
-    for (const { plan, channel } of freshTextChannels) {
+    for (const { plan, channel, changed } of freshTextChannels) {
       const builder = WELCOME_BUILDERS[plan.name];
       if (!builder) continue;
+      const trackedWelcome = db.select({ messageId: welcomeMessages.messageId })
+        .from(welcomeMessages)
+        .where(and(
+          eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID),
+          eq(welcomeMessages.planName, plan.name),
+        ))
+        .get();
+      const needsSync = fullSync
+        || (refsChanged && REF_AWARE_WELCOME_NAMES.has(plan.name))
+        || changed
+        || !trackedWelcome
+        || (rolesChanged && plan.name === '🎭・rollen');
+      if (!needsSync) continue;
       try {
         const embed = builder(refs);
         const components = plan.name === '🎭・rollen' ? buildRolePickerButtons() : undefined;
@@ -573,10 +622,10 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
 
     }
 
-    await sortServerStructure(guild);
+    if (fullSync || structureChanged) await sortServerStructure(guild);
 
     logger.info(
-      { created: created.length, renamed: renamed.length, skipped: skipped.length },
+      { created: created.length, renamed: renamed.length, skipped: skipped.length, mode: fullSync ? 'full' : 'fast' },
       'server setup completed',
     );
 
@@ -592,6 +641,7 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
       );
     }
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
+    lines.push(`**⚙️ Modus:** ${fullSync ? 'Vollständiger Abgleich' : 'Schnell – nur notwendige Änderungen'}`);
 
     await interaction.editReply({
       content: lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.',
@@ -600,7 +650,7 @@ async function applySetupServer(interaction: SetupInteraction): Promise<void> {
 }
 
 export async function handleSetupServerButton(interaction: ButtonInteraction): Promise<void> {
-  const [, action, ownerId] = interaction.customId.split(':');
+  const [, action, ownerId, mode] = interaction.customId.split(':');
   if (!interaction.guild || !ownerId || interaction.user.id !== ownerId) {
     await interaction.reply({ content: 'Nur die Person, die die Vorschau gestartet hat, kann sie bestätigen.', flags: MessageFlags.Ephemeral });
     return;
@@ -618,10 +668,10 @@ export async function handleSetupServerButton(interaction: ButtonInteraction): P
     return;
   }
   await interaction.update({ content: '⏳ Setup wird angewendet …', components: [] });
-  await applySetupServer(interaction);
+  await applySetupServer(interaction, mode === 'full');
 }
 
-function buildSetupDryRun(guild: Guild): string {
+function buildSetupDryRun(guild: Guild, fullSync: boolean): string {
   const create: string[] = [];
   const rename: string[] = [];
   const existing: string[] = [];
@@ -690,29 +740,41 @@ function buildSetupDryRun(guild: Guild): string {
     section('Würde umbenennen', rename, 'Nichts'),
     section('Würde entfernen', remove, 'Nichts'),
     `**Bereits vorhanden:** ${existing.length}`,
-    '_Zusätzlich würden Reihenfolge, Berechtigungen und Welcome-Embeds idempotent abgeglichen._',
+    fullSync
+      ? '_Vollmodus: Zusätzlich werden Reihenfolge, alle Berechtigungen und Welcome-Embeds neu abgeglichen._'
+      : '_Schnellmodus: Bestehende korrekte Kanäle bleiben unangetastet; nur notwendige Änderungen werden ausgeführt._',
   ].join('\n\n').slice(0, 1_950);
 }
 
-function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): void {
+function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): boolean {
   const key = NAME_TO_REF_KEY[plan.name];
-  if (!key) return;
+  if (!key) return false;
   refs[key] = channelId;
   if (PERSISTENT_KEYS.has(key)) {
+    const changed = getChannel(key as ChannelKey) !== channelId;
     saveChannel(key as ChannelKey, channelId);
+    return changed;
   }
+  return false;
+}
+
+function channelUsesAnyRole(plan: ChannelPlan, roleNames: Set<string>): boolean {
+  if (roleNames.size === 0) return false;
+  if (plan.adminOnly && [...STAFF_ROLE_NAMES].some((name) => roleNames.has(name))) return true;
+  return plan.allowedRoles?.some((name) => roleNames.has(name)) ?? false;
 }
 
 async function ensureCategory(
   guild: Guild,
   plan: CategoryPlan,
   botUserId: string | undefined,
+  fullSync: boolean,
 ): Promise<{ channel: CategoryChannel; created: boolean; renamed: boolean; renamedFrom?: string }> {
   const existingWithTarget = guild.channels.cache.find(
     (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === plan.name,
   );
   if (existingWithTarget) {
-    await applyBotCategoryPermissions(existingWithTarget, botUserId);
+    if (fullSync) await applyBotCategoryPermissions(existingWithTarget, botUserId);
     return { channel: existingWithTarget, created: false, renamed: false };
   }
 
@@ -743,6 +805,7 @@ async function ensureChannel(
   plan: ChannelPlan,
   type: ChannelType.GuildText | ChannelType.GuildVoice,
   botUserId: string | undefined,
+  syncPermissions: boolean,
 ): Promise<{
   channel: GuildBasedChannel;
   created: boolean;
@@ -766,7 +829,7 @@ async function ensureChannel(
         logger.warn({ err, name: dup.name }, 'failed to delete duplicate channel');
       }
     }
-    await applyChannelPermissions(keep as TextChannel, plan, guild, botUserId);
+    if (syncPermissions) await applyChannelPermissions(keep as TextChannel, plan, guild, botUserId);
     return { channel: keep, created: false, renamed: false };
   }
 
@@ -1093,9 +1156,11 @@ async function sortServerStructure(guild: Guild): Promise<void> {
       (c): c is CategoryChannel => c.type === ChannelType.GuildCategory && c.name === catPlan.name,
     );
     if (!category) continue;
-    await category
-      .setPosition(catIdx)
-      .catch((err: unknown) => logger.warn({ err, name: catPlan.name }, 'category sort failed'));
+    if (category.position !== catIdx) {
+      await category
+        .setPosition(catIdx)
+        .catch((err: unknown) => logger.warn({ err, name: catPlan.name }, 'category sort failed'));
+    }
 
     for (let chIdx = 0; chIdx < catPlan.channels.length; chIdx++) {
       const ch = catPlan.channels[chIdx];
@@ -1106,9 +1171,11 @@ async function sortServerStructure(guild: Guild): Promise<void> {
           c.name === ch.name && c.parentId === category.id && c.type === type && 'setPosition' in c,
       );
       if (!channel || !('setPosition' in channel)) continue;
-      await channel
-        .setPosition(chIdx)
-        .catch((err: unknown) => logger.warn({ err, name: ch.name }, 'channel sort failed'));
+      if (channel.position !== chIdx) {
+        await channel
+          .setPosition(chIdx)
+          .catch((err: unknown) => logger.warn({ err, name: ch.name }, 'channel sort failed'));
+      }
     }
   }
 }
