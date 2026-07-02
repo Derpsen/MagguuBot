@@ -3,6 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getChannel } from '../../discord/channel-store.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
+import { isMaintainerrEventCode } from '../../utils/maintainerr.js';
 import { postEmbed } from '../discord-poster.js';
 import { maintainerrPayloadSchema, type MaintainerrEmbed } from './schemas.js';
 
@@ -53,7 +54,11 @@ export const maintainerrWebhook = new Hono().post('/', async (c) => {
     rebuilt.setAuthor({ name: 'Maintainerr' });
   }
 
-  if (source?.title) rebuilt.setTitle(source.title.slice(0, 256));
+  // Some Maintainerr templates send the internal notification enum as the
+  // embed title while repeating the readable title in the description.
+  if (source?.title && !isMaintainerrEventCode(source.title)) {
+    rebuilt.setTitle(source.title.slice(0, 256));
+  }
   if (source?.description) rebuilt.setDescription(source.description.slice(0, 4000));
   const sourceUrl = validHttpUrl(source?.url);
   const thumbnailUrl = validHttpUrl(source?.thumbnail?.url);

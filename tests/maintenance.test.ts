@@ -16,6 +16,7 @@ import { createRecentKeyCache } from '../src/utils/recent-key-cache.ts';
 import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 import { webhookRetryDelayMs } from '../src/utils/retry.ts';
 import { applyWebhookRetryMigration } from '../src/db/webhook-retry-migration.ts';
+import { isMaintainerrEventCode } from '../src/utils/maintainerr.ts';
 
 test('sanitizePayload redacts sensitive nested fields', () => {
   const sanitized = sanitizePayload({
@@ -91,6 +92,12 @@ test('webhook retries use bounded exponential-style backoff', () => {
   assert.equal(webhookRetryDelayMs(3), 60 * 60_000);
   assert.equal(webhookRetryDelayMs(4), 6 * 60 * 60_000);
   assert.equal(webhookRetryDelayMs(99), 6 * 60 * 60_000);
+});
+
+test('Maintainerr machine event codes are hidden while readable titles remain', () => {
+  assert.equal(isMaintainerrEventCode('COLLECTION_HANDLING_FAILED'), true);
+  assert.equal(isMaintainerrEventCode('MEDIA_ADDED_TO_COLLECTION'), true);
+  assert.equal(isMaintainerrEventCode('Collection Handling Failed'), false);
 });
 
 test('legacy databases receive webhook retry columns before their indexes', () => {
