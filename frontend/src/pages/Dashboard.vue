@@ -26,7 +26,16 @@ interface Stats {
   tagsCount: number;
   openTicketsCount: number;
   scheduledPending: number;
-  automations: { weeklyDigest: boolean; downloadLive: boolean; movieNight: boolean };
+  automations: { weeklyDigest: boolean; downloadLive: boolean; movieNight: boolean; automaticBackup: boolean; webhookRetry: boolean };
+}
+
+interface ServiceHealth {
+  key: string;
+  label: string;
+  state: 'ok' | 'error' | 'disabled' | 'waiting';
+  latencyMs: number | null;
+  detail: string;
+  lastEventAt: string | null;
 }
 
 interface SeerrWeekly {
@@ -41,22 +50,25 @@ interface SeerrWeekly {
 
 const stats = ref<Stats | null>(null);
 const seerrWeekly = ref<SeerrWeekly | null>(null);
+const services = ref<ServiceHealth[]>([]);
 const loading = ref(true);
 const refreshing = ref(false);
 const loadError = ref('');
 const lastUpdated = ref<Date | null>(null);
 let refreshTimer: number | null = null;
 
-async function load(): Promise<void> {
+async function load(forceServices = false): Promise<void> {
   if (refreshing.value) return;
   refreshing.value = true;
   try {
-    const [s, w] = await Promise.all([
+    const [s, w, serviceResponse] = await Promise.all([
       api<Stats>('/api/admin/stats'),
       api<SeerrWeekly>('/api/admin/seerr/weekly').catch(() => null),
+      api<{ services: ServiceHealth[] }>(`/api/admin/services/health${forceServices ? '?force=true' : ''}`).catch(() => ({ services: [] })),
     ]);
     stats.value = s;
     seerrWeekly.value = w;
+    services.value = serviceResponse.services;
     lastUpdated.value = new Date();
     loadError.value = '';
   } catch (err) {
@@ -115,7 +127,7 @@ function formatUptime(sec: number): string {
       <div class="flex items-center gap-2 text-xs text-slate-500">
         <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
         Live · {{ lastUpdated?.toLocaleTimeString() ?? 'verbinde …' }}
-        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load">↻</button>
+        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load()">↻</button>
       </div>
     </div>
 
@@ -145,14 +157,14 @@ function formatUptime(sec: number): string {
       <router-link to="/warnings" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <ShieldAlert class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Warnings</span>
+          <span class="stat-label">Verwarnungen</span>
         </div>
         <div class="stat-number">{{ stats.warningsCount }}</div>
       </router-link>
       <router-link to="/leaderboard" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <Trophy class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Top User</span>
+          <span class="stat-label">Top-Nutzer</span>
         </div>
         <div v-if="stats.topUser" class="stat-number">
           {{ stats.topUser.username }}
@@ -163,28 +175,28 @@ function formatUptime(sec: number): string {
       <router-link to="/requests" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <Inbox class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Pending Seerr</span>
+          <span class="stat-label">Offene Seerr-Anfragen</span>
         </div>
         <div class="stat-number">{{ stats.pendingSeerrCount }}</div>
       </router-link>
       <router-link to="/tickets" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <Ticket class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Open Tickets</span>
+          <span class="stat-label">Offene Tickets</span>
         </div>
         <div class="stat-number">{{ stats.openTicketsCount }}</div>
       </router-link>
       <router-link to="/reminders" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <Clock class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Active Reminders</span>
+          <span class="stat-label">Aktive Erinnerungen</span>
         </div>
         <div class="stat-number">{{ stats.remindersCount }}</div>
       </router-link>
       <router-link to="/scheduled" class="stat-card clickable">
         <div class="flex items-center gap-2">
           <Calendar class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Scheduled</span>
+          <span class="stat-label">Geplant</span>
         </div>
         <div class="stat-number">{{ stats.scheduledPending }}</div>
       </router-link>
@@ -201,6 +213,32 @@ function formatUptime(sec: number): string {
           <span class="stat-label">Starboard</span>
         </div>
         <div class="stat-number">{{ stats.starboardCount }}</div>
+      </div>
+    </div>
+
+    <div v-if="services.length" class="mt-6 card">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Dienste</h2>
+          <p class="mt-0.5 text-xs text-slate-500">Direkte Erreichbarkeit und letzter Maintainerr-Webhook</p>
+        </div>
+        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load(true)">Neu prüfen</button>
+      </div>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div v-for="service in services" :key="service.key" class="rounded-lg border border-line bg-surface-2 px-4 py-3">
+          <div class="flex items-center justify-between gap-3">
+            <span class="font-medium text-white">{{ service.label }}</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-[11px] font-medium"
+              :class="service.state === 'ok' ? 'bg-emerald-500/15 text-emerald-400' : service.state === 'error' ? 'bg-red-500/15 text-red-400' : service.state === 'waiting' ? 'bg-amber-500/15 text-amber-300' : 'bg-slate-500/15 text-slate-400'"
+            >
+              {{ service.state === 'ok' ? 'online' : service.state === 'error' ? 'Fehler' : service.state === 'waiting' ? 'wartet' : 'deaktiviert' }}
+            </span>
+          </div>
+          <div class="mt-1 text-xs text-slate-400">{{ service.detail }}</div>
+          <div v-if="service.latencyMs !== null" class="mt-1 text-[11px] text-slate-600">{{ service.latencyMs }} ms</div>
+          <div v-else-if="service.lastEventAt" class="mt-1 text-[11px] text-slate-600">Letztes Event: {{ new Date(service.lastEventAt).toLocaleString() }}</div>
+        </div>
       </div>
     </div>
 
@@ -270,6 +308,8 @@ function formatUptime(sec: number): string {
           <div class="flex items-center justify-between"><span>📡 Live-Downloads</span><span :class="stats?.automations.downloadLive ? 'badge-success' : 'badge-muted'">{{ stats?.automations.downloadLive ? 'aktiv · 60s' : 'deaktiviert' }}</span></div>
           <div class="flex items-center justify-between"><span>🎬 Movie-Night Reminder</span><span :class="stats?.automations.movieNight ? 'badge-success' : 'badge-muted'">{{ stats?.automations.movieNight ? 'bereit' : 'nicht eingerichtet' }}</span></div>
           <div class="flex items-center justify-between"><span>↻ Webhook-Replay</span><router-link to="/webhooks" class="text-blurple">öffnen →</router-link></div>
+          <div class="flex items-center justify-between"><span>💾 Automatische Backups</span><span :class="stats?.automations.automaticBackup ? 'badge-success' : 'badge-muted'">{{ stats?.automations.automaticBackup ? 'täglich aktiv' : 'deaktiviert' }}</span></div>
+          <div class="flex items-center justify-between"><span>🔁 Webhook-Retries</span><span :class="stats?.automations.webhookRetry ? 'badge-success' : 'badge-muted'">{{ stats?.automations.webhookRetry ? 'automatisch' : 'deaktiviert' }}</span></div>
         </div>
       </div>
     </div>

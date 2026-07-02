@@ -112,7 +112,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">RSS Feeds</h1>
+    <h1 class="text-2xl font-semibold text-white">RSS-Feeds</h1>
     <p class="mt-1 text-sm text-slate-400">
       Generische RSS-Poller für Blog/News-Feeds. Polling alle 15 Min. Blue-Tracker bleibt separat
       (hardcoded mit Retail-Filter).

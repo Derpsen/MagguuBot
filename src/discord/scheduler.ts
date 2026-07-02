@@ -19,6 +19,8 @@ import { tickTicketAutoClose } from './ticket-autoclose.js';
 import { runWeeklyDigestTick } from './weekly-digest.js';
 import { tickMovieNights } from './movie-night.js';
 import { runDownloadLiveTick } from './download-live.js';
+import { runAutomaticBackupTick } from './automatic-backup.js';
+import { runWebhookRetryTick } from '../server/webhook-retry.js';
 
 const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
@@ -33,6 +35,8 @@ const TICKET_AUTOCLOSE_TICK_MS = 30 * 60_000;
 const WEEKLY_DIGEST_TICK_MS = 60 * 60_000;
 const MOVIE_NIGHT_TICK_MS = 60_000;
 const DOWNLOAD_LIVE_TICK_MS = 60_000;
+const AUTOMATIC_BACKUP_TICK_MS = 60 * 60_000;
+const WEBHOOK_RETRY_TICK_MS = 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
@@ -47,6 +51,8 @@ let ticketAutoCloseTimer: NodeJS.Timeout | null = null;
 let weeklyDigestTimer: NodeJS.Timeout | null = null;
 let movieNightTimer: NodeJS.Timeout | null = null;
 let downloadLiveTimer: NodeJS.Timeout | null = null;
+let automaticBackupTimer: NodeJS.Timeout | null = null;
+let webhookRetryTimer: NodeJS.Timeout | null = null;
 const activeTicks = new Set<string>();
 
 export function startScheduler(): void {
@@ -108,6 +114,14 @@ export function startScheduler(): void {
     runTick('download-live', runDownloadLiveTick, 'download live tick failed');
   }, DOWNLOAD_LIVE_TICK_MS);
 
+  automaticBackupTimer = setInterval(() => {
+    runTick('automatic-backup', runAutomaticBackupTick, 'automatic backup tick failed');
+  }, AUTOMATIC_BACKUP_TICK_MS);
+
+  webhookRetryTimer = setInterval(() => {
+    runTick('webhook-retry', runWebhookRetryTick, 'webhook retry tick failed');
+  }, WEBHOOK_RETRY_TICK_MS);
+
   setImmediate(() => {
     runTick('reminders', processDueReminders, 'reminder boot tick failed');
     runTick('stats', updateStatsChannels, 'stats boot tick failed');
@@ -121,6 +135,8 @@ export function startScheduler(): void {
     runTick('weekly-digest', runWeeklyDigestTick, 'weekly digest boot tick failed');
     runTick('movie-night', tickMovieNights, 'movie night boot tick failed');
     runTick('download-live', runDownloadLiveTick, 'download live boot tick failed');
+    runTick('automatic-backup', runAutomaticBackupTick, 'automatic backup boot tick failed');
+    runTick('webhook-retry', runWebhookRetryTick, 'webhook retry boot tick failed');
     if (config.WOW_BLUE_TRACKER_URL) {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
     }
@@ -141,6 +157,8 @@ export function startScheduler(): void {
       weeklyDigestMs: config.WEEKLY_DIGEST_ENABLED ? WEEKLY_DIGEST_TICK_MS : 'disabled',
       movieNightMs: MOVIE_NIGHT_TICK_MS,
       downloadLiveMs: DOWNLOAD_LIVE_TICK_MS,
+      automaticBackupMs: config.AUTOMATIC_BACKUP_ENABLED ? AUTOMATIC_BACKUP_TICK_MS : 'disabled',
+      webhookRetryMs: config.WEBHOOK_RETRY_ENABLED ? WEBHOOK_RETRY_TICK_MS : 'disabled',
     },
     'scheduler started',
   );
@@ -171,6 +189,8 @@ export function stopScheduler(): void {
   if (weeklyDigestTimer) clearInterval(weeklyDigestTimer);
   if (movieNightTimer) clearInterval(movieNightTimer);
   if (downloadLiveTimer) clearInterval(downloadLiveTimer);
+  if (automaticBackupTimer) clearInterval(automaticBackupTimer);
+  if (webhookRetryTimer) clearInterval(webhookRetryTimer);
   remindersTimer = null;
   statsTimer = null;
   announceTimer = null;
@@ -184,6 +204,8 @@ export function stopScheduler(): void {
   weeklyDigestTimer = null;
   movieNightTimer = null;
   downloadLiveTimer = null;
+  automaticBackupTimer = null;
+  webhookRetryTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {

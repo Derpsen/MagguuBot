@@ -8,17 +8,17 @@ export const timeoutCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('timeout')
-    .setDescription('Timeout a user for N minutes (0 = remove timeout)')
-    .addUserOption((o) => o.setName('user').setDescription('User to timeout').setRequired(true))
+    .setDescription('Einem Nutzer eine Auszeit geben (0 Minuten hebt sie auf)')
+    .addUserOption((o) => o.setName('user').setDescription('Nutzer für die Auszeit').setRequired(true))
     .addIntegerOption((o) =>
       o
         .setName('minutes')
-        .setDescription('Duration in minutes (0 lifts an active timeout, max 40320 = 28 days)')
+        .setDescription('Dauer in Minuten (0 hebt auf, maximal 40320 = 28 Tage)')
         .setMinValue(0)
         .setMaxValue(40320)
         .setRequired(true),
     )
-    .addStringOption((o) => o.setName('reason').setDescription('Why').setMaxLength(500))
+    .addStringOption((o) => o.setName('reason').setDescription('Begründung').setMaxLength(500))
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers) as SlashCommandBuilder,
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
@@ -26,7 +26,7 @@ export const timeoutCommand: SlashCommand = {
     const reason = interaction.options.getString('reason') ?? undefined;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply({ content: 'Guild only.' });
+      await interaction.editReply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.' });
       return;
     }
 

@@ -5,7 +5,9 @@ import { db } from '../db/client.js';
 import { webhookEvents, type NewWebhookEvent } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { webhookRetryDelayMs } from '../utils/retry.js';
 import { sanitizePayload } from './webhook-payload-redactor.js';
+import { getWebhookReplayContext } from './webhook-retry-context.js';
 
 interface PostArgs {
   channelId: string | undefined;
@@ -109,7 +111,16 @@ export async function editEmbed(args: EditArgs): Promise<Message | null> {
 
 function logWebhookEvent(values: NewWebhookEvent): void {
   try {
-    db.insert(webhookEvents).values(values).run();
+    const replay = getWebhookReplayContext();
+    const retry = values.status === 'failed' && !replay?.suppressRetrySchedule
+      ? {
+          retryState: 'pending' as const,
+          nextRetryAt: new Date(Date.now() + webhookRetryDelayMs(0)),
+        }
+      : {};
+    db.insert(webhookEvents)
+      .values({ ...values, ...retry, replayOfEventId: replay?.replayOfEventId })
+      .run();
   } catch (err) {
     logger.error(
       { err, source: values.source, eventType: values.eventType, status: values.status },

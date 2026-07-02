@@ -1,10 +1,13 @@
 import {
   ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
-  type ActionRowBuilder,
-  type ButtonBuilder,
+  type ButtonInteraction,
+  type ChatInputCommandInteraction,
   type CategoryChannel,
   type EmbedBuilder,
   type Guild,
@@ -400,34 +403,59 @@ export const setupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('setup-server')
-    .setDescription('Kategorien, Channels + Rollen anlegen, umbennen, sortieren (idempotent)')
+    .setDescription('Kategorien, Kanäle und Rollen anlegen, umbenennen und sortieren')
     .addBooleanOption((option) => option
       .setName('dry-run')
-      .setDescription('Nur anzeigen, was geändert würde – ohne Änderungen'))
+      .setDescription('Vorschau mit Bestätigungsbutton anzeigen (Standard: ja)'))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply('Guild only.');
+      await interaction.editReply('Dieser Befehl ist nur auf einem Server verfügbar.');
       return;
     }
 
-    if (interaction.options.getBoolean('dry-run') ?? false) {
-      await interaction.editReply(buildSetupDryRun(interaction.guild));
+    if (interaction.options.getBoolean('dry-run') ?? true) {
+      await interaction.editReply({
+        content: buildSetupDryRun(interaction.guild),
+        components: [new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`setup-server:confirm:${interaction.user.id}`)
+            .setLabel('Änderungen anwenden')
+            .setEmoji('✅')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`setup-server:cancel:${interaction.user.id}`)
+            .setLabel('Abbrechen')
+            .setStyle(ButtonStyle.Secondary),
+        )],
+      });
       return;
     }
 
-    const permCheck = await assertBotPermissions(interaction.guild);
+    await applySetupServer(interaction);
+  },
+};
+
+type SetupInteraction = ChatInputCommandInteraction | ButtonInteraction;
+
+async function applySetupServer(interaction: SetupInteraction): Promise<void> {
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.editReply('Dieser Befehl ist nur auf einem Server verfügbar.');
+      return;
+    }
+    const permCheck = await assertBotPermissions(guild);
     if (!permCheck.ok) {
       await interaction.editReply(
         [
-          '⚠️ **Bot fehlen Permissions** — `/setup-server` würde teilweise stillschweigend scheitern.',
+          '⚠️ **Dem Bot fehlen Berechtigungen** — `/setup-server` würde teilweise stillschweigend scheitern.',
           '',
           `Fehlend: \`${permCheck.missing.join('`, `')}\``,
           '',
-          '**Fix:** Server Settings → Roles → **MagguuBot** → **Administrator** aktivieren (einfachste Lösung), oder die fehlenden Permissions einzeln. Danach `/setup-server` erneut.',
+          '**Lösung:** Servereinstellungen → Rollen → **MagguuBot** → **Administrator** aktivieren (einfachste Lösung), oder die fehlenden Berechtigungen einzeln setzen. Danach `/setup-server` erneut ausführen.',
           '',
-          '_Ohne diese kann der Bot u. a. keine Channel-Overwrites setzen oder Welcome-Embeds pinnen — daher die "Missing Permissions" Errors im Log._',
+          '_Ohne diese kann der Bot unter anderem keine Kanalrechte setzen oder Willkommensnachrichten anheften — daher die Fehler wegen fehlender Berechtigungen im Log._',
         ].join('\n'),
       );
       return;
@@ -440,7 +468,7 @@ export const setupServerCommand: SlashCommand = {
 
     // ─── Idempotent cleanup of retired surfaces ────────────────────────
     for (const retiredName of RETIRED_ROLE_NAMES) {
-      const role = interaction.guild.roles.cache.find((x) => x.name === retiredName);
+      const role = guild.roles.cache.find((x) => x.name === retiredName);
       if (!role) continue;
       try {
         await role.delete('retired role removed by setup-server');
@@ -457,7 +485,7 @@ export const setupServerCommand: SlashCommand = {
         .get();
       if (!row) continue;
       try {
-        const channel = await interaction.guild.channels.fetch(row.channelId).catch(() => null);
+        const channel = await guild.channels.fetch(row.channelId).catch(() => null);
         if (channel && 'messages' in channel) {
           const msg = await channel.messages.fetch(row.messageId).catch(() => null);
           await msg?.delete().catch(() => {});
@@ -472,13 +500,13 @@ export const setupServerCommand: SlashCommand = {
     }
 
     for (const r of ROLES) {
-      const existing = interaction.guild.roles.cache.find((x) => x.name === r.name);
+      const existing = guild.roles.cache.find((x) => x.name === r.name);
       if (existing) {
         skipped.push(`role: ${r.name}`);
         continue;
       }
       const oldRole = r.oldNames
-        ?.map((n) => interaction.guild?.roles.cache.find((x) => x.name === n))
+        ?.map((n) => guild.roles.cache.find((x) => x.name === n))
         .find((x): x is NonNullable<typeof x> => Boolean(x));
       if (oldRole) {
         try {
@@ -489,7 +517,7 @@ export const setupServerCommand: SlashCommand = {
           logger.warn({ err, old: oldRole.name, target: r.name }, 'role rename failed, creating new');
         }
       }
-      await interaction.guild.roles.create({
+      await guild.roles.create({
         name: r.name,
         color: r.color,
         mentionable: r.mentionable ?? false,
@@ -504,14 +532,14 @@ export const setupServerCommand: SlashCommand = {
     const setupBotId = interaction.client.user?.id;
 
     for (const cat of STRUCTURE) {
-      const category = await ensureCategory(interaction.guild, cat, setupBotId);
+      const category = await ensureCategory(guild, cat, setupBotId);
       if (category.created) created.push(`category: ${cat.name}`);
       else if (category.renamed) renamed.push(`category: ${category.renamedFrom} → ${cat.name}`);
       else skipped.push(`category: ${cat.name}`);
 
       for (const ch of cat.channels) {
         const type = ch.kind === 'voice' ? ChannelType.GuildVoice : ChannelType.GuildText;
-        const result = await ensureChannel(interaction.guild, category.channel, ch, type, setupBotId);
+        const result = await ensureChannel(guild, category.channel, ch, type, setupBotId);
 
         if (result.created) created.push(`#${ch.name}`);
         else if (result.renamed) renamed.push(`#${result.renamedFrom} → ${ch.name}`);
@@ -545,7 +573,7 @@ export const setupServerCommand: SlashCommand = {
 
     }
 
-    await sortServerStructure(interaction.guild);
+    await sortServerStructure(guild);
 
     logger.info(
       { created: created.length, renamed: renamed.length, skipped: skipped.length },
@@ -560,14 +588,38 @@ export const setupServerCommand: SlashCommand = {
     if (embedsUpdated) lines.push(`**✏️ Welcome-Embeds editiert:** ${embedsUpdated}`);
     if (pinsOk || pinsFailed) {
       lines.push(
-        `**📌 Pinning:** ${pinsOk} ok${pinsFailed ? ` · ⚠️ ${pinsFailed} fehlgeschlagen → MagguuBot-Rolle braucht **Administrator** (oder mind. ManageMessages + ManageChannels + ManageRoles) in Server Settings → Roles` : ''}`,
+        `**📌 Anheften:** ${pinsOk} ok${pinsFailed ? ` · ⚠️ ${pinsFailed} fehlgeschlagen → Die MagguuBot-Rolle braucht **Administrator** (oder mindestens Nachrichten, Kanäle und Rollen verwalten) unter Servereinstellungen → Rollen` : ''}`,
       );
     }
     if (skipped.length) lines.push(`**⏭ Skipped (${skipped.length})**\n${skipped.slice(0, 10).join('\n')}`);
 
-    await interaction.editReply(lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.');
-  },
-};
+    await interaction.editReply({
+      content: lines.join('\n\n').slice(0, 1900) || 'Alles bereits aktuell.',
+      components: [],
+    });
+}
+
+export async function handleSetupServerButton(interaction: ButtonInteraction): Promise<void> {
+  const [, action, ownerId] = interaction.customId.split(':');
+  if (!interaction.guild || !ownerId || interaction.user.id !== ownerId) {
+    await interaction.reply({ content: 'Nur die Person, die die Vorschau gestartet hat, kann sie bestätigen.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    await interaction.reply({ content: 'Dafür sind Administratorrechte erforderlich.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (action === 'cancel') {
+    await interaction.update({ content: 'Setup abgebrochen – es wurden keine Änderungen vorgenommen.', components: [] });
+    return;
+  }
+  if (action !== 'confirm') {
+    await interaction.reply({ content: 'Diese Setup-Aktion ist ungültig.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await interaction.update({ content: '⏳ Setup wird angewendet …', components: [] });
+  await applySetupServer(interaction);
+}
 
 function buildSetupDryRun(guild: Guild): string {
   const create: string[] = [];

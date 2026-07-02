@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import Database from 'better-sqlite3';
 import { enforceEmbedTotalSize, formatBytes, truncate } from '../src/embeds/colors.ts';
 import { buildGrabEmbed } from '../src/embeds/arr.ts';
 import { buildReleaseEmbed, cleanAddonReleaseNotes } from '../src/embeds/github.ts';
@@ -10,6 +15,7 @@ import { isAddonRepository, parseAddonRepositories } from '../src/utils/github-r
 import { emptyEnvToUndefined, envBoolean } from '../src/utils/env.ts';
 import { createRecentKeyCache } from '../src/utils/recent-key-cache.ts';
 import { isPrivateIp } from '../src/utils/safe-fetch.ts';
+import { webhookRetryDelayMs } from '../src/utils/retry.ts';
 
 test('sanitizePayload redacts sensitive nested fields', () => {
   const sanitized = sanitizePayload({
@@ -76,6 +82,63 @@ test('environment booleans parse false-like strings without truthy coercion', ()
   assert.equal(emptyEnvToUndefined(''), undefined);
   assert.equal(emptyEnvToUndefined('   '), undefined);
   assert.equal(emptyEnvToUndefined('value'), 'value');
+});
+
+test('webhook retries use bounded exponential-style backoff', () => {
+  assert.equal(webhookRetryDelayMs(0), 60_000);
+  assert.equal(webhookRetryDelayMs(1), 5 * 60_000);
+  assert.equal(webhookRetryDelayMs(2), 15 * 60_000);
+  assert.equal(webhookRetryDelayMs(3), 60 * 60_000);
+  assert.equal(webhookRetryDelayMs(4), 6 * 60 * 60_000);
+  assert.equal(webhookRetryDelayMs(99), 6 * 60 * 60_000);
+});
+
+test('legacy databases receive webhook retry columns before their indexes', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'magguubot-migration-test-'));
+  const databasePath = join(directory, 'legacy.db');
+  try {
+    const legacy = new Database(databasePath);
+    legacy.exec(`CREATE TABLE webhook_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      channel_id TEXT,
+      message_id TEXT,
+      status TEXT NOT NULL,
+      error TEXT,
+      created_at INTEGER NOT NULL
+    )`);
+    legacy.close();
+
+    const script = `
+      const { sqliteHandle } = await import('./src/db/client.ts');
+      const columns = sqliteHandle.prepare('PRAGMA table_info(webhook_events)').all().map((row) => row.name);
+      for (const column of ['retry_count', 'next_retry_at', 'retry_state', 'replay_of_event_id']) {
+        if (!columns.includes(column)) throw new Error('missing column: ' + column);
+      }
+      const indexes = sqliteHandle.prepare('PRAGMA index_list(webhook_events)').all().map((row) => row.name);
+      for (const index of ['idx_webhook_retry_due', 'idx_webhook_replay_of']) {
+        if (!indexes.includes(index)) throw new Error('missing index: ' + index);
+      }
+      sqliteHandle.close();
+    `;
+    const result = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '--eval', script], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        DISCORD_TOKEN: 'test-token',
+        DISCORD_CLIENT_ID: '12345678901234567',
+        DISCORD_GUILD_ID: '12345678901234567',
+        WEBHOOK_SECRET: '1234567890abcdef',
+        DATABASE_PATH: databasePath,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('embed helpers keep output inside Discord-friendly bounds', () => {

@@ -13,7 +13,7 @@ export const rankCommand: SlashCommand = {
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
     if (!interaction.guildId) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.', flags: MessageFlags.Ephemeral });
       return;
     }
 

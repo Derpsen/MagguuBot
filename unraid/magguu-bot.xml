@@ -95,4 +95,14 @@
   <Config Name="WEEKLY_DIGEST_DAY" Target="WEEKLY_DIGEST_DAY" Default="0" Mode="" Description="Digest weekday: 0=Sunday through 6=Saturday." Type="Variable" Display="advanced" Required="false" Mask="false">0</Config>
 
   <Config Name="WEEKLY_DIGEST_HOUR" Target="WEEKLY_DIGEST_HOUR" Default="10" Mode="" Description="Local hour (0-23) after which the weekly digest is posted." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
+
+  <Config Name="AUTOMATIC_BACKUP_ENABLED" Target="AUTOMATIC_BACKUP_ENABLED" Default="true" Mode="" Description="Create one automatic SQLite backup per day." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="AUTOMATIC_BACKUP_HOUR" Target="AUTOMATIC_BACKUP_HOUR" Default="4" Mode="" Description="Local hour (0-23) after which the daily database backup runs." Type="Variable" Display="advanced" Required="false" Mask="false">4</Config>
+
+  <Config Name="AUTOMATIC_BACKUP_RETENTION" Target="AUTOMATIC_BACKUP_RETENTION" Default="7" Mode="" Description="Number of daily automatic database backups to retain (1-30)." Type="Variable" Display="advanced" Required="false" Mask="false">7</Config>
+
+  <Config Name="WEBHOOK_RETRY_ENABLED" Target="WEBHOOK_RETRY_ENABLED" Default="true" Mode="" Description="Automatically retry webhook deliveries that could not be posted to Discord." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="WEBHOOK_RETRY_MAX_ATTEMPTS" Target="WEBHOOK_RETRY_MAX_ATTEMPTS" Default="5" Mode="" Description="Maximum automatic retries per failed webhook event (1-10)." Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
 </Container>

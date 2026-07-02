@@ -40,7 +40,7 @@ export const suggestionStatusCommand: SlashCommand = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild) as SlashCommandBuilder,
   async execute(interaction) {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.', flags: MessageFlags.Ephemeral });
       return;
     }
     const id = interaction.options.getInteger('id', true);

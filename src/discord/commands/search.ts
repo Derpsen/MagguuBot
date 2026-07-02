@@ -8,18 +8,18 @@ export const searchCommand: SlashCommand = {
   category: 'downloads',
   data: new SlashCommandBuilder()
     .setName('search')
-    .setDescription('Search Radarr (movies) or Sonarr (TV)')
+    .setDescription('Filme in Radarr oder Serien in Sonarr suchen')
     .addSubcommand((s) =>
       s
         .setName('movie')
-        .setDescription('Search for a movie in Radarr')
-        .addStringOption((o) => o.setName('query').setDescription('Title').setRequired(true)),
+        .setDescription('Einen Film in Radarr suchen')
+        .addStringOption((o) => o.setName('query').setDescription('Titel').setRequired(true)),
     )
     .addSubcommand((s) =>
       s
         .setName('show')
-        .setDescription('Search for a TV show in Sonarr')
-        .addStringOption((o) => o.setName('query').setDescription('Title').setRequired(true)),
+        .setDescription('Eine Serie in Sonarr suchen')
+        .addStringOption((o) => o.setName('query').setDescription('Titel').setRequired(true)),
     ) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

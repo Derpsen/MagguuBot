@@ -16,11 +16,11 @@ export const repCommand: SlashCommand = {
   category: 'utility',
   data: new SlashCommandBuilder()
     .setName('rep')
-    .setDescription('Reputation — thank other members or view the leaderboard')
+    .setDescription('Reputation vergeben, anzeigen oder Rangliste öffnen')
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('give')
-        .setDescription('Einem User +1 rep geben (2h Cooldown, nicht self)')
+        .setDescription('Einem Nutzer +1 Reputation geben (2 Stunden Abklingzeit)')
         .addUserOption((o) =>
           o.setName('user').setDescription('Wem gibst du rep?').setRequired(true),
         ),
@@ -28,9 +28,9 @@ export const repCommand: SlashCommand = {
     .addSubcommand((s) =>
       s
         .setName('show')
-        .setDescription('Rep eines Users anzeigen')
+        .setDescription('Reputation eines Nutzers anzeigen')
         .addUserOption((o) =>
-          o.setName('user').setDescription('User (default: dich selbst)'),
+          o.setName('user').setDescription('Nutzer (Standard: du selbst)'),
         ),
     )
     .addSubcommand((s) => s.setName('leaderboard').setDescription('Top 10 nach Rep')) as SlashCommandBuilder,

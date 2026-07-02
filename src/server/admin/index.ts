@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { ChannelType, type GuildTextBasedChannel } from 'discord.js';
-import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, like, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '../../config.js';
 import { db } from '../../db/client.js';
@@ -32,7 +32,8 @@ import { recordAdminAudit } from '../auth/audit.js';
 import { getSession, requireAdmin } from '../auth/middleware.js';
 import { revokeUserSessions } from '../auth/revocations.js';
 import { clearSessionCookie } from '../auth/session.js';
-import { replayWebhook } from '../webhook-replay.js';
+import { attemptWebhookEvent } from '../webhook-retry.js';
+import { getServiceHealth } from '../service-health.js';
 
 export const adminRouter = new Hono();
 
@@ -57,6 +58,65 @@ adminRouter.post('/logout', (c) => {
   recordAdminAudit(c, { action: 'session.logout' });
   clearSessionCookie(c);
   return c.json({ ok: true });
+});
+
+const globalSearchSchema = z.string().trim().min(2).max(100);
+
+adminRouter.get('/search', async (c) => {
+  const parsed = globalSearchSchema.safeParse(c.req.query('q'));
+  if (!parsed.success) return c.json({ results: [] });
+  const query = parsed.data;
+  const pattern = `%${query}%`;
+  const guild = getClient().guilds.cache.get(config.DISCORD_GUILD_ID);
+  const normalized = query.toLocaleLowerCase('de-DE');
+  const memberResults = guild
+    ? [...guild.members.cache.values()]
+      .filter((member) =>
+        member.id.includes(query)
+        || member.displayName.toLocaleLowerCase('de-DE').includes(normalized)
+        || member.user.username.toLocaleLowerCase('de-DE').includes(normalized),
+      )
+      .slice(0, 6)
+      .map((member) => ({
+        kind: 'user',
+        label: member.displayName,
+        description: `Nutzer · ${member.user.username}`,
+        to: '/leaderboard',
+      }))
+    : [];
+  const requestResults = db
+    .select({ id: seerrRequests.id, title: seerrRequests.title, status: seerrRequests.status, requestedBy: seerrRequests.requestedBy })
+    .from(seerrRequests)
+    .where(or(like(seerrRequests.title, pattern), like(seerrRequests.requestedBy, pattern)))
+    .orderBy(desc(seerrRequests.createdAt))
+    .limit(6)
+    .all()
+    .map((row) => ({ kind: 'request', label: row.title, description: `Seerr · ${row.status}${row.requestedBy ? ` · ${row.requestedBy}` : ''}`, to: '/requests' }));
+  const ticketResults = db
+    .select({ id: tickets.id, topic: tickets.topic, openerId: tickets.openerId, closedAt: tickets.closedAt })
+    .from(tickets)
+    .where(or(like(tickets.topic, pattern), like(tickets.openerId, pattern), like(tickets.channelId, pattern)))
+    .orderBy(desc(tickets.createdAt))
+    .limit(6)
+    .all()
+    .map((row) => ({ kind: 'ticket', label: `Ticket #${row.id}`, description: `${row.closedAt ? 'geschlossen' : 'offen'} · ${row.topic ?? 'ohne Thema'}`, to: '/tickets' }));
+  const warningResults = db
+    .select({ id: warnings.id, userId: warnings.userId, reason: warnings.reason })
+    .from(warnings)
+    .where(or(like(warnings.reason, pattern), like(warnings.userId, pattern), like(warnings.moderatorId, pattern)))
+    .orderBy(desc(warnings.createdAt))
+    .limit(6)
+    .all()
+    .map((row) => ({ kind: 'warning', label: `Verwarnung #${row.id}`, description: `${row.reason ?? 'ohne Grund'} · ${row.userId}`, to: '/warnings' }));
+  const webhookResults = db
+    .select({ id: webhookEvents.id, source: webhookEvents.source, eventType: webhookEvents.eventType, status: webhookEvents.status })
+    .from(webhookEvents)
+    .where(or(like(webhookEvents.source, pattern), like(webhookEvents.eventType, pattern), like(webhookEvents.error, pattern)))
+    .orderBy(desc(webhookEvents.createdAt))
+    .limit(6)
+    .all()
+    .map((row) => ({ kind: 'webhook', label: `${row.source} · ${row.eventType}`, description: `Webhook · ${row.status} · #${row.id}`, to: '/webhooks' }));
+  return c.json({ results: [...memberResults, ...requestResults, ...ticketResults, ...warningResults, ...webhookResults].slice(0, 20) });
 });
 
 adminRouter.get('/stats', async (c) => {
@@ -162,8 +222,14 @@ adminRouter.get('/stats', async (c) => {
       weeklyDigest: config.WEEKLY_DIGEST_ENABLED && Boolean(getChannel('weeklyDigest')),
       downloadLive: Boolean(getChannel('downloadLive')) && downloadPanel?.enabled !== false,
       movieNight: Boolean(getChannel('movieNight')),
+      automaticBackup: config.AUTOMATIC_BACKUP_ENABLED,
+      webhookRetry: config.WEBHOOK_RETRY_ENABLED,
     },
   });
+});
+
+adminRouter.get('/services/health', async (c) => {
+  return c.json({ services: await getServiceHealth(c.req.query('force') === 'true') });
 });
 
 adminRouter.get('/warnings', async (c) => {
@@ -234,6 +300,10 @@ adminRouter.get('/webhooks', (c) => {
       status: r.status,
       error: r.error,
       channelId: r.channelId,
+      retryCount: r.retryCount,
+      retryState: r.retryState,
+      nextRetryAt: r.nextRetryAt?.toISOString() ?? null,
+      replayOfEventId: r.replayOfEventId,
       createdAt: r.createdAt.toISOString(),
     })),
   );
@@ -298,7 +368,8 @@ adminRouter.post('/webhooks/:id/replay', async (c) => {
     return c.json({ ok: false, error: 'successfully posted events cannot be replayed' }, 409);
   }
   try {
-    const response = await replayWebhook(event.source, event.eventType, event.payload);
+    const retry = await attemptWebhookEvent(event);
+    const response = retry.response;
     const result = await response.json().catch(() => null) as unknown;
     recordAdminAudit(c, {
       action: 'webhook.replay',
@@ -308,7 +379,10 @@ adminRouter.post('/webhooks/:id/replay', async (c) => {
     if (!response.ok) {
       return c.json({ ok: false, error: 'replay rejected', status: response.status, result }, 502);
     }
-    return c.json({ ok: true, status: response.status, result });
+    if (!retry.success) {
+      return c.json({ ok: false, error: 'replay did not produce a successful delivery', generatedStatuses: retry.generatedStatuses }, 502);
+    }
+    return c.json({ ok: retry.success, status: response.status, result, generatedStatuses: retry.generatedStatuses });
   } catch (err) {
     logger.warn({ err, eventId: id, source: event.source }, 'webhook replay failed');
     return c.json({ ok: false, error: err instanceof Error ? err.message : 'replay failed' }, 422);

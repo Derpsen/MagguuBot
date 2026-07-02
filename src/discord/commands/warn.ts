@@ -19,16 +19,16 @@ export const warnCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('warn')
-    .setDescription('Warn a user — stored in DB, announced in mod-log')
-    .addUserOption((o) => o.setName('user').setDescription('User to warn').setRequired(true))
-    .addStringOption((o) => o.setName('reason').setDescription('Why').setMaxLength(500))
+    .setDescription('Einen Nutzer verwarnen und im Moderationsprotokoll erfassen')
+    .addUserOption((o) => o.setName('user').setDescription('Zu verwarnender Nutzer').setRequired(true))
+    .addStringOption((o) => o.setName('reason').setDescription('Begründung').setMaxLength(500))
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers) as SlashCommandBuilder,
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? undefined;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply({ content: 'Guild only.' });
+      await interaction.editReply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.' });
       return;
     }
 

@@ -10,11 +10,11 @@ export async function handleSeerrButton(interaction: ButtonInteraction): Promise
   const [, action, idRaw] = interaction.customId.split(':');
   const requestId = Number(idRaw);
   if (!Number.isInteger(requestId) || requestId <= 0) {
-    await interaction.reply({ content: 'Invalid request id.', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: 'Ungültige Anfrage-ID.', flags: MessageFlags.Ephemeral });
     return;
   }
   if (!interaction.memberPermissions?.has('Administrator')) {
-    await interaction.reply({ content: 'Only administrators can approve/decline.', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: 'Nur Administratoren können Anfragen annehmen oder ablehnen.', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -28,7 +28,7 @@ export async function handleSeerrButton(interaction: ButtonInteraction): Promise
       await declineSeerrRequest(requestId);
       db.update(seerrRequests).set({ status: 'declined' }).where(eq(seerrRequests.seerrRequestId, requestId)).run();
     } else {
-      await interaction.followUp({ content: 'Unknown action.', flags: MessageFlags.Ephemeral });
+      await interaction.followUp({ content: 'Unbekannte Aktion.', flags: MessageFlags.Ephemeral });
       return;
     }
 

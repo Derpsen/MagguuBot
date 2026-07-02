@@ -52,7 +52,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Channel-Mapping</h1>
+    <h1 class="text-2xl font-semibold text-white">Kanal-Zuordnung</h1>
     <p class="mt-1 text-sm text-slate-400">
       Welcher Discord-Channel empfängt welche Events. Wird auch von <code>/setup-server</code> gepflegt.
     </p>

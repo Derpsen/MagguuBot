@@ -21,7 +21,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">XP-Leaderboard</h1>
+    <h1 class="text-2xl font-semibold text-white">XP-Rangliste</h1>
     <p class="mt-1 text-sm text-slate-400">Top 50 nach gesammeltem XP.</p>
 
     <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>

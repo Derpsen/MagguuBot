@@ -8,14 +8,14 @@ export const pollCommand: SlashCommand = {
   category: 'utility',
   data: new SlashCommandBuilder()
     .setName('poll')
-    .setDescription('Create a reaction poll (2–10 options)')
+    .setDescription('Eine Reaktionsumfrage mit 2–10 Optionen erstellen')
     .addStringOption((o) =>
-      o.setName('question').setDescription('Your question').setRequired(true).setMaxLength(256),
+      o.setName('question').setDescription('Deine Frage').setRequired(true).setMaxLength(256),
     )
     .addStringOption((o) =>
       o
         .setName('options')
-        .setDescription('Pipe-separated options, e.g. "Ja | Nein | Vielleicht"')
+        .setDescription('Mit | getrennte Optionen, z. B. "Ja | Nein | Vielleicht"')
         .setRequired(true)
         .setMaxLength(2000),
     ) as SlashCommandBuilder,

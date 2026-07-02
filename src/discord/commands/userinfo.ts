@@ -15,7 +15,7 @@ export const userinfoCommand: SlashCommand = {
   async execute(interaction) {
     const target = interaction.options.getUser('user') ?? interaction.user;
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.', flags: MessageFlags.Ephemeral });
       return;
     }
     await interaction.deferReply();
@@ -51,7 +51,7 @@ export const userinfoCommand: SlashCommand = {
         },
         { name: 'Level', value: xp ? `${levelFromXp(xp.xp)} (${xp.xp} XP)` : '—', inline: true },
         { name: 'Messages', value: xp ? `${xp.messagesCounted}` : '—', inline: true },
-        { name: 'Warnings', value: `${warnCount}`, inline: true },
+        { name: 'Verwarnungen', value: `${warnCount}`, inline: true },
         { name: `Rollen${member?.roles.cache.size ? ` (${member.roles.cache.size - 1})` : ''}`, value: roles || '_none_' },
       )
       .setFooter({ text: 'MagguuBot  ·  userinfo' });

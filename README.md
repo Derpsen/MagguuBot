@@ -85,9 +85,9 @@ Use Seerr's **Webhook** agent rather than its **Discord** agent. The Discord age
 
 Routing is automatic after `/setup-server`: pending approvals go to `⏳・freigaben`, while one public lifecycle card in `📝・anfragen` is updated from pending through approved/declined/available/failed. Issues go to `⚠️・fehler`. `SEERR_URL` and `SEERR_API_KEY` are additionally required if the Approve/Decline buttons in Discord should call back into Seerr.
 
-`/setup-server dry-run:true` previews all creates and renames without changing Discord. It also provisions `📊・wochenrückblick`, `📡・live-downloads`, and `🎬・movie-night`. The weekly digest runs according to `TIME_ZONE`, `WEEKLY_DIGEST_DAY`, and `WEEKLY_DIGEST_HOUR`; the live download card refreshes once per minute.
+`/setup-server` now opens a dry-run preview by default. Review the planned channels, roles, and renames, then apply or cancel with the buttons below the preview. Passing `dry-run:false` still applies the setup immediately. It also provisions `📊・wochenrückblick`, `📡・live-downloads`, and `🎬・movie-night`. The weekly digest runs according to `TIME_ZONE`, `WEEKLY_DIGEST_DAY`, and `WEEKLY_DIGEST_HOUR`; the live download card refreshes once per minute.
 
-Failed or skipped webhook events can be replayed from the dashboard. Database backups can be downloaded with `/db-backup`; oversized snapshots are retained under the database directory's `backups/` folder (latest five). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
+Failed webhook events are retried automatically after 1, 5, and 15 minutes, then 1 and 6 hours; their state remains visible in the dashboard and manual replay is still available. The retry count is controlled by `WEBHOOK_RETRY_MAX_ATTEMPTS`. Database backups can be downloaded with `/db-backup`; additionally, one automatic snapshot is written daily to the database directory's `backups/` folder. `AUTOMATIC_BACKUP_HOUR` and `AUTOMATIC_BACKUP_RETENTION` configure its local start hour and retention (seven by default). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
 ### 5. SABnzbd
 

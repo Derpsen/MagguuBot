@@ -50,13 +50,13 @@ export const announceCommand: SlashCommand = {
     .addChannelOption((o) =>
       o
         .setName('channel')
-        .setDescription('Target channel')
+        .setDescription('Zielkanal')
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
         .setRequired(true),
     )
-    .addStringOption((o) => o.setName('title').setDescription('Title').setRequired(true).setMaxLength(256))
+    .addStringOption((o) => o.setName('title').setDescription('Titel').setRequired(true).setMaxLength(256))
     .addStringOption((o) =>
-      o.setName('message').setDescription('Body (\\n = Zeilenumbruch)').setRequired(true).setMaxLength(4000),
+      o.setName('message').setDescription('Inhalt (\\n = Zeilenumbruch)').setRequired(true).setMaxLength(4000),
     )
     .addStringOption((o) =>
       o.setName('color').setDescription('Akzent-Farbe').addChoices(...COLOR_CHOICES),
@@ -65,7 +65,7 @@ export const announceCommand: SlashCommand = {
       o.setName('ping').setDescription('Ping-Option (Preset)').addChoices(...PING_PRESETS),
     )
     .addRoleOption((o) =>
-      o.setName('ping-role').setDescription('Custom-Rolle pingen (überschreibt Preset falls gesetzt)'),
+      o.setName('ping-role').setDescription('Eigene Rolle pingen (überschreibt die Vorauswahl)'),
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages) as SlashCommandBuilder,
   async execute(interaction) {

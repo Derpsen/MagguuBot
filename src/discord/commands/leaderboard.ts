@@ -10,7 +10,7 @@ export const leaderboardCommand: SlashCommand = {
     .setDescription('Top 10 Chatter nach XP') as SlashCommandBuilder,
   async execute(interaction) {
     if (!interaction.guildId) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.', flags: MessageFlags.Ephemeral });
       return;
     }
 

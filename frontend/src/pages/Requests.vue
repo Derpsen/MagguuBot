@@ -57,7 +57,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Seerr Requests</h1>
+    <h1 class="text-2xl font-semibold text-white">Seerr-Anfragen</h1>
     <p class="mt-1 text-sm text-slate-400">Pending Requests approve/decline — genauso wie die Discord-Buttons.</p>
 
     <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>

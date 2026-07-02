@@ -21,42 +21,42 @@ export const rolesPanelCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('roles-panel')
-    .setDescription('Admin: self-assign role panels with buttons')
+    .setDescription('Rollen-Panels zur Selbstzuweisung verwalten')
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('create')
-        .setDescription('Create a new empty role panel in a channel')
+        .setDescription('Ein neues leeres Rollen-Panel erstellen')
         .addChannelOption((o) =>
           o
             .setName('channel')
-            .setDescription('Target channel')
+            .setDescription('Zielkanal')
             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
             .setRequired(true),
         )
         .addStringOption((o) =>
-          o.setName('title').setDescription('Panel title').setRequired(true).setMaxLength(256),
+          o.setName('title').setDescription('Panel-Titel').setRequired(true).setMaxLength(256),
         )
         .addStringOption((o) =>
-          o.setName('description').setDescription('Panel description').setMaxLength(2000),
+          o.setName('description').setDescription('Panel-Beschreibung').setMaxLength(2000),
         ),
     )
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('add')
-        .setDescription('Add a toggleable role to the latest panel in this channel')
-        .addRoleOption((o) => o.setName('role').setDescription('Role to toggle').setRequired(true))
+        .setDescription('Eine umschaltbare Rolle zum neuesten Panel hinzufügen')
+        .addRoleOption((o) => o.setName('role').setDescription('Zuzuweisende Rolle').setRequired(true))
         .addStringOption((o) =>
-          o.setName('label').setDescription('Button label').setRequired(true).setMaxLength(80),
+          o.setName('label').setDescription('Button-Beschriftung').setRequired(true).setMaxLength(80),
         )
         .addStringOption((o) =>
-          o.setName('emoji').setDescription('Optional emoji (unicode or <:name:id>)'),
+          o.setName('emoji').setDescription('Optionales Emoji (Unicode oder <:name:id>)'),
         ),
     )
     .addSubcommand((s: SlashCommandSubcommandBuilder) =>
       s
         .setName('remove')
-        .setDescription('Remove a role from the latest panel in this channel')
-        .addRoleOption((o) => o.setName('role').setDescription('Role to remove').setRequired(true)),
+        .setDescription('Eine Rolle aus dem neuesten Panel entfernen')
+        .addRoleOption((o) => o.setName('role').setDescription('Zu entfernende Rolle').setRequired(true)),
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {

@@ -76,7 +76,13 @@ function runMigrations(): void {
   addColumnIfMissing('seerr_requests', 'lifecycle_channel_id', 'TEXT');
   addColumnIfMissing('seerr_requests', 'updated_at', 'INTEGER');
   addColumnIfMissing('reminders', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing('webhook_events', 'retry_count', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing('webhook_events', 'next_retry_at', 'INTEGER');
+  addColumnIfMissing('webhook_events', 'retry_state', 'TEXT');
+  addColumnIfMissing('webhook_events', 'replay_of_event_id', 'INTEGER');
   sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
+  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_retry_due ON webhook_events(retry_state, next_retry_at)');
+  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_replay_of ON webhook_events(replay_of_event_id)');
 }
 
 function ensureSchema(): void {
@@ -90,11 +96,14 @@ function ensureSchema(): void {
       message_id TEXT,
       status TEXT NOT NULL,
       error TEXT,
+      retry_count INTEGER NOT NULL DEFAULT 0,
+      next_retry_at INTEGER,
+      retry_state TEXT,
+      replay_of_event_id INTEGER,
       created_at INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_webhook_events_created ON webhook_events(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_webhook_events_source ON webhook_events(source, event_type);
-
     CREATE TABLE IF NOT EXISTS seerr_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       seerr_request_id INTEGER NOT NULL UNIQUE,

@@ -23,7 +23,7 @@ async function load(): Promise<void> {
 }
 
 async function del(id: number): Promise<void> {
-  if (!confirm('Warning wirklich löschen?')) return;
+  if (!confirm('Verwarnung wirklich löschen?')) return;
   await api(`/api/admin/warnings/${id}`, { method: 'DELETE' });
   await load();
 }
@@ -33,14 +33,14 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Warnings</h1>
-    <p class="mt-1 text-sm text-slate-400">Alle ausgesprochenen Warnings. Löschen = Eintrag weg.</p>
+    <h1 class="text-2xl font-semibold text-white">Verwarnungen</h1>
+    <p class="mt-1 text-sm text-slate-400">Alle ausgesprochenen Verwarnungen. Löschen entfernt den Eintrag dauerhaft.</p>
 
     <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>
 
     <div v-else class="mt-6 card p-0">
       <div v-if="warnings.length === 0" class="p-8 text-center text-slate-500">
-        Keine Warnings aufgezeichnet.
+        Keine Verwarnungen aufgezeichnet.
       </div>
       <div v-else>
         <div v-for="w in warnings" :key="w.id" class="table-row">

@@ -6,16 +6,16 @@ export const kickCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('kick')
-    .setDescription('Kick a user — they can rejoin via invite')
-    .addUserOption((o) => o.setName('user').setDescription('User to kick').setRequired(true))
-    .addStringOption((o) => o.setName('reason').setDescription('Why').setMaxLength(500))
+    .setDescription('Einen Nutzer vom Server entfernen – erneuter Beitritt bleibt möglich')
+    .addUserOption((o) => o.setName('user').setDescription('Zu entfernender Nutzer').setRequired(true))
+    .addStringOption((o) => o.setName('reason').setDescription('Begründung').setMaxLength(500))
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers) as SlashCommandBuilder,
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? undefined;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply({ content: 'Guild only.' });
+      await interaction.editReply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.' });
       return;
     }
 

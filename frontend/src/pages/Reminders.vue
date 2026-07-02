@@ -44,7 +44,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Reminders</h1>
+    <h1 class="text-2xl font-semibold text-white">Erinnerungen</h1>
     <p class="mt-1 text-sm text-slate-400">Alle aktiven <code>/remindme</code>-Timer.</p>
 
     <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>

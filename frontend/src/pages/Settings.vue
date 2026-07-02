@@ -54,9 +54,9 @@ async function save(): Promise<void> {
       method: 'PUT',
       body: JSON.stringify(settings.value),
     });
-    toast.success('Gespeichert', 'Die Settings sind sofort aktiv.');
+    toast.success('Gespeichert', 'Die Einstellungen sind sofort aktiv.');
   } catch {
-    toast.error('Fehler beim Speichern', 'Check die Bot-Logs.');
+    toast.error('Fehler beim Speichern', 'Prüfe die Bot-Logs.');
   } finally {
     saving.value = false;
   }
@@ -69,7 +69,7 @@ onMounted(load);
   <div>
     <div class="page-header">
       <div>
-        <h1 class="page-title">Settings</h1>
+        <h1 class="page-title">Einstellungen</h1>
         <p class="page-subtitle">
           Runtime-Einstellungen. Änderungen greifen sofort — kein Container-Restart nötig.
         </p>

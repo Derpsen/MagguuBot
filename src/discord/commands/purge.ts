@@ -16,18 +16,18 @@ export const purgeCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('purge')
-    .setDescription('Bulk-delete messages in the current channel')
+    .setDescription('Mehrere Nachrichten im aktuellen Kanal löschen')
     .addIntegerOption((o) =>
       o
         .setName('count')
-        .setDescription('How many messages (1–100, ignored wenn all=true)')
+        .setDescription('Anzahl der Nachrichten (1–100; bei all=true ignoriert)')
         .setMinValue(1)
         .setMaxValue(100),
     )
     .addBooleanOption((o) =>
       o.setName('all').setDescription(`Bis zu ${HARD_LIMIT} Nachrichten in diesem Channel löschen`),
     )
-    .addUserOption((o) => o.setName('from').setDescription('Nur von diesem User'))
+    .addUserOption((o) => o.setName('from').setDescription('Nur von diesem Nutzer'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages) as SlashCommandBuilder,
   async execute(interaction) {
     const wantAll = interaction.options.getBoolean('all') ?? false;

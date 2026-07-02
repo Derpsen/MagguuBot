@@ -24,7 +24,7 @@ export const cleanupServerCommand: SlashCommand = {
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply('Guild only.');
+      await interaction.editReply('Dieser Befehl funktioniert nur auf einem Server.');
       return;
     }
 

@@ -28,6 +28,7 @@ import {
 import type { SessionUser } from '../composables/useSession';
 import { useSession } from '../composables/useSession';
 import ToastStack from './ToastStack.vue';
+import GlobalSearch from './GlobalSearch.vue';
 
 const props = defineProps<{ user: SessionUser }>();
 const route = useRoute();
@@ -46,24 +47,24 @@ interface NavSection {
 
 const sections: NavSection[] = [
   {
-    title: 'Overview',
+    title: 'Übersicht',
     items: [{ name: 'dashboard', label: 'Übersicht', icon: LayoutDashboard, to: '/' }],
   },
   {
     title: 'Moderation',
     items: [
-      { name: 'requests', label: 'Seerr Requests', icon: Inbox, to: '/requests' },
+      { name: 'requests', label: 'Seerr-Anfragen', icon: Inbox, to: '/requests' },
       { name: 'tickets', label: 'Tickets', icon: Ticket, to: '/tickets' },
-      { name: 'warnings', label: 'Warnings', icon: ShieldAlert, to: '/warnings' },
+      { name: 'warnings', label: 'Verwarnungen', icon: ShieldAlert, to: '/warnings' },
     ],
   },
   {
-    title: 'Content',
+    title: 'Inhalte',
     items: [
       { name: 'tags', label: 'Tags', icon: TagIcon, to: '/tags' },
-      { name: 'autoresponders', label: 'Autoresponders', icon: MessageSquare, to: '/autoresponders' },
-      { name: 'scheduled', label: 'Scheduled', icon: Calendar, to: '/scheduled' },
-      { name: 'role-panels', label: 'Role Panels', icon: Puzzle, to: '/role-panels' },
+      { name: 'autoresponders', label: 'Auto-Antworten', icon: MessageSquare, to: '/autoresponders' },
+      { name: 'scheduled', label: 'Geplante Beiträge', icon: Calendar, to: '/scheduled' },
+      { name: 'role-panels', label: 'Rollen-Panels', icon: Puzzle, to: '/role-panels' },
     ],
   },
   {
@@ -75,12 +76,12 @@ const sections: NavSection[] = [
     ],
   },
   {
-    title: 'Config',
+    title: 'Konfiguration',
     items: [
-      { name: 'channels', label: 'Channels', icon: Hash, to: '/channels' },
+      { name: 'channels', label: 'Kanäle', icon: Hash, to: '/channels' },
       { name: 'webhooks', label: 'Webhooks', icon: Webhook, to: '/webhooks' },
-      { name: 'rss', label: 'RSS Feeds', icon: Rss, to: '/rss' },
-      { name: 'settings', label: 'Settings', icon: SettingsIcon, to: '/settings' },
+      { name: 'rss', label: 'RSS-Feeds', icon: Rss, to: '/rss' },
+      { name: 'settings', label: 'Einstellungen', icon: SettingsIcon, to: '/settings' },
     ],
   },
 ];
@@ -137,7 +138,7 @@ function isActive(item: NavItem): boolean {
         </div>
         <div v-if="!collapsed || mobileOpen" class="min-w-0 flex-1">
           <div class="truncate text-sm font-semibold text-white">MagguuBot</div>
-          <div class="text-[11px] text-slate-500">Admin Dashboard</div>
+          <div class="text-[11px] text-slate-500">Admin-Dashboard</div>
         </div>
         <button
           class="btn-icon"
@@ -192,7 +193,7 @@ function isActive(item: NavItem): boolean {
               <div class="text-[10px] uppercase tracking-wider text-slate-500">Admin</div>
             </div>
           </div>
-          <button class="btn-icon" title="Logout" @click="logout()">
+          <button class="btn-icon" title="Abmelden" @click="logout()">
             <LogOut class="h-4 w-4" />
           </button>
         </div>
@@ -223,7 +224,8 @@ function isActive(item: NavItem): boolean {
           <span class="truncate font-medium text-white">{{ breadcrumb.label }}</span>
         </nav>
 
-        <div class="ml-auto flex items-center gap-1">
+        <GlobalSearch />
+        <div class="flex items-center gap-1">
           <button class="btn-icon" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
             <Palette class="h-4 w-4" />
           </button>

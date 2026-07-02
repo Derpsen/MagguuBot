@@ -9,6 +9,10 @@ export const webhookEvents = sqliteTable('webhook_events', {
   messageId: text('message_id'),
   status: text('status', { enum: ['posted', 'failed', 'skipped'] }).notNull(),
   error: text('error'),
+  retryCount: integer('retry_count').notNull().default(0),
+  nextRetryAt: integer('next_retry_at', { mode: 'timestamp_ms' }),
+  retryState: text('retry_state', { enum: ['pending', 'resolved', 'exhausted'] }),
+  replayOfEventId: integer('replay_of_event_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date()),

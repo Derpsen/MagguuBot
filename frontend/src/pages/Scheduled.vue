@@ -30,7 +30,7 @@ async function load(): Promise<void> {
 }
 
 async function del(id: number): Promise<void> {
-  if (!confirm('Scheduled announcement löschen?')) return;
+  if (!confirm('Geplanten Beitrag löschen?')) return;
   await api(`/api/admin/scheduled/${id}`, { method: 'DELETE' });
   await load();
 }
@@ -64,7 +64,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Scheduled Announcements</h1>
+    <h1 class="text-2xl font-semibold text-white">Geplante Beiträge</h1>
     <p class="mt-1 text-sm text-slate-400">
       Von <code>/schedule-announce</code> angelegte geplante Posts. Scheduler feuert alle 30s.
     </p>

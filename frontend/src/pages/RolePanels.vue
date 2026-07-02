@@ -33,7 +33,7 @@ onMounted(load);
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white">Role Panels</h1>
+    <h1 class="text-2xl font-semibold text-white">Rollen-Panels</h1>
     <p class="mt-1 text-sm text-slate-400">
       Von <code>/roles-panel</code> erstellte Button-Panels. Löschen entfernt die Discord-Nachricht + den DB-Eintrag.
     </p>

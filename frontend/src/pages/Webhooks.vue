@@ -13,6 +13,10 @@ interface WebhookEvent {
   error: string | null;
   createdAt: string;
   channelId?: string | null;
+  retryCount: number;
+  retryState: 'pending' | 'resolved' | 'exhausted' | null;
+  nextRetryAt: string | null;
+  replayOfEventId: number | null;
 }
 
 interface WebhookHealthSource {
@@ -333,6 +337,15 @@ onMounted(reload);
                 {{ r.status }}
               </span>
 
+              <span
+                v-if="r.retryState"
+                class="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium"
+                :class="r.retryState === 'pending' ? 'bg-amber-500/15 text-amber-300' : r.retryState === 'resolved' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'"
+                :title="r.nextRetryAt ? `Nächster Versuch: ${new Date(r.nextRetryAt).toLocaleString()}` : undefined"
+              >
+                {{ r.retryState === 'pending' ? `Retry ${r.retryCount + 1} geplant` : r.retryState === 'resolved' ? `nach ${r.retryCount} Retry gelöst` : `nach ${r.retryCount} Retries beendet` }}
+              </span>
+
               <button
                 class="btn-ghost btn-sm shrink-0"
                 :disabled="replayingId === r.id || r.source === 'blue-tracker' || r.status === 'posted'"
@@ -364,6 +377,9 @@ onMounted(reload);
               :title="r.error"
             >
               ↳ {{ r.error }}
+            </div>
+            <div v-if="r.replayOfEventId" class="mt-1 pl-8 text-xs text-slate-500">
+              ↳ Wiederholung von Event #{{ r.replayOfEventId }}
             </div>
           </div>
         </div>

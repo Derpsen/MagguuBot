@@ -6,16 +6,16 @@ export const banCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('ban')
-    .setDescription('Ban a user from the server')
-    .addUserOption((o) => o.setName('user').setDescription('User to ban').setRequired(true))
+    .setDescription('Einen Nutzer vom Server bannen')
+    .addUserOption((o) => o.setName('user').setDescription('Zu bannender Nutzer').setRequired(true))
     .addIntegerOption((o) =>
       o
         .setName('delete-days')
-        .setDescription('Delete message history (days, 0-7)')
+        .setDescription('Nachrichtenverlauf löschen (Tage, 0–7)')
         .setMinValue(0)
         .setMaxValue(7),
     )
-    .addStringOption((o) => o.setName('reason').setDescription('Why').setMaxLength(500))
+    .addStringOption((o) => o.setName('reason').setDescription('Begründung').setMaxLength(500))
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers) as SlashCommandBuilder,
   async execute(interaction) {
     const user = interaction.options.getUser('user', true);
@@ -23,7 +23,7 @@ export const banCommand: SlashCommand = {
     const deleteDays = interaction.options.getInteger('delete-days') ?? 0;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply({ content: 'Guild only.' });
+      await interaction.editReply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.' });
       return;
     }
 
@@ -50,16 +50,16 @@ export const unbanCommand: SlashCommand = {
   category: 'moderation',
   data: new SlashCommandBuilder()
     .setName('unban')
-    .setDescription('Lift a ban (by user ID)')
-    .addStringOption((o) => o.setName('user-id').setDescription('The banned user ID').setRequired(true))
-    .addStringOption((o) => o.setName('reason').setDescription('Why').setMaxLength(500))
+    .setDescription('Eine Sperre anhand der Nutzer-ID aufheben')
+    .addStringOption((o) => o.setName('user-id').setDescription('ID des gesperrten Nutzers').setRequired(true))
+    .addStringOption((o) => o.setName('reason').setDescription('Begründung').setMaxLength(500))
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers) as SlashCommandBuilder,
   async execute(interaction) {
     const userId = interaction.options.getString('user-id', true);
     const reason = interaction.options.getString('reason') ?? undefined;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
-      await interaction.editReply({ content: 'Guild only.' });
+      await interaction.editReply({ content: 'Dieser Befehl funktioniert nur auf einem Server.' });
       return;
     }
 
@@ -78,7 +78,7 @@ export const unbanCommand: SlashCommand = {
       });
     } catch {
       await interaction.editReply({
-        content: 'Konnte nicht unbannen — User nicht gebannt oder ID falsch.',
+        content: 'Sperre konnte nicht aufgehoben werden — Nutzer nicht gesperrt oder ID falsch.',
       });
     }
   },

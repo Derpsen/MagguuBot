@@ -62,7 +62,7 @@ onMounted(load);
   <div>
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-semibold text-white">Tags (Custom Commands)</h1>
+        <h1 class="text-2xl font-semibold text-white">Tags (eigene Befehle)</h1>
         <p class="mt-1 text-sm text-slate-400">
           FAQ-Antworten die User mit <code>/tag get name:...</code> abrufen.
         </p>

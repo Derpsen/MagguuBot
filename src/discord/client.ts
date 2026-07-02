@@ -10,7 +10,7 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
-import { backfillWelcomePins } from './commands/setup-server.js';
+import { backfillWelcomePins, handleSetupServerButton } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
 import { handleGiveawayButton } from './interactions/giveaway-buttons.js';
@@ -85,7 +85,7 @@ export async function startDiscord(): Promise<void> {
       if (interaction.isChatInputCommand()) {
         const cmd = commands.get(interaction.commandName);
         if (!cmd) {
-          await interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
+          await interaction.reply({ content: 'Unbekannter Befehl.', flags: MessageFlags.Ephemeral });
           return;
         }
         const requiredPermissions = cmd.data.toJSON().default_member_permissions;
@@ -119,6 +119,8 @@ export async function startDiscord(): Promise<void> {
           await handleSuggestionButton(interaction);
         } else if (interaction.customId.startsWith('giveaway:')) {
           await handleGiveawayButton(interaction);
+        } else if (interaction.customId.startsWith('setup-server:')) {
+          await handleSetupServerButton(interaction);
         } else {
           await interaction.reply({
             content: 'Diese Schaltfläche wird nicht mehr unterstützt.',

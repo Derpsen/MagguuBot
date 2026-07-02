@@ -55,6 +55,11 @@ const schema = z.object({
   WEEKLY_DIGEST_ENABLED: envBoolean(true),
   WEEKLY_DIGEST_DAY: z.coerce.number().int().min(0).max(6).default(0),
   WEEKLY_DIGEST_HOUR: z.coerce.number().int().min(0).max(23).default(10),
+  AUTOMATIC_BACKUP_ENABLED: envBoolean(true),
+  AUTOMATIC_BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(4),
+  AUTOMATIC_BACKUP_RETENTION: z.coerce.number().int().min(1).max(30).default(7),
+  WEBHOOK_RETRY_ENABLED: envBoolean(true),
+  WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
 
   OPENAI_API_KEY: z.string().optional(),
 

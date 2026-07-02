@@ -9,7 +9,7 @@ export const serverinfoCommand: SlashCommand = {
     .setDescription('Zeig Infos über diesen Server') as SlashCommandBuilder,
   async execute(interaction) {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.', flags: MessageFlags.Ephemeral });
       return;
     }
 
