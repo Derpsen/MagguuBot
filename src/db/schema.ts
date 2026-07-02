@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
 export const webhookEvents = sqliteTable('webhook_events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -465,6 +465,28 @@ export const livePanels = sqliteTable(
   (t) => ({ pk: primaryKey({ columns: [t.guildId, t.kind] }) }),
 );
 
+export const plexActivityMessages = sqliteTable(
+  'plex_activity_messages',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    guildId: text('guild_id').notNull(),
+    correlationKey: text('correlation_key').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id').notNull(),
+    state: text('state').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    index('idx_plex_activity_correlation').on(t.guildId, t.correlationKey, t.updatedAt),
+    index('idx_plex_activity_updated').on(t.updatedAt),
+  ],
+);
+
 export const movieNights = sqliteTable('movie_nights', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guildId: text('guild_id').notNull(),
@@ -511,6 +533,7 @@ export type Birthday = typeof birthdays.$inferSelect;
 export type JtcRoom = typeof jtcRooms.$inferSelect;
 export type TicketCategory = typeof ticketCategories.$inferSelect;
 export type LivePanel = typeof livePanels.$inferSelect;
+export type PlexActivityMessage = typeof plexActivityMessages.$inferSelect;
 export type MovieNight = typeof movieNights.$inferSelect;
 export type MovieNightNomination = typeof movieNightNominations.$inferSelect;
 

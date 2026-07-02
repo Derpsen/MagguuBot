@@ -89,6 +89,8 @@ Routing is automatic after `/setup-server`: pending approvals go to `⏳・freig
 
 Failed webhook events are retried automatically after 1, 5, and 15 minutes, then 1 and 6 hours; their state remains visible in the dashboard and manual replay is still available. The retry count is controlled by `WEBHOOK_RETRY_MAX_ATTEMPTS`. Database backups can be downloaded with `/db-backup`; additionally, one automatic snapshot is written daily to the database directory's `backups/` folder. `AUTOMATIC_BACKUP_HOUR` and `AUTOMATIC_BACKUP_RETENTION` configure its local start hour and retention (seven by default). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
+Plex playback notifications are lifecycle cards: play creates one Discord message, while pause, resume, buffer, watched, and stop update that same message. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. A later stop never overwrites an already watched state. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever).
+
 ### 5. SABnzbd
 
 SAB does not emit native webhooks — use the post-processing script:

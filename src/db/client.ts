@@ -430,6 +430,21 @@ function ensureSchema(): void {
       PRIMARY KEY (guild_id, kind)
     );
 
+    CREATE TABLE IF NOT EXISTS plex_activity_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      correlation_key TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      state TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_plex_activity_correlation
+      ON plex_activity_messages(guild_id, correlation_key, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_plex_activity_updated
+      ON plex_activity_messages(updated_at);
+
     CREATE TABLE IF NOT EXISTS movie_nights (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,

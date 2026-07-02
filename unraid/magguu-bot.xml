@@ -105,4 +105,6 @@
   <Config Name="WEBHOOK_RETRY_ENABLED" Target="WEBHOOK_RETRY_ENABLED" Default="true" Mode="" Description="Automatically retry webhook deliveries that could not be posted to Discord." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
 
   <Config Name="WEBHOOK_RETRY_MAX_ATTEMPTS" Target="WEBHOOK_RETRY_MAX_ATTEMPTS" Default="5" Mode="" Description="Maximum automatic retries per failed webhook event (1-10)." Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
+
+  <Config Name="PLEX_ACTIVITY_RETENTION_DAYS" Target="PLEX_ACTIVITY_RETENTION_DAYS" Default="7" Mode="" Description="Delete old Plex activity cards from Discord after this many days (1-90). Set 0 to keep them forever." Type="Variable" Display="advanced" Required="false" Mask="false">7</Config>
 </Container>

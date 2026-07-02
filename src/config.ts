@@ -60,6 +60,7 @@ const schema = z.object({
   AUTOMATIC_BACKUP_RETENTION: z.coerce.number().int().min(1).max(30).default(7),
   WEBHOOK_RETRY_ENABLED: envBoolean(true),
   WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+  PLEX_ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).max(90).default(7),
 
   OPENAI_API_KEY: z.string().optional(),
 

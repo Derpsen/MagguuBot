@@ -17,6 +17,7 @@ import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 import { webhookRetryDelayMs } from '../src/utils/retry.ts';
 import { applyWebhookRetryMigration } from '../src/db/webhook-retry-migration.ts';
 import { isMaintainerrEventCode } from '../src/utils/maintainerr.ts';
+import { plexActivityCorrelationKey, preservePlexActivityState } from '../src/utils/plex-activity.ts';
 
 test('sanitizePayload redacts sensitive nested fields', () => {
   const sanitized = sanitizePayload({
@@ -98,6 +99,20 @@ test('Maintainerr machine event codes are hidden while readable titles remain', 
   assert.equal(isMaintainerrEventCode('COLLECTION_HANDLING_FAILED'), true);
   assert.equal(isMaintainerrEventCode('MEDIA_ADDED_TO_COLLECTION'), true);
   assert.equal(isMaintainerrEventCode('Collection Handling Failed'), false);
+});
+
+test('Plex activity cards correlate sessions and keep watched as final state', () => {
+  assert.equal(
+    plexActivityCorrelationKey({ sessionKey: 42, user: 'ignored', title: 'ignored' }),
+    'session:42',
+  );
+  assert.equal(
+    plexActivityCorrelationKey({ user: 'MxJflix', player: 'AFTKRT', title: 'Toy Story' }),
+    'fallback:mxjflix:aftkrt:toy story',
+  );
+  assert.equal(plexActivityCorrelationKey({ title: 'Toy Story' }), null);
+  assert.equal(preservePlexActivityState('watched', 'stop'), 'watched');
+  assert.equal(preservePlexActivityState('pause', 'resume'), 'resume');
 });
 
 test('legacy databases receive webhook retry columns before their indexes', () => {

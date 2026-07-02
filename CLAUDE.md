@@ -61,6 +61,8 @@ npm run db:push      # drizzle-kit sync
 
 **Automatic backups** — the hourly scheduler creates at most one `automatic-*.db` SQLite snapshot per local day after `AUTOMATIC_BACKUP_HOUR`. Retention only prunes automatic snapshots and never deletes manual backups.
 
+**Plex activity lifecycle** — Tautulli playback events correlate by `sessionKey`, falling back to user/player/media identity. Play creates a tracked card; subsequent events edit it. A watched state takes precedence over a later stop. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion.
+
 **Channel IDs are optional** — a webhook without a mapped channel is logged as `skipped` in `webhook_events`, not thrown. First boot ships empty, run `/setup-server`, copy IDs, restart.
 
 **Seerr approval buttons require Administrator** — hardcoded in `interactions/seerr-buttons.ts`. If you open this up to a custom role, also gate the command data via `setDefaultMemberPermissions`.

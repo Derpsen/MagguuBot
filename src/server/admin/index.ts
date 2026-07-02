@@ -224,6 +224,7 @@ adminRouter.get('/stats', async (c) => {
       movieNight: Boolean(getChannel('movieNight')),
       automaticBackup: config.AUTOMATIC_BACKUP_ENABLED,
       webhookRetry: config.WEBHOOK_RETRY_ENABLED,
+      plexActivityRetentionDays: config.PLEX_ACTIVITY_RETENTION_DAYS,
     },
   });
 });

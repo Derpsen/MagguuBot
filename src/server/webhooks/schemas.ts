@@ -237,6 +237,8 @@ export const tautulliCustomPayloadSchema = z
     serverName: z.string().optional(),
     user: z.string().optional(),
     player: z.string().optional(),
+    sessionKey: z.union([z.string(), z.number()]).optional(),
+    ratingKey: z.union([z.string(), z.number()]).optional(),
     progress: z.string().optional(),
     duration: z.string().optional(),
     progressPercent: z.union([z.string(), z.number()]).optional(),
