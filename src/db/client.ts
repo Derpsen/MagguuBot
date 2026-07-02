@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { config } from '../config.js';
 import * as schema from './schema.js';
 import { applyStagedDatabaseRestore } from './restore.js';
+import { applyWebhookRetryMigration } from './webhook-retry-migration.js';
 
 const path = resolve(config.DATABASE_PATH);
 mkdirSync(dirname(path), { recursive: true });
@@ -76,13 +77,8 @@ function runMigrations(): void {
   addColumnIfMissing('seerr_requests', 'lifecycle_channel_id', 'TEXT');
   addColumnIfMissing('seerr_requests', 'updated_at', 'INTEGER');
   addColumnIfMissing('reminders', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing('webhook_events', 'retry_count', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing('webhook_events', 'next_retry_at', 'INTEGER');
-  addColumnIfMissing('webhook_events', 'retry_state', 'TEXT');
-  addColumnIfMissing('webhook_events', 'replay_of_event_id', 'INTEGER');
+  applyWebhookRetryMigration(sqlite);
   sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
-  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_retry_due ON webhook_events(retry_state, next_retry_at)');
-  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_replay_of ON webhook_events(replay_of_event_id)');
 }
 
 function ensureSchema(): void {
