@@ -7,14 +7,19 @@ export interface PlexActivityIdentity {
   showTitle?: string;
   season?: string;
   episode?: string;
+  mediaType?: string;
 }
 
 export function plexActivityCorrelationKey(identity: PlexActivityIdentity): string | null {
+  const user = normalize(identity.user);
+  const player = normalize(identity.player);
+  if (normalize(identity.mediaType) === 'track' && (user || player)) {
+    return `music:${user || '-'}:${player || '-'}`.slice(0, 500);
+  }
+
   const sessionKey = clean(identity.sessionKey);
   if (sessionKey) return `session:${sessionKey}`;
 
-  const user = normalize(identity.user);
-  const player = normalize(identity.player);
   const media = clean(identity.ratingKey)
     ? `rating:${clean(identity.ratingKey)}`
     : normalize([

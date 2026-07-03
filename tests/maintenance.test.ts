@@ -110,6 +110,10 @@ test('Plex activity cards correlate sessions and keep watched as final state', (
     plexActivityCorrelationKey({ user: 'MxJflix', player: 'AFTKRT', title: 'Toy Story' }),
     'fallback:mxjflix:aftkrt:toy story',
   );
+  assert.equal(
+    plexActivityCorrelationKey({ sessionKey: 91, user: 'Magguuu', player: 'iPhone', mediaType: 'track' }),
+    'music:magguuu:iphone',
+  );
   assert.equal(plexActivityCorrelationKey({ title: 'Toy Story' }), null);
   assert.equal(preservePlexActivityState('watched', 'stop'), 'watched');
   assert.equal(preservePlexActivityState('pause', 'resume'), 'resume');

@@ -310,7 +310,7 @@ function formatUptime(sec: number): string {
           <div class="flex items-center justify-between"><span>↻ Webhook-Replay</span><router-link to="/webhooks" class="text-blurple">öffnen →</router-link></div>
           <div class="flex items-center justify-between"><span>💾 Automatische Backups</span><span :class="stats?.automations.automaticBackup ? 'badge-success' : 'badge-muted'">{{ stats?.automations.automaticBackup ? 'täglich aktiv' : 'deaktiviert' }}</span></div>
           <div class="flex items-center justify-between"><span>🔁 Webhook-Retries</span><span :class="stats?.automations.webhookRetry ? 'badge-success' : 'badge-muted'">{{ stats?.automations.webhookRetry ? 'automatisch' : 'deaktiviert' }}</span></div>
-          <div class="flex items-center justify-between"><span>🎞️ Plex-Aktivitätskarten</span><span class="badge-success">eine Karte pro Stream · {{ stats?.automations.plexActivityRetentionDays === 0 ? 'dauerhaft' : `${stats?.automations.plexActivityRetentionDays} Tage` }}</span></div>
+          <div class="flex items-center justify-between"><span>🎞️ Plex-Aktivitätskarten</span><span class="badge-success">Film/Serie pro Stream · Musik pro Player · {{ stats?.automations.plexActivityRetentionDays === 0 ? 'dauerhaft' : `${stats?.automations.plexActivityRetentionDays} Tage` }}</span></div>
         </div>
       </div>
     </div>

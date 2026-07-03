@@ -471,6 +471,7 @@ export const plexActivityMessages = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     guildId: text('guild_id').notNull(),
     correlationKey: text('correlation_key').notNull(),
+    sessionKey: text('session_key'),
     channelId: text('channel_id').notNull(),
     messageId: text('message_id').notNull(),
     state: text('state').notNull(),

@@ -108,15 +108,18 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
     return;
   }
 
+  const mediaType = discordField(source?.fields, /^(type|typ)$/i);
   await publishActivityCard({
     correlationKey: plexActivityCorrelationKey({
       user: discordField(source?.fields, /^(user|nutzer|benutzer)$/i),
       player: discordField(source?.fields, /^player$/i),
       title: source?.description ?? body.content,
+      mediaType,
     }),
     incomingMeta: meta,
     payload: body,
     buildEmbed,
+    reuseOnPlay: mediaType?.toLowerCase() === 'track',
   });
 }
 
@@ -158,6 +161,8 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
     correlationKey: plexActivityCorrelationKey(body),
     incomingMeta: meta,
     payload: body,
+    sessionKey: body.sessionKey,
+    reuseOnPlay: body.mediaType?.toLowerCase() === 'track',
     buildEmbed: (displayMeta) => {
       const embed = new EmbedBuilder()
         .setColor(displayMeta.color)
@@ -188,16 +193,32 @@ interface ActivityCardArgs {
   incomingMeta: EventMeta;
   payload: TautulliPayload;
   buildEmbed: (meta: EventMeta) => EmbedBuilder;
+  sessionKey?: string | number;
+  reuseOnPlay?: boolean;
 }
 
 async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
-  const { correlationKey, incomingMeta, payload, buildEmbed } = args;
+  const { correlationKey, incomingMeta, payload, buildEmbed, reuseOnPlay = false } = args;
   const channelId = getChannel('plexActivity');
   const existing = correlationKey ? latestActivity(correlationKey) : undefined;
+  const sessionKey = args.sessionKey === undefined ? null : String(args.sessionKey).trim() || null;
+  if (
+    reuseOnPlay
+    && incomingMeta.kind !== 'play'
+    && existing?.sessionKey
+    && sessionKey
+    && existing.sessionKey !== sessionKey
+  ) {
+    logger.debug(
+      { correlationKey, staleSession: sessionKey, activeSession: existing.sessionKey, event: incomingMeta.kind },
+      'stale music playback event ignored',
+    );
+    return;
+  }
   const duplicatePlay = incomingMeta.kind === 'play'
     && existing
     && existing.updatedAt.getTime() >= Date.now() - 2 * 60_000;
-  const shouldEdit = Boolean(existing && incomingMeta.kind !== 'play') || Boolean(duplicatePlay);
+  const shouldEdit = Boolean(existing && (incomingMeta.kind !== 'play' || duplicatePlay || reuseOnPlay));
   const displayKind = preservePlexActivityState(shouldEdit ? existing?.state : undefined, incomingMeta.kind);
   const displayMeta = EVENT_META[displayKind] ?? incomingMeta;
   const embed = buildEmbed(displayMeta);
@@ -213,7 +234,7 @@ async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
     });
     if (edited) {
       db.update(plexActivityMessages)
-        .set({ state: displayKind, updatedAt: new Date() })
+        .set({ state: displayKind, sessionKey, updatedAt: new Date() })
         .where(eq(plexActivityMessages.id, existing.id))
         .run();
       return;
@@ -231,6 +252,7 @@ async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
     db.insert(plexActivityMessages).values({
       guildId: config.DISCORD_GUILD_ID,
       correlationKey,
+      sessionKey,
       channelId: posted.channelId,
       messageId: posted.id,
       state: displayKind,
