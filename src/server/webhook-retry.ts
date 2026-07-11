@@ -1,10 +1,12 @@
-import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
 import { webhookRetryDelayMs } from '../utils/retry.js';
 import { replayWebhook } from './webhook-replay.js';
+import { webhookRetryState } from './webhook-retry-policy.js';
+import { REPLAYABLE_WEBHOOK_SOURCES } from './webhook-sources.js';
 
 export type WebhookEventRow = typeof webhookEvents.$inferSelect;
 
@@ -12,6 +14,29 @@ export interface WebhookRetryResult {
   response: Response;
   success: boolean;
   generatedStatuses: Array<'posted' | 'failed' | 'skipped'>;
+}
+
+export function recordFailedWebhookAttempt(
+  event: WebhookEventRow,
+  now = new Date(),
+): { retryCount: number; retryState: 'pending' | 'exhausted' } {
+  const retryCount = event.retryCount + 1;
+  const retryState = webhookRetryState(
+    event.status,
+    false,
+    retryCount,
+    config.WEBHOOK_RETRY_MAX_ATTEMPTS,
+  );
+  if (retryState === 'resolved') throw new Error('failed webhook attempt cannot resolve');
+  db.update(webhookEvents)
+    .set({
+      retryCount,
+      retryState,
+      nextRetryAt: retryState === 'pending' ? new Date(now.getTime() + webhookRetryDelayMs(retryCount)) : null,
+    })
+    .where(eq(webhookEvents.id, event.id))
+    .run();
+  return { retryCount, retryState };
 }
 
 export async function attemptWebhookEvent(event: WebhookEventRow, now = new Date()): Promise<WebhookRetryResult> {
@@ -25,12 +50,17 @@ export async function attemptWebhookEvent(event: WebhookEventRow, now = new Date
   const generatedStatuses = generated.map((row) => row.status);
   const success = response.ok && generatedStatuses.length > 0 && generatedStatuses.every((status) => status === 'posted');
   const retryCount = event.retryCount + 1;
-  const exhausted = !success && retryCount >= config.WEBHOOK_RETRY_MAX_ATTEMPTS;
+  const retryState = webhookRetryState(
+    event.status,
+    success,
+    retryCount,
+    config.WEBHOOK_RETRY_MAX_ATTEMPTS,
+  );
   db.update(webhookEvents)
     .set({
       retryCount,
-      retryState: success ? 'resolved' : exhausted ? 'exhausted' : 'pending',
-      nextRetryAt: success || exhausted ? null : new Date(now.getTime() + webhookRetryDelayMs(retryCount)),
+      retryState,
+      nextRetryAt: retryState === 'pending' ? new Date(now.getTime() + webhookRetryDelayMs(retryCount)) : null,
     })
     .where(eq(webhookEvents.id, event.id))
     .run();
@@ -46,6 +76,7 @@ export async function runWebhookRetryTick(now = new Date()): Promise<void> {
       and(
         eq(webhookEvents.status, 'failed'),
         eq(webhookEvents.retryState, 'pending'),
+        inArray(webhookEvents.source, REPLAYABLE_WEBHOOK_SOURCES),
         lte(webhookEvents.nextRetryAt, now),
       ),
     )
@@ -60,17 +91,11 @@ export async function runWebhookRetryTick(now = new Date()): Promise<void> {
         'automatic webhook retry processed',
       );
     } catch (err) {
-      const retryCount = event.retryCount + 1;
-      const exhausted = retryCount >= config.WEBHOOK_RETRY_MAX_ATTEMPTS;
-      db.update(webhookEvents)
-        .set({
-          retryCount,
-          retryState: exhausted ? 'exhausted' : 'pending',
-          nextRetryAt: exhausted ? null : new Date(now.getTime() + webhookRetryDelayMs(retryCount)),
-        })
-        .where(eq(webhookEvents.id, event.id))
-        .run();
-      logger.warn({ err, eventId: event.id, retryCount }, 'automatic webhook retry failed');
+      const failure = recordFailedWebhookAttempt(event, now);
+      logger.warn(
+        { err, eventId: event.id, retryCount: failure.retryCount, retryState: failure.retryState },
+        'automatic webhook retry failed',
+      );
     }
   }
 }

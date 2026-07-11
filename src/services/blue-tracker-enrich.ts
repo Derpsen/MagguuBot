@@ -11,23 +11,45 @@ export interface EnrichedBluePost {
   externalLink?: string;
 }
 
+export type BluePostEnrichmentResult =
+  | { status: 'enriched'; post: EnrichedBluePost }
+  | {
+      status: 'unavailable';
+      reason: 'invalid-url' | 'unsupported-host' | 'no-post-content' | 'http-rejected';
+      httpStatus?: number;
+    }
+  | { status: 'transient-error'; error: string };
+
+export type BluePostFetcher = (url: string, init?: RequestInit) => Promise<Response>;
+
+export function isTransientBluePostEnrichment(
+  result: BluePostEnrichmentResult | null,
+): result is Extract<BluePostEnrichmentResult, { status: 'transient-error' }> {
+  return result?.status === 'transient-error';
+}
+
 const TIMEOUT_MS = 6_000;
 const HOST_NAME = 'www.bluetracker.gg';
 const HOST = `https://${HOST_NAME}`;
 
-export async function enrichBluePost(url: string): Promise<EnrichedBluePost | null> {
+export async function enrichBluePost(
+  url: string,
+  fetcher: BluePostFetcher = safeFetch,
+): Promise<BluePostEnrichmentResult> {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    return null;
+    return { status: 'unavailable', reason: 'invalid-url' };
   }
-  if (parsed.protocol !== 'https:' || parsed.host !== HOST_NAME) return null;
+  if (parsed.protocol !== 'https:' || parsed.host !== HOST_NAME) {
+    return { status: 'unavailable', reason: 'unsupported-host' };
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await safeFetch(url, {
+    const res = await fetcher(url, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'MagguuBot/1.0 (+https://github.com/magguu)',
@@ -35,14 +57,24 @@ export async function enrichBluePost(url: string): Promise<EnrichedBluePost | nu
       },
     });
     if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined);
       logger.debug({ url, status: res.status }, 'blue-tracker enrich: http error');
-      return null;
+      if (res.status >= 500 || res.status === 408 || res.status === 425 || res.status === 429) {
+        return { status: 'transient-error', error: `HTTP ${res.status}` };
+      }
+      return { status: 'unavailable', reason: 'http-rejected', httpStatus: res.status };
     }
     const html = await res.text();
-    return parseTopic(html);
+    const post = parseTopic(html);
+    return post
+      ? { status: 'enriched', post }
+      : { status: 'unavailable', reason: 'no-post-content' };
   } catch (err) {
     logger.debug({ url, err }, 'blue-tracker enrich: fetch error');
-    return null;
+    return {
+      status: 'transient-error',
+      error: err instanceof Error ? err.message : String(err),
+    };
   } finally {
     clearTimeout(timer);
   }

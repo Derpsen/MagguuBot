@@ -1,5 +1,5 @@
-import { XMLParser } from 'fast-xml-parser';
-import { logger } from '../utils/logger.js';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { readResponseBytesLimited } from '../utils/http-body.js';
 import { safeFetch } from '../utils/safe-fetch.js';
 
 export interface RssItem {
@@ -39,13 +39,15 @@ const parser = new XMLParser({
 });
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-const MAX_BODY_BYTES = 5 * 1024 * 1024;
+export const RSS_MAX_BODY_BYTES = 5 * 1024 * 1024;
 
-export async function fetchRss(url: string): Promise<RssItem[]> {
+export type RssFetcher = (url: string, init?: RequestInit) => Promise<Response>;
+
+export async function fetchRss(url: string, fetcher: RssFetcher = safeFetch): Promise<RssItem[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   try {
-    const res = await safeFetch(url, {
+    const res = await fetcher(url, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'MagguuBot/1.0 (+https://github.com/magguu)',
@@ -53,39 +55,27 @@ export async function fetchRss(url: string): Promise<RssItem[]> {
       },
     });
     if (!res.ok) {
-      logger.warn({ url, status: res.status }, 'rss fetch failed');
-      return [];
+      await res.body?.cancel().catch(() => undefined);
+      throw new Error(`RSS fetch returned HTTP ${res.status}`);
     }
-    const declaredLen = Number(res.headers.get('content-length') ?? 0);
-    if (declaredLen && declaredLen > MAX_BODY_BYTES) {
-      logger.warn({ url, declaredLen }, 'rss fetch rejected: body too large');
-      return [];
-    }
-    const xml = await res.text();
-    if (Buffer.byteLength(xml) > MAX_BODY_BYTES) {
-      logger.warn({ url, size: xml.length }, 'rss fetch rejected: body too large');
-      return [];
-    }
+    const bytes = await readResponseBytesLimited(res, RSS_MAX_BODY_BYTES);
+    const xml = new TextDecoder().decode(bytes);
     return parseRss(xml);
-  } catch (err) {
-    logger.warn({ url, err }, 'rss fetch error');
-    return [];
   } finally {
     clearTimeout(timer);
   }
 }
 
 export function parseRss(xml: string): RssItem[] {
-  try {
-    const parsed = parser.parse(xml) as RssRoot;
-    const raw = parsed.rss?.channel?.item;
-    if (!raw) return [];
-    const items = Array.isArray(raw) ? raw : [raw];
-    return items.map(normalizeItem).filter((i): i is RssItem => Boolean(i));
-  } catch (err) {
-    logger.warn({ err }, 'rss parse error');
-    return [];
+  const validation = XMLValidator.validate(xml);
+  if (validation !== true) {
+    throw new Error(`invalid RSS XML: ${validation.err.msg}`);
   }
+  const parsed = parser.parse(xml) as RssRoot;
+  const raw = parsed.rss?.channel?.item;
+  if (!raw) return [];
+  const items = Array.isArray(raw) ? raw : [raw];
+  return items.map(normalizeItem).filter((i): i is RssItem => Boolean(i));
 }
 
 function normalizeItem(raw: RssRawItem): RssItem | null {

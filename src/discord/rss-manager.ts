@@ -7,6 +7,7 @@ import { Colors, truncate } from '../embeds/colors.js';
 import { postEmbed } from '../server/discord-poster.js';
 import { fetchRss, type RssItem } from '../services/rss.js';
 import { logger } from '../utils/logger.js';
+import { normalizeFeedTitle, rememberDeliveredFeedItem, wasEmbedDelivered } from './feed-delivery.js';
 
 const MAX_SEEN = 200;
 const MAX_POST_PER_RUN = 5;
@@ -60,7 +61,7 @@ async function processFeed(feed: RssFeed): Promise<void> {
   const postedTitles = new Set<string>();
   for (const item of [...relevant].reverse()) {
     if (seen.has(item.guid)) continue;
-    const normTitle = normalizeTitle(item.title);
+    const normTitle = normalizeFeedTitle(item.title);
     if (normTitle && (seen.has(`title:${normTitle}`) || postedTitles.has(normTitle))) continue;
     fresh.push(item);
     if (normTitle) postedTitles.add(normTitle);
@@ -68,17 +69,15 @@ async function processFeed(feed: RssFeed): Promise<void> {
   }
 
   for (const item of fresh) {
-    await postFeedItem(feed, item);
-    seen.add(item.guid);
-    const normTitle = normalizeTitle(item.title);
-    if (normTitle) seen.add(`title:${normTitle}`);
+    const delivered = await postFeedItem(feed, item);
+    if (!rememberDeliveredFeedItem(seen, item, delivered)) continue;
     persistSeen(feed.id, trimSeen(seen));
   }
 
   db.update(rssFeeds).set({ lastRunAt: new Date() }).where(eq(rssFeeds.id, feed.id)).run();
 }
 
-async function postFeedItem(feed: RssFeed, item: RssItem): Promise<void> {
+async function postFeedItem(feed: RssFeed, item: RssItem): Promise<boolean> {
   const description = stripHtml(item.description ?? '');
   const embed = new EmbedBuilder()
     .setColor(Colors.info)
@@ -90,13 +89,14 @@ async function postFeedItem(feed: RssFeed, item: RssItem): Promise<void> {
   if (item.author) embed.setFooter({ text: `MagguuBot  ·  ${item.author}` });
   else embed.setFooter({ text: `MagguuBot  ·  ${feed.name}` });
 
-  await postEmbed({
+  const posted = await postEmbed({
     channelId: feed.channelId,
     embed,
     source: 'rss-feed',
     eventType: `feed-${feed.id}`,
     payload: { feedId: feed.id, guid: item.guid, title: item.title, link: item.link },
   });
+  return wasEmbedDelivered(posted);
 }
 
 function parseKeywords(raw: string | null): string[] {
@@ -141,14 +141,6 @@ function persistSeen(feedId: number, seen: Set<string>): void {
 function trimSeen(seen: Set<string>): Set<string> {
   if (seen.size <= MAX_SEEN) return seen;
   return new Set(Array.from(seen).slice(-MAX_SEEN));
-}
-
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/^\[(eu|us|kr|tw|cn)\]\s*/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function stripHtml(s: string): string {

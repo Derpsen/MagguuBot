@@ -3,6 +3,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 export interface WebhookReplayContext {
   replayOfEventId: number;
   suppressRetrySchedule: boolean;
+  source: string;
+  eventType: string;
 }
 
 const storage = new AsyncLocalStorage<WebhookReplayContext>();

@@ -103,6 +103,7 @@ export interface ReleaseEmbedInput {
 export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
   if (i.addonRelease) {
     const notes = cleanAddonReleaseNotes(i.body);
+    const retailVersion = extractWowRetailVersion(i.body);
     return new EmbedBuilder()
       .setColor(i.prerelease ? Colors.warn : Colors.brand)
       .setAuthor({ name: 'MagguuUI', url: 'https://ui.magguu.xyz' })
@@ -110,7 +111,13 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
       .setURL(i.url)
       .setDescription(truncate(notes || '_Für dieses Update gibt es noch keine Beschreibung._', 3500))
       .addFields(
-        { name: 'WoW-Version', value: 'Retail 12.0.7', inline: true },
+        {
+          name: 'WoW-Version',
+          value: retailVersion
+            ? `World of Warcraft Retail ${retailVersion}`
+            : 'World of Warcraft Retail',
+          inline: true,
+        },
         { name: 'Installation', value: 'Addon-Manager aktualisieren oder beide Ordner aus der ZIP ersetzen.', inline: true },
         {
           name: 'Downloads',
@@ -130,6 +137,14 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
     .addFields({ name: 'By', value: i.author, inline: true }, { name: 'Tag', value: `\`${i.tag}\``, inline: true })
     .setFooter({ text: 'GitHub  ·  release' })
     .setTimestamp(new Date());
+}
+
+export function extractWowRetailVersion(body: string | undefined): string | null {
+  if (!body) return null;
+  const match = body.match(
+    /\b(?:ready\s+for\s+)?(?:world\s+of\s+warcraft|wow|retail)(?:\s+retail)?(?:\s+version)?\s*(?:[:=–—-]\s*)?v?(\d{1,2}\.\d{1,2}(?:\.\d{1,3})?)(?!\d|\.\d)/i,
+  );
+  return match?.[1] ?? null;
 }
 
 export function cleanAddonReleaseNotes(body: string | undefined): string {

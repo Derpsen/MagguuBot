@@ -4,10 +4,15 @@ import { db } from '../db/client.js';
 import { botSettings } from '../db/schema.js';
 import { buildBlueTrackerEmbed } from '../embeds/blue-tracker.js';
 import { postEmbed } from '../server/discord-poster.js';
-import { enrichBluePost, type EnrichedBluePost } from '../services/blue-tracker-enrich.js';
+import {
+  enrichBluePost,
+  isTransientBluePostEnrichment,
+  type EnrichedBluePost,
+} from '../services/blue-tracker-enrich.js';
 import { fetchRss, type RssItem } from '../services/rss.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
+import { normalizeFeedTitle, rememberDeliveredFeedItem, wasEmbedDelivered } from './feed-delivery.js';
 
 const SETTINGS_KEY = 'blueTrackerSeenGuids';
 const MAX_SEEN = 200;
@@ -75,7 +80,7 @@ export async function runBlueTrackerTick(): Promise<void> {
   const fresh: RssItem[] = [];
   for (const item of [...items].reverse()) {
     if (seen.has(item.guid)) continue;
-    const normTitle = normalizeTitle(item.title);
+    const normTitle = normalizeFeedTitle(item.title);
     if (normTitle && (seen.has(`title:${normTitle}`) || postedTitles.has(normTitle))) continue;
     fresh.push(item);
     if (normTitle) postedTitles.add(normTitle);
@@ -88,35 +93,32 @@ export async function runBlueTrackerTick(): Promise<void> {
   }
 
   for (const item of fresh) {
-    const enriched = item.link ? await enrichBluePost(item.link) : null;
+    const enrichment = item.link ? await enrichBluePost(item.link) : null;
+    const enriched = enrichment?.status === 'enriched' ? enrichment.post : null;
     const body = enriched?.body ?? item.description ?? '';
     if (body.length < MIN_BODY_CHARS) {
+      if (isTransientBluePostEnrichment(enrichment)) {
+        logger.warn(
+          { guid: item.guid, title: item.title, bodyLen: body.length, error: enrichment.error },
+          'blue-tracker: deferring short post after transient enrichment failure',
+        );
+        continue;
+      }
       logger.info(
         { guid: item.guid, title: item.title, bodyLen: body.length, enriched: Boolean(enriched) },
         'blue-tracker: skipping short post',
       );
       seen.add(item.guid);
-      const normTitle = normalizeTitle(item.title);
+      const normTitle = normalizeFeedTitle(item.title);
       if (normTitle) seen.add(`title:${normTitle}`);
       saveSeen(trimSeen(seen));
       continue;
     }
 
     const posted = await postOne(item, enriched, channelId);
-    if (!posted) continue;
-    seen.add(item.guid);
-    const normTitle = normalizeTitle(item.title);
-    if (normTitle) seen.add(`title:${normTitle}`);
+    if (!rememberDeliveredFeedItem(seen, item, posted)) continue;
     saveSeen(trimSeen(seen));
   }
-}
-
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/^\[(eu|us|kr|tw|cn)\]\s*/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 async function postOne(
@@ -125,7 +127,7 @@ async function postOne(
   channelId: string,
 ): Promise<boolean> {
   try {
-    await postEmbed({
+    const posted = await postEmbed({
       channelId,
       embed: buildBlueTrackerEmbed(item, enriched),
       source: 'blue-tracker',
@@ -139,7 +141,7 @@ async function postOne(
       },
       pingRoles: classifyPings(item, enriched),
     });
-    return true;
+    return wasEmbedDelivered(posted);
   } catch (err) {
     logger.warn({ err, guid: item.guid }, 'blue-tracker post failed');
     return false;

@@ -14,6 +14,8 @@ import { getTmdbPosterUrl } from '../../services/tmdb.js';
 import { logger } from '../../utils/logger.js';
 import { editEmbed, postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
+import { getWebhookReplayContext } from '../webhook-retry-context.js';
+import { seerrPendingDeliveryTargets } from './seerr-pending-delivery.js';
 import { parsePositiveInteger, seerrPayloadSchema } from './schemas.js';
 
 function firstDiscordId(value: string | string[] | undefined): string | undefined {
@@ -177,16 +179,23 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
       const buttons = buildSeerrApprovalButtons(requestId);
       const approvalsChannel = getChannel('approvals') ?? getChannel('requests');
       const requestsChannel = getChannel('requests');
-      const approvalMessage = await postEmbed({
-        channelId: approvalsChannel,
-        embed,
-        components: [buttons],
-        source: 'seerr',
-        eventType: body.notification_type,
-        payload: body,
-      });
-      let lifecycleMessage = approvalMessage;
-      if (requestsChannel && requestsChannel !== approvalsChannel) {
+      const separateLifecycleChannel = Boolean(requestsChannel && requestsChannel !== approvalsChannel);
+      const replayContext = getWebhookReplayContext();
+      const replayEventType = replayContext?.source === 'seerr' ? replayContext.eventType : undefined;
+      const deliveryTargets = seerrPendingDeliveryTargets(replayEventType, separateLifecycleChannel);
+
+      const approvalMessage = deliveryTargets.includes('approval')
+        ? await postEmbed({
+            channelId: approvalsChannel,
+            embed,
+            components: [buttons],
+            source: 'seerr',
+            eventType: body.notification_type,
+            payload: body,
+          })
+        : null;
+      let lifecycleMessage = separateLifecycleChannel ? null : approvalMessage;
+      if (deliveryTargets.includes('lifecycle')) {
         lifecycleMessage = await postEmbed({
           channelId: requestsChannel,
           embed: buildSeerrRequestEmbed({
@@ -204,29 +213,38 @@ export const seerrWebhook = new Hono().post('/', async (c) => {
           payload: body,
         });
       }
-      const trackedMessage = approvalMessage ?? lifecycleMessage;
-      if (trackedMessage && requestId) {
+
+      const existing = db.select().from(seerrRequests).where(eq(seerrRequests.seerrRequestId, requestId)).get();
+      const primaryMessage = approvalMessage
+        ?? (existing ? { id: existing.messageId, channelId: existing.channelId } : null)
+        ?? lifecycleMessage;
+      const trackedLifecycleMessage = lifecycleMessage
+        ?? (existing?.lifecycleMessageId && existing.lifecycleChannelId
+          ? { id: existing.lifecycleMessageId, channelId: existing.lifecycleChannelId }
+          : null);
+
+      if (primaryMessage) {
         db.insert(seerrRequests)
           .values({
             seerrRequestId: requestId,
-            messageId: trackedMessage.id,
-            channelId: trackedMessage.channelId,
+            messageId: primaryMessage.id,
+            channelId: primaryMessage.channelId,
             mediaType,
             tmdbId,
             title: plainTitle,
             status: 'pending',
             requestedBy: body.request?.requestedBy_username,
-            lifecycleMessageId: lifecycleMessage?.id,
-            lifecycleChannelId: lifecycleMessage?.channelId,
+            lifecycleMessageId: trackedLifecycleMessage?.id,
+            lifecycleChannelId: trackedLifecycleMessage?.channelId,
             updatedAt: new Date(),
           })
           .onConflictDoUpdate({
             target: seerrRequests.seerrRequestId,
             set: {
-              messageId: trackedMessage.id,
-              channelId: trackedMessage.channelId,
-              lifecycleMessageId: lifecycleMessage?.id,
-              lifecycleChannelId: lifecycleMessage?.channelId,
+              messageId: primaryMessage.id,
+              channelId: primaryMessage.channelId,
+              lifecycleMessageId: trackedLifecycleMessage?.id,
+              lifecycleChannelId: trackedLifecycleMessage?.channelId,
               status: 'pending',
               updatedAt: new Date(),
             },

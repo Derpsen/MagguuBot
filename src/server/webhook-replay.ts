@@ -9,8 +9,9 @@ import { seerrWebhook } from './webhooks/seerr.js';
 import { sonarrWebhook } from './webhooks/sonarr.js';
 import { tautulliWebhook } from './webhooks/tautulli.js';
 import { withWebhookReplayContext } from './webhook-retry-context.js';
+import { isReplayableWebhookSource, type ReplayableWebhookSource } from './webhook-sources.js';
 
-const ROUTES: Record<string, Hono> = {
+const ROUTES: Record<ReplayableWebhookSource, Hono> = {
   sonarr: sonarrWebhook,
   radarr: radarrWebhook,
   seerr: seerrWebhook,
@@ -26,8 +27,8 @@ export async function replayWebhook(
   payload: unknown,
   replayOfEventId?: number,
 ): Promise<Response> {
+  if (!isReplayableWebhookSource(source)) throw new Error(`source ${source} cannot be replayed`);
   const route = ROUTES[source];
-  if (!route) throw new Error(`source ${source} cannot be replayed`);
   const body = JSON.stringify(payload);
   const headers = new Headers({ 'Content-Type': 'application/json' });
   if (source === 'github') {
@@ -42,6 +43,11 @@ export async function replayWebhook(
   }
   const request = async (): Promise<Response> => route.request('http://internal/', { method: 'POST', headers, body });
   return replayOfEventId
-    ? withWebhookReplayContext({ replayOfEventId, suppressRetrySchedule: true }, request)
+    ? withWebhookReplayContext({
+        replayOfEventId,
+        suppressRetrySchedule: true,
+        source,
+        eventType,
+      }, request)
     : request();
 }
