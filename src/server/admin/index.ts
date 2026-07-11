@@ -32,8 +32,13 @@ import { recordAdminAudit } from '../auth/audit.js';
 import { getSession, requireAdmin } from '../auth/middleware.js';
 import { revokeUserSessions } from '../auth/revocations.js';
 import { clearSessionCookie } from '../auth/session.js';
-import { attemptWebhookEvent } from '../webhook-retry.js';
+import { attemptWebhookEvent, recordFailedWebhookAttempt } from '../webhook-retry.js';
 import { getServiceHealth } from '../service-health.js';
+import {
+  isReplayableWebhookSource,
+  webhookReplayBlockReason,
+} from '../webhook-sources.js';
+import { parseWebhookClearScope } from './webhook-clear-scope.js';
 
 export const adminRouter = new Hono();
 
@@ -297,6 +302,7 @@ adminRouter.get('/webhooks', (c) => {
     rows.map((r) => ({
       id: r.id,
       source: r.source,
+      replayable: isReplayableWebhookSource(r.source),
       eventType: r.eventType,
       status: r.status,
       error: r.error,
@@ -365,7 +371,11 @@ adminRouter.post('/webhooks/:id/replay', async (c) => {
   if (id === null) return c.json({ ok: false, error: 'bad id' }, 400);
   const event = db.select().from(webhookEvents).where(eq(webhookEvents.id, id)).get();
   if (!event) return c.json({ ok: false, error: 'event not found' }, 404);
-  if (event.status === 'posted') {
+  const replayBlockReason = webhookReplayBlockReason(event.source, event.status);
+  if (replayBlockReason === 'unsupported-source') {
+    return c.json({ ok: false, error: `source ${event.source} does not support replay` }, 422);
+  }
+  if (replayBlockReason === 'already-posted') {
     return c.json({ ok: false, error: 'successfully posted events cannot be replayed' }, 409);
   }
   try {
@@ -385,6 +395,11 @@ adminRouter.post('/webhooks/:id/replay', async (c) => {
     }
     return c.json({ ok: retry.success, status: response.status, result, generatedStatuses: retry.generatedStatuses });
   } catch (err) {
+    try {
+      recordFailedWebhookAttempt(event);
+    } catch (stateErr) {
+      logger.error({ err: stateErr, eventId: id }, 'failed to record manual webhook replay failure');
+    }
     logger.warn({ err, eventId: id, source: event.source }, 'webhook replay failed');
     return c.json({ ok: false, error: err instanceof Error ? err.message : 'replay failed' }, 422);
   }
@@ -494,7 +509,8 @@ adminRouter.delete('/rss/:id', (c) => {
 });
 
 adminRouter.delete('/webhooks', (c) => {
-  const scope = c.req.query('scope') ?? 'all';
+  const scope = parseWebhookClearScope(c.req.query('scope'));
+  if (scope === null) return c.json({ ok: false, error: 'invalid scope' }, 400);
   let result: { changes: number };
   if (scope === 'failed') {
     result = db.delete(webhookEvents).where(eq(webhookEvents.status, 'failed')).run();

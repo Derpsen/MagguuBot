@@ -8,6 +8,7 @@ const toast = useToast();
 interface WebhookEvent {
   id: number;
   source: string;
+  replayable: boolean;
   eventType: string;
   status: string;
   error: string | null;
@@ -56,6 +57,7 @@ const SOURCE_META: Record<string, { emoji: string; color: string; label: string 
   sabnzbd: { emoji: '📦', color: 'text-yellow-400', label: 'SABnzbd' },
   github: { emoji: '🔨', color: 'text-sky-300', label: 'GitHub' },
   maintainerr: { emoji: '🗑️', color: 'text-slate-400', label: 'Maintainerr' },
+  'rss-feed': { emoji: '📰', color: 'text-orange-300', label: 'RSS-Feed' },
   'blue-tracker': { emoji: '🔵', color: 'text-blue-400', label: 'Blue-Tracker' },
 };
 
@@ -152,6 +154,7 @@ async function clearEvents(scope: 'all' | 'failed' | 'skipped'): Promise<void> {
 }
 
 async function replayEvent(event: WebhookEvent): Promise<void> {
+  if (!event.replayable || event.status === 'posted') return;
   if (!confirm(`${event.source} · ${event.eventType} wirklich erneut verarbeiten?`)) return;
   replayingId.value = event.id;
   try {
@@ -159,6 +162,7 @@ async function replayEvent(event: WebhookEvent): Promise<void> {
     await reload();
     toast.success('Replay verarbeitet', `${event.source} · ${event.eventType}`);
   } catch {
+    await reload();
     toast.error('Replay fehlgeschlagen', 'Details stehen im Bot-Log und im Eventstatus.');
   } finally {
     replayingId.value = null;
@@ -348,8 +352,8 @@ onMounted(reload);
 
               <button
                 class="btn-ghost btn-sm shrink-0"
-                :disabled="replayingId === r.id || r.source === 'blue-tracker' || r.status === 'posted'"
-                :title="r.status === 'posted' ? 'Erfolgreiche Events werden nicht erneut gesendet' : r.source === 'blue-tracker' ? 'Diese Quelle ist kein eingehender Webhook' : 'Event erneut verarbeiten'"
+                :disabled="replayingId === r.id || !r.replayable || r.status === 'posted'"
+                :title="r.status === 'posted' ? 'Erfolgreiche Events werden nicht erneut gesendet' : !r.replayable ? 'Diese Quelle unterstützt kein Replay' : 'Event erneut verarbeiten'"
                 @click="replayEvent(r)"
               >
                 {{ replayingId === r.id ? '…' : '↻ Replay' }}

@@ -8,6 +8,7 @@ import { logger } from '../utils/logger.js';
 import { webhookRetryDelayMs } from '../utils/retry.js';
 import { sanitizePayload } from './webhook-payload-redactor.js';
 import { getWebhookReplayContext } from './webhook-retry-context.js';
+import { isReplayableWebhookSource } from './webhook-sources.js';
 
 interface PostArgs {
   channelId: string | undefined;
@@ -112,7 +113,9 @@ export async function editEmbed(args: EditArgs): Promise<Message | null> {
 function logWebhookEvent(values: NewWebhookEvent): void {
   try {
     const replay = getWebhookReplayContext();
-    const retry = values.status === 'failed' && !replay?.suppressRetrySchedule
+    const retry = values.status === 'failed' &&
+      isReplayableWebhookSource(values.source) &&
+      !replay?.suppressRetrySchedule
       ? {
           retryState: 'pending' as const,
           nextRetryAt: new Date(Date.now() + webhookRetryDelayMs(0)),

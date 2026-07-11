@@ -6,18 +6,21 @@ on:
     workflows: [ci]
     types: [completed]
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   label:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - name: Fetch Dependabot metadata
         id: meta
-        uses: dependabot/fetch-metadata@v3
+        # dependabot/fetch-metadata@v3.1.0
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -39,6 +42,9 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Resolve PR for head SHA
         id: pr
@@ -47,9 +53,12 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           REPO: ${{ github.repository }}
         run: |
-          PR=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" --jq '.[0] // empty')
+          PRS=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls")
+          PR=$(echo "$PRS" | jq -c --arg sha "$HEAD_SHA" \
+            '.[] | select(.state == "open" and .user.login == "dependabot[bot]" and .base.ref == "main" and .head.sha == $sha)' \
+            | head -n 1)
           if [ -z "$PR" ]; then
-            echo "No PR found for $HEAD_SHA"
+            echo "No matching open Dependabot PR found for $HEAD_SHA"
             echo "should_merge=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -66,4 +75,5 @@ jobs:
         if: steps.pr.outputs.should_merge == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge ${{ steps.pr.outputs.number }} --repo ${{ github.repository }} --squash --delete-branch
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: gh pr merge ${{ steps.pr.outputs.number }} --repo ${{ github.repository }} --squash --delete-branch --match-head-commit "$HEAD_SHA"

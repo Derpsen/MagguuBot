@@ -1,6 +1,12 @@
+import { REPLAYABLE_WEBHOOK_SOURCES } from '../server/webhook-sources.js';
+
 export interface SqliteMigrationTarget {
   exec(sql: string): unknown;
 }
+
+const replayableSourceSql = REPLAYABLE_WEBHOOK_SOURCES
+  .map((source) => `'${source.replaceAll("'", "''")}'`)
+  .join(', ');
 
 function addColumnIfMissing(sqlite: SqliteMigrationTarget, table: string, column: string, type: string): void {
   try {
@@ -16,6 +22,12 @@ export function applyWebhookRetryMigration(sqlite: SqliteMigrationTarget): void 
   addColumnIfMissing(sqlite, 'webhook_events', 'next_retry_at', 'INTEGER');
   addColumnIfMissing(sqlite, 'webhook_events', 'retry_state', 'TEXT');
   addColumnIfMissing(sqlite, 'webhook_events', 'replay_of_event_id', 'INTEGER');
+  sqlite.exec(`
+    UPDATE webhook_events
+    SET retry_state = NULL, next_retry_at = NULL
+    WHERE retry_state = 'pending'
+      AND source NOT IN (${replayableSourceSql})
+  `);
   sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_retry_due ON webhook_events(retry_state, next_retry_at)');
   sqlite.exec('CREATE INDEX IF NOT EXISTS idx_webhook_replay_of ON webhook_events(replay_of_event_id)');
 }
