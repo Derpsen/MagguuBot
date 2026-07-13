@@ -7,9 +7,17 @@ const httpUrl = z.string().url().refine((value) => {
   return protocol === 'http:' || protocol === 'https:';
 }, 'URL must use HTTP or HTTPS');
 const optionalHttpUrl = z.preprocess(emptyEnvToUndefined, httpUrl.optional());
-const optionalHttpsUrl = z.preprocess(
+const optionalHttpsOrigin = z.preprocess(
   emptyEnvToUndefined,
-  z.string().url().refine((value) => new URL(value).protocol === 'https:', 'URL must use HTTPS').optional(),
+  z.string().url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === 'https:'
+      && !url.username
+      && !url.password
+      && url.pathname === '/'
+      && !url.search
+      && !url.hash;
+  }, 'URL must be an HTTPS origin without path, query, hash, or credentials').optional(),
 );
 const optionalSecret = z.preprocess(emptyEnvToUndefined, z.string().min(16).optional());
 
@@ -73,7 +81,10 @@ const schema = z.object({
   AUTOMOD_MENTION_SPAM: envBoolean(true),
   AUTOMOD_MENTION_THRESHOLD: z.coerce.number().int().positive().default(5),
   AUTOMOD_EXTERNAL_LINK_FILTER: envBoolean(false),
-  AUTO_ROLE_ID: z.string().optional(),
+  AUTO_ROLE_ID: z.preprocess(
+    emptyEnvToUndefined,
+    z.string().regex(/^\d{17,20}$/).optional(),
+  ),
 
   HTTP_PORT: z.coerce.number().int().positive().max(65_535).default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),
@@ -89,7 +100,7 @@ const schema = z.object({
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SESSION_SECRET: optionalSecret,
   ADMIN_USER_IDS: z.string().optional(),
-  DASHBOARD_BASE_URL: optionalHttpsUrl,
+  DASHBOARD_BASE_URL: optionalHttpsOrigin,
 
   SONARR_URL: optionalHttpUrl,
   SONARR_API_KEY: z.string().optional(),

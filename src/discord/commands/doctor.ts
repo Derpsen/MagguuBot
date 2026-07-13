@@ -15,6 +15,7 @@ import { getRadarrStatus } from '../../services/radarr.js';
 import { getSabVersion } from '../../services/sabnzbd.js';
 import { getSeerrStatus } from '../../services/seerr.js';
 import { getSonarrStatus } from '../../services/sonarr.js';
+import { resolveAutoRoleTarget } from '../auto-role.js';
 import { getChannel, type ChannelKey } from '../channel-store.js';
 import type { SlashCommand } from './index.js';
 
@@ -60,6 +61,7 @@ export const doctorCommand: SlashCommand = {
       PermissionFlagsBits.EmbedLinks,
       PermissionFlagsBits.ReadMessageHistory,
       PermissionFlagsBits.ManageMessages,
+      PermissionFlagsBits.ManageRoles,
     ];
     const missingPermissions = requiredPermissions.filter((permission) => !me?.permissions.has(permission));
     checks.push({
@@ -67,9 +69,23 @@ export const doctorCommand: SlashCommand = {
       ok: missingPermissions.length === 0,
       detail: missingPermissions.length ? `${missingPermissions.length} Kernrechte fehlen` : 'Kernrechte vorhanden',
     });
+    const autoRole = await resolveAutoRoleTarget(interaction.guild);
+    checks.push({
+      label: 'Startrolle',
+      ok: Boolean(autoRole.role && autoRole.assignment?.assignable),
+      detail: autoRole.role && autoRole.assignment?.assignable
+        ? `„${autoRole.role.name}“ kann vergeben werden${autoRole.warning ? ` · ${autoRole.warning}` : ''}`
+        : autoRole.issue ?? 'Keine Startrolle gefunden',
+    });
     const intents = interaction.client.options.intents;
     const intentsOk = intents.has(GatewayIntentBits.GuildMembers) && intents.has(GatewayIntentBits.MessageContent);
-    checks.push({ label: 'Gateway Intents', ok: intentsOk, detail: intentsOk ? 'Members + MessageContent aktiv' : 'Privileged Intents fehlen' });
+    checks.push({
+      label: 'Gateway Intents',
+      ok: intentsOk,
+      detail: intentsOk
+        ? 'Members + MessageContent vom Bot angefordert (auch im Developer Portal aktivieren)'
+        : 'Privileged Intents fehlen',
+    });
     const dashboardValues = [config.DISCORD_CLIENT_SECRET, config.SESSION_SECRET, config.ADMIN_USER_IDS, config.DASHBOARD_BASE_URL];
     const dashboardConfigured = dashboardValues.every(Boolean);
     const dashboardPartial = dashboardValues.some(Boolean) && !dashboardConfigured;

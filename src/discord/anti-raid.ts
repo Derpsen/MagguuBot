@@ -210,14 +210,25 @@ export async function checkUsernameFilter(member: GuildMember): Promise<boolean>
   const hit = substrings.find((s) => haystack.includes(s));
   if (!hit) return false;
 
+  let action: 'kick' | 'ban' | null = null;
   try {
     if (member.kickable) {
       await member.kick(`username-filter: matched "${hit}"`);
+      action = 'kick';
     } else if (member.bannable) {
       await member.ban({ reason: `username-filter: matched "${hit}"`, deleteMessageSeconds: 0 });
+      action = 'ban';
     }
   } catch (err) {
     logger.warn({ err, userId: member.id }, 'username filter action failed');
+    return false;
+  }
+
+  if (!action) {
+    logger.warn(
+      { userId: member.id, guildId: member.guild.id, matchedSubstring: hit },
+      'username matched filter but member is neither kickable nor bannable',
+    );
     return false;
   }
 
@@ -225,7 +236,7 @@ export async function checkUsernameFilter(member: GuildMember): Promise<boolean>
   if (botUser) {
     await postModLog({
       guild: member.guild,
-      action: 'kick',
+      action,
       moderator: botUser,
       target: member.user,
       reason: `username-filter: "${hit}" in display`,

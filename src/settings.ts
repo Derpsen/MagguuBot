@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { config } from './config.js';
 import { db } from './db/client.js';
 import { botSettings } from './db/schema.js';
+import { parseAutoRoleSetting, serializeAutoRoleSetting } from './discord/auto-role-setting.js';
 
 export type SettingKey =
   | 'starboardThreshold'
@@ -122,8 +123,8 @@ const DEFS: { [K in SettingKey]: SettingDef<SettingValueMap[K]> } = {
     envValue: () => '',
   },
   autoRoleId: {
-    parse: (raw) => (raw || null),
-    serialize: (v) => v ?? '',
+    parse: parseAutoRoleSetting,
+    serialize: serializeAutoRoleSetting,
     envValue: () => config.AUTO_ROLE_ID ?? null,
   },
   aiModerationEnabled: {

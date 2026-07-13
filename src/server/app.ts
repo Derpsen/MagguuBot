@@ -9,6 +9,7 @@ import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import { adminRouter } from './admin/index.js';
+import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canonical-dashboard.js';
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
 import { maintainerrWebhook } from './webhooks/maintainerr.js';
@@ -156,6 +157,17 @@ export function buildApp(): Hono {
   app.get('*', (c) => {
     if (/^\/(?:api|auth|webhook)(?:\/|$)/.test(c.req.path)) {
       return c.json({ ok: false, error: 'not found' }, 404);
+    }
+    if (
+      config.DASHBOARD_BASE_URL
+      && !isCanonicalDashboardRequest(config.DASHBOARD_BASE_URL, {
+        requestHost: c.req.header('host'),
+        requestUrl: c.req.url,
+        forwardedHost: c.req.header('x-forwarded-host'),
+        forwardedProto: c.req.header('x-forwarded-proto'),
+      })
+    ) {
+      return c.redirect(canonicalDashboardUrl(config.DASHBOARD_BASE_URL, c.req.url));
     }
     if (!existsSync(FRONTEND_DIR)) {
       return c.json({ ok: false, error: 'not found' }, 404);

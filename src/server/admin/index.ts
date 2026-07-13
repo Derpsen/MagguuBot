@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { ChannelType, type GuildTextBasedChannel } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, type GuildTextBasedChannel } from 'discord.js';
 import { and, desc, eq, gt, isNull, like, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '../../config.js';
@@ -23,10 +23,17 @@ import {
   type RolePanelEntry,
 } from '../../db/schema.js';
 import { invalidateAutoresponderCache } from '../../discord/autoresponder.js';
+import { resolveAutoRoleTarget } from '../../discord/auto-role.js';
+import {
+  AUTO_ROLE_RECONCILE_LIMIT,
+  AUTO_ROLE_RECONCILE_WINDOW_DAYS,
+  isAutoRoleReconcileCandidate,
+} from '../../discord/auto-role-reconcile.js';
 import { getChannel, saveChannel, type ChannelKey } from '../../discord/channel-store.js';
 import { getClient } from '../../discord/client.js';
+import { checkRoleAssignment } from '../../discord/role-assignment.js';
 import { approveSeerrRequest, declineSeerrRequest } from '../../services/seerr.js';
-import { getAllSettings, setSetting } from '../../settings.js';
+import { getAllSettings, getSetting, setSetting } from '../../settings.js';
 import { logger } from '../../utils/logger.js';
 import { recordAdminAudit } from '../auth/audit.js';
 import { getSession, requireAdmin } from '../auth/middleware.js';
@@ -41,6 +48,7 @@ import {
 import { parseWebhookClearScope } from './webhook-clear-scope.js';
 
 export const adminRouter = new Hono();
+const autoRoleReconcileInFlight = new Set<string>();
 
 adminRouter.use('*', requireAdmin);
 
@@ -551,6 +559,26 @@ adminRouter.put('/settings', async (c) => {
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body', issues: parsed.error.flatten() }, 400);
 
   const data = parsed.data;
+  if (data.autoRoleId !== undefined && data.autoRoleId !== getSetting('autoRoleId')) {
+    const guild = await getClient().guilds.fetch(config.DISCORD_GUILD_ID).catch(() => null);
+    if (!guild) {
+      return c.json({ ok: false, error: 'Der konfigurierte Discord-Server ist nicht erreichbar.' }, 503);
+    }
+    const target = await resolveAutoRoleTarget(guild, data.autoRoleId);
+    if (data.autoRoleId && target.role?.id !== data.autoRoleId) {
+      return c.json({ ok: false, error: 'Die ausgewählte Startrolle wurde im Server nicht gefunden.' }, 422);
+    }
+    if (!target.role) {
+      return c.json({ ok: false, error: target.issue ?? 'Keine Startrolle gefunden.' }, 422);
+    }
+    if (!target.assignment?.assignable) {
+      return c.json({
+        ok: false,
+        error: target.assignment?.issue ?? 'Die Startrolle kann vom Bot nicht vergeben werden.',
+        issueCode: target.assignment?.issueCode ?? null,
+      }, 422);
+    }
+  }
   if (data.starboardThreshold !== undefined) setSetting('starboardThreshold', data.starboardThreshold);
   if (data.starboardEmoji !== undefined) setSetting('starboardEmoji', data.starboardEmoji);
   if (data.automodInviteFilter !== undefined) setSetting('automodInviteFilter', data.automodInviteFilter);
@@ -574,12 +602,163 @@ adminRouter.put('/settings', async (c) => {
 adminRouter.get('/guild', async (c) => {
   const client = getClient();
   const guild = await client.guilds.fetch(config.DISCORD_GUILD_ID).catch(() => null);
-  if (!guild) return c.json({ roles: [] });
+  if (!guild) {
+    return c.json({
+      roles: [],
+      autoRole: {
+        roleId: null,
+        roleName: null,
+        source: 'none',
+        assignable: false,
+        issue: 'Der konfigurierte Discord-Server ist nicht erreichbar.',
+        warning: null,
+        botHighestRoleName: null,
+        canManageRoles: false,
+      },
+    });
+  }
+  await Promise.all([
+    guild.roles.fetch().catch(() => null),
+    guild.members.me ? Promise.resolve(guild.members.me) : guild.members.fetchMe().catch(() => null),
+  ]);
+  const autoRole = await resolveAutoRoleTarget(guild);
   const roles = Array.from(guild.roles.cache.values())
-    .filter((r) => r.name !== '@everyone' && !r.managed)
+    .filter((r) => r.id !== guild.id)
     .sort((a, b) => b.position - a.position)
-    .map((r) => ({ id: r.id, name: r.name, color: r.color }));
-  return c.json({ roles });
+    .map((r) => {
+      const assignment = checkRoleAssignment(guild, r);
+      return {
+        id: r.id,
+        name: r.name,
+        color: r.color,
+        managed: r.managed,
+        position: r.position,
+        assignable: assignment.assignable,
+        assignmentIssue: assignment.issue,
+        assignmentIssueCode: assignment.issueCode,
+      };
+    });
+  const me = guild.members.me;
+  return c.json({
+    roles,
+    autoRole: {
+      roleId: autoRole.role?.id ?? null,
+      roleName: autoRole.role?.name ?? null,
+      configuredRoleId: autoRole.configuredRoleId,
+      source: autoRole.source,
+      assignable: autoRole.assignment?.assignable ?? false,
+      issue: autoRole.issue,
+      issueCode: autoRole.assignment?.issueCode ?? null,
+      warning: autoRole.warning,
+      botHighestRoleName: me?.roles.highest.name ?? null,
+      canManageRoles: me?.permissions.has(PermissionFlagsBits.ManageRoles) ?? false,
+    },
+  });
+});
+
+adminRouter.post('/auto-role/reconcile', async (c) => {
+  const guild = await getClient().guilds.fetch(config.DISCORD_GUILD_ID).catch(() => null);
+  if (!guild) {
+    return c.json({ ok: false, error: 'Der konfigurierte Discord-Server ist nicht erreichbar.' }, 503);
+  }
+  if (autoRoleReconcileInFlight.has(guild.id)) {
+    return c.json({
+      ok: false,
+      error: 'Für diesen Server läuft bereits eine Startrollen-Nachpflege.',
+    }, 409);
+  }
+
+  autoRoleReconcileInFlight.add(guild.id);
+  try {
+    const target = await resolveAutoRoleTarget(guild);
+    if (!target.role || !target.assignment?.assignable) {
+      return c.json({
+        ok: false,
+        error: target.issue ?? 'Die Startrolle kann nicht vergeben werden.',
+        issueCode: target.assignment?.issueCode ?? null,
+      }, 422);
+    }
+    const role = target.role;
+
+    const members = await guild.members.fetch().catch((err) => {
+      logger.warn({ err, guildId: guild.id }, 'auto-role reconciliation could not fetch members');
+      return null;
+    });
+    if (!members) {
+      return c.json({
+        ok: false,
+        error: 'Mitglieder konnten nicht geladen werden. Prüfe den „Server Members Intent“ im Discord Developer Portal.',
+      }, 502);
+    }
+
+    const now = Date.now();
+    const candidates = Array.from(members.values())
+      .filter((member) => isAutoRoleReconcileCandidate({
+        isBot: member.user.bot,
+        hasTargetRole: member.roles.cache.has(role.id),
+        hasOnlyEveryoneRole: member.roles.cache.every((memberRole) => memberRole.id === guild.id),
+        joinedTimestamp: member.joinedTimestamp,
+      }, now))
+      .sort((a, b) => (b.joinedTimestamp ?? 0) - (a.joinedTimestamp ?? 0));
+    const selected = candidates.slice(0, AUTO_ROLE_RECONCILE_LIMIT);
+    const failures: Array<{ userId: string; error: string }> = [];
+    let assigned = 0;
+    for (const member of selected) {
+      try {
+        await member.roles.add(role, 'missing auto-role reconciled via dashboard');
+        assigned += 1;
+      } catch (err) {
+        failures.push({
+          userId: member.id,
+          error: err instanceof Error ? err.message.slice(0, 300) : 'Unbekannter Discord-Fehler',
+        });
+      }
+    }
+
+    const result = {
+      ok: true as const,
+      role: { id: role.id, name: role.name },
+      examined: members.size,
+      candidates: candidates.length,
+      attempted: selected.length,
+      assigned,
+      failed: failures.length,
+      skipped: candidates.length - selected.length,
+      truncated: candidates.length > selected.length,
+      windowDays: AUTO_ROLE_RECONCILE_WINDOW_DAYS,
+      failures: failures.slice(0, 10),
+    };
+    logger.info(
+      {
+        guildId: guild.id,
+        roleId: role.id,
+        by: getSession(c).userId,
+        examined: result.examined,
+        candidates: result.candidates,
+        assigned: result.assigned,
+        failed: result.failed,
+        truncated: result.truncated,
+        windowDays: result.windowDays,
+      },
+      'auto-role reconciliation completed',
+    );
+    recordAdminAudit(c, {
+      action: 'auto_role.reconcile',
+      target: role.id,
+      detail: {
+        examined: result.examined,
+        candidates: result.candidates,
+        attempted: result.attempted,
+        assigned: result.assigned,
+        failed: result.failed,
+        truncated: result.truncated,
+        windowDays: result.windowDays,
+      },
+    });
+    return c.json(result);
+  } finally {
+    autoRoleReconcileInFlight.delete(guild.id);
+  }
 });
 
 // ─── Channels ────────────────────────────────────────────────────────────────

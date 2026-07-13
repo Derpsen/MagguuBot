@@ -61,6 +61,9 @@ In Unraid:
 - Check the logs: `docker logs -f magguu-bot`
 - In Discord, run `/setup-server` (as server owner / admin) — creates categories, channels, roles, welcome banners
 - Channel IDs are discovered and stored in SQLite automatically; environment overrides are only needed for unusual custom routing
+- In the Discord Developer Portal, enable the privileged **Server Members Intent** (and **Message Content Intent**). Without Server Members, join events and the `Newcomer` start role are not reliable.
+- Keep the bot's highest Discord role above `Newcomer` and grant it **Manage Roles**. `/doctor` and the dashboard settings report the exact blocking role/permission issue.
+- The dashboard can safely backfill the start role for roleless members who joined within the last 30 days (up to 50 per confirmed run).
 
 ### 4. Wire up the services
 
@@ -114,9 +117,11 @@ Set `GITHUB_WEBHOOK_SECRET` in the container, then add a GitHub webhook that poi
 
 ### 7. Optional admin dashboard
 
-Expose the dashboard through a trusted HTTPS reverse proxy, then configure `DISCORD_CLIENT_SECRET`, a random 32-byte `SESSION_SECRET`, the comma-separated `ADMIN_USER_IDS` allowlist, and the exact public `DASHBOARD_BASE_URL`. Add `<DASHBOARD_BASE_URL>/auth/callback` as a redirect in the Discord Developer Portal. The secure session cookies intentionally do not work over plain HTTP.
+Expose the dashboard through a trusted HTTPS reverse proxy, then configure `DISCORD_CLIENT_SECRET`, a random 32-byte `SESSION_SECRET`, the comma-separated `ADMIN_USER_IDS` allowlist, and the exact public HTTPS origin in `DASHBOARD_BASE_URL` (no path or query). Add `<DASHBOARD_BASE_URL>/auth/callback` as a redirect in the Discord Developer Portal. The secure session cookies intentionally do not work over plain HTTP. Browser requests opened through the local Docker/Unraid URL are therefore redirected to `DASHBOARD_BASE_URL` before OAuth starts. The proxy must preserve `Host` or send `X-Forwarded-Host`, and send `X-Forwarded-Proto: https` for public requests.
 
-Keep `TRUST_PROXY=false` unless every request reaches the bot through a proxy you control; otherwise clients could spoof forwarded IP headers.
+A successful dashboard login remains valid for up to 30 days. Keep `SESSION_SECRET` unchanged across container updates; rotating it intentionally signs every device out.
+
+Keep `TRUST_PROXY=false` unless every request reaches the bot through a proxy you control; otherwise clients could spoof forwarded IP headers. The exact public host/protocol headers above are used only for safe dashboard canonicalization, not as proof of identity or as a client IP.
 
 ## Development
 
