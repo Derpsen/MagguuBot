@@ -17,6 +17,7 @@ const results = ref<SearchResult[]>([]);
 const loading = ref(false);
 const focused = ref(false);
 const input = ref<HTMLInputElement | null>(null);
+const shortcutLabel = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
 let timer: number | null = null;
 let requestId = 0;
 
@@ -78,12 +79,13 @@ onUnmounted(() => {
       ref="input"
       v-model="query"
       type="search"
+      aria-label="Dashboard durchsuchen"
       placeholder="Suchen …"
       class="h-8 w-full rounded-lg border border-line bg-surface-2 pl-9 pr-14 text-sm text-slate-200 outline-none transition focus:border-blurple/60"
       @focus="focused = true"
       @blur="handleBlur"
     />
-    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-slate-500">⌘K</span>
+    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-slate-500">{{ shortcutLabel }}</span>
     <div v-if="open" class="absolute right-0 top-full z-50 mt-2 max-h-96 w-full overflow-y-auto rounded-xl border border-line bg-surface-1 p-1.5 shadow-pop">
       <div v-if="loading" class="flex items-center justify-center gap-2 px-3 py-5 text-sm text-slate-500">
         <LoaderCircle class="h-4 w-4 animate-spin" /> Suche …

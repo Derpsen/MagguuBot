@@ -54,7 +54,7 @@ onMounted(load);
         Keine aktiven Reminders.
       </div>
       <div v-else>
-        <div v-for="r in rows" :key="r.id" class="table-row">
+        <div v-for="r in rows" :key="r.id" class="data-row">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 text-sm font-medium text-white">
               <Clock class="h-4 w-4 text-slate-500" />

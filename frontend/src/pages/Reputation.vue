@@ -30,7 +30,7 @@ onMounted(async () => {
         Noch keine Rep vergeben.
       </div>
       <div v-else>
-        <div v-for="(r, i) in rows" :key="r.userId" class="table-row">
+        <div v-for="(r, i) in rows" :key="r.userId" class="data-row">
           <div class="flex items-center gap-4">
             <div class="w-8 text-center text-lg font-bold text-slate-500">{{ i + 1 }}</div>
             <div>

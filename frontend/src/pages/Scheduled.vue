@@ -76,7 +76,7 @@ onMounted(load);
         Keine geplanten Announcements.
       </div>
       <div v-else>
-        <div v-for="r in rows" :key="r.id" class="table-row">
+        <div v-for="r in rows" :key="r.id" class="data-row">
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <Calendar class="h-4 w-4 text-slate-500" />

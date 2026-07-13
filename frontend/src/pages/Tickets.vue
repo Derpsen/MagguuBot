@@ -44,7 +44,7 @@ onMounted(load);
         Noch keine Tickets. Erstelle ein Panel mit <code>/ticket-panel</code>.
       </div>
       <div v-else>
-        <div v-for="t in rows" :key="t.id" class="table-row">
+        <div v-for="t in rows" :key="t.id" class="data-row">
           <div class="flex min-w-0 flex-1 items-center gap-3">
             <Ticket class="h-5 w-5 shrink-0" :class="t.open ? 'text-blurple' : 'text-slate-600'" />
             <div class="min-w-0">

@@ -6,21 +6,26 @@ export default {
   theme: {
     extend: {
       colors: {
+        slate: {
+          500: '#8b98ab',
+          600: '#718096',
+          700: '#4b586d',
+        },
         blurple: {
-          DEFAULT: '#5865F2',
-          hover: '#4752C4',
-          soft: 'rgba(88, 101, 242, 0.15)',
-          ring: 'rgba(88, 101, 242, 0.5)',
+          DEFAULT: '#7c6df2',
+          hover: '#8b7df6',
+          soft: 'rgba(124, 109, 242, 0.14)',
+          ring: 'rgba(124, 109, 242, 0.42)',
         },
         surface: {
-          0: '#0b0f17',
-          1: '#0f141e',
-          2: '#141a26',
-          3: '#1a2132',
+          0: '#080b12',
+          1: '#0d121c',
+          2: '#131a27',
+          3: '#1a2333',
         },
         line: {
-          DEFAULT: 'rgba(255, 255, 255, 0.06)',
-          strong: 'rgba(255, 255, 255, 0.10)',
+          DEFAULT: 'rgba(148, 163, 184, 0.10)',
+          strong: 'rgba(148, 163, 184, 0.18)',
         },
         border: 'rgba(255, 255, 255, 0.10)',
         card: '#0f141e',
@@ -30,12 +35,12 @@ export default {
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        card: '0 1px 0 rgba(255,255,255,0.04) inset, 0 1px 2px rgba(0,0,0,0.3)',
-        pop: '0 10px 30px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3)',
+        card: '0 1px 0 rgba(255,255,255,0.035) inset, 0 18px 50px rgba(0,0,0,0.16)',
+        pop: '0 24px 70px rgba(0,0,0,0.48), 0 6px 18px rgba(0,0,0,0.24)',
       },
       keyframes: {
         'fade-in': {
-          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         shimmer: {
@@ -44,7 +49,7 @@ export default {
         },
       },
       animation: {
-        'fade-in': 'fade-in 0.2s ease-out',
+        'fade-in': 'fade-in 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
         shimmer: 'shimmer 1.6s linear infinite',
       },
     },

@@ -23,6 +23,7 @@ import {
   Menu,
   ExternalLink,
   Palette,
+  Bot,
   type LucideIcon,
 } from '@lucide/vue';
 import type { SessionUser } from '../composables/useSession';
@@ -118,38 +119,58 @@ const breadcrumb = computed(() => {
   return { section: 'Dashboard', label: 'Übersicht' };
 });
 
+const activeItem = computed(() => {
+  for (const section of sections) {
+    const item = section.items.find((entry) => entry.name === route.name);
+    if (item) return item;
+  }
+  return sections[0]?.items[0] ?? null;
+});
+
 function isActive(item: NavItem): boolean {
   return route.name === item.name;
 }
 </script>
 
 <template>
-  <div class="relative flex h-full bg-surface-0 text-slate-100" :class="`theme-${theme}`">
+  <div class="relative flex min-h-full bg-surface-0 text-slate-100" :class="`theme-${theme}`">
+    <a
+      href="#main-content"
+      class="fixed left-4 top-3 z-[100] -translate-y-20 rounded-xl bg-blurple px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
+    >
+      Zum Inhalt springen
+    </a>
+
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-surface-1 transition-all duration-200"
+      class="fixed inset-y-0 left-0 z-40 flex flex-col border-r border-line bg-surface-1/95 shadow-[12px_0_45px_rgba(0,0,0,0.14)] backdrop-blur-xl transition-all duration-300"
       :class="[
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-        mobileOpen ? 'w-60' : collapsed ? 'w-16' : 'w-60',
+        mobileOpen ? 'w-[272px]' : collapsed ? 'w-[76px]' : 'w-[272px]',
       ]"
     >
-      <div class="flex h-[52px] shrink-0 items-center gap-3 border-b border-line px-4">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blurple font-bold text-white">
-          M
+      <div class="flex h-16 shrink-0 items-center gap-3 border-b border-line px-4">
+        <div class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blurple via-violet-500 to-cyan-400 text-white shadow-[0_10px_30px_rgba(124,109,242,0.30)]">
+          <Bot class="h-5 w-5" />
+          <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-1 bg-emerald-400" />
         </div>
         <div v-if="!collapsed || mobileOpen" class="min-w-0 flex-1">
-          <div class="truncate text-sm font-semibold text-white">MagguuBot</div>
-          <div class="text-[11px] text-slate-500">Admin-Dashboard</div>
+          <div class="truncate text-sm font-bold tracking-tight text-white">MagguuBot</div>
+          <div class="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-emerald-400">
+            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            Dashboard online
+          </div>
         </div>
         <button
-          class="btn-icon"
+          class="btn-icon hidden lg:inline-flex"
           :title="collapsed ? 'Sidebar expandieren' : 'Sidebar einklappen'"
+          :aria-label="collapsed ? 'Sidebar expandieren' : 'Sidebar einklappen'"
           @click="toggleCollapse"
         >
           <component :is="collapsed ? ChevronsRight : ChevronsLeft" class="h-4 w-4" />
         </button>
       </div>
 
-      <nav class="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2">
+      <nav class="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-2">
         <div v-for="section in sections" :key="section.title">
           <div v-if="!collapsed || mobileOpen" class="nav-section-label">
             {{ section.title }}
@@ -173,27 +194,30 @@ function isActive(item: NavItem): boolean {
         </div>
       </nav>
 
-      <div class="shrink-0 border-t border-line p-3">
-        <div class="flex items-center gap-2" :class="collapsed && !mobileOpen ? 'flex-col' : ''">
+      <div class="shrink-0 border-t border-line p-2.5">
+        <div
+          class="flex items-center gap-2 rounded-2xl border border-transparent p-1.5"
+          :class="collapsed && !mobileOpen ? 'flex-col' : 'bg-surface-2/55 border-line'"
+        >
           <div class="flex min-w-0 items-center gap-2" :class="collapsed && !mobileOpen ? '' : 'flex-1'">
             <img
               v-if="user.avatarUrl"
               :src="user.avatarUrl"
               :alt="displayName"
-              class="h-8 w-8 shrink-0 rounded-full"
+              class="h-9 w-9 shrink-0 rounded-xl object-cover"
             />
             <div
               v-else
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blurple text-xs font-semibold text-white"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blurple text-xs font-semibold text-white"
             >
               {{ userInitial }}
             </div>
             <div v-if="!collapsed || mobileOpen" class="min-w-0">
-              <div class="truncate text-xs font-medium text-slate-100">{{ displayName }}</div>
-              <div class="text-[10px] uppercase tracking-wider text-slate-500">Admin</div>
+              <div class="truncate text-xs font-semibold text-slate-100">{{ displayName }}</div>
+              <div class="mt-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-600">Administrator</div>
             </div>
           </div>
-          <button class="btn-icon" title="Abmelden" @click="logout()">
+          <button class="btn-icon" title="Abmelden" aria-label="Abmelden" @click="logout()">
             <LogOut class="h-4 w-4" />
           </button>
         </div>
@@ -207,27 +231,33 @@ function isActive(item: NavItem): boolean {
     />
 
     <div
-      class="flex min-h-screen flex-1 flex-col transition-all duration-200"
-      :class="collapsed ? 'lg:pl-16' : 'lg:pl-60'"
+      class="flex min-h-screen min-w-0 flex-1 flex-col transition-all duration-200"
+      :class="collapsed ? 'lg:pl-[76px]' : 'lg:pl-[272px]'"
     >
-      <header class="sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-3 border-b border-line bg-surface-0/90 px-4 backdrop-blur-sm">
-        <button class="btn-icon lg:hidden" @click="mobileOpen = !mobileOpen">
+      <header class="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-surface-0/78 px-4 backdrop-blur-xl sm:px-6">
+        <button class="btn-icon lg:hidden" aria-label="Navigation öffnen" @click="mobileOpen = !mobileOpen">
           <Menu class="h-5 w-5" />
         </button>
-        <nav class="flex min-w-0 items-center gap-1.5 text-sm">
-          <router-link to="/" class="shrink-0 text-blurple hover:opacity-80">
-            <LayoutDashboard class="h-4 w-4" />
+        <nav class="flex min-w-0 items-center gap-2 text-sm" aria-label="Brotkrumen-Navigation">
+          <router-link to="/" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-1 text-violet-300 transition hover:border-blurple/30 hover:bg-blurple-soft">
+            <component :is="activeItem?.icon ?? LayoutDashboard" class="h-4 w-4" />
           </router-link>
-          <span class="shrink-0 text-slate-600">/</span>
-          <span class="shrink-0 text-slate-500">{{ breadcrumb.section }}</span>
-          <span class="shrink-0 text-slate-600">/</span>
+          <span class="hidden shrink-0 text-slate-700 sm:inline">/</span>
+          <span class="hidden shrink-0 text-xs font-medium text-slate-500 sm:inline">{{ breadcrumb.section }}</span>
+          <span class="hidden shrink-0 text-slate-700 sm:inline">/</span>
           <span class="truncate font-medium text-white">{{ breadcrumb.label }}</span>
         </nav>
 
         <GlobalSearch />
         <div class="flex items-center gap-1">
-          <button class="btn-icon" :title="`Theme: ${themeLabel}`" @click="cycleTheme">
+          <button
+            class="flex h-9 items-center gap-2 rounded-xl px-2.5 text-slate-400 transition hover:bg-surface-2 hover:text-white"
+            :title="`Theme wechseln: ${themeLabel}`"
+            :aria-label="`Theme wechseln. Aktuell ${themeLabel}`"
+            @click="cycleTheme"
+          >
             <Palette class="h-4 w-4" />
+            <span class="hidden text-xs font-semibold xl:inline">{{ themeLabel }}</span>
           </button>
           <a
             href="https://github.com/Derpsen/MagguuBot"
@@ -241,8 +271,8 @@ function isActive(item: NavItem): boolean {
         </div>
       </header>
 
-      <main class="flex-1 overflow-x-hidden p-6 lg:p-8">
-        <div :key="route.fullPath" class="page-fade mx-auto max-w-[1400px]">
+      <main id="main-content" class="app-content min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">
+        <div :key="route.fullPath" class="page-fade mx-auto min-w-0 w-full max-w-[1480px]">
           <slot />
         </div>
       </main>

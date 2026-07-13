@@ -111,7 +111,7 @@ onMounted(load);
         Noch keine Tags. Klick oben auf "Neuer Tag".
       </div>
       <div v-else>
-        <div v-for="t in rows" :key="t.name" class="table-row">
+        <div v-for="t in rows" :key="t.name" class="data-row">
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <code class="rounded-sm bg-slate-800 px-2 py-0.5 text-sm font-semibold text-white">{{ t.name }}</code>

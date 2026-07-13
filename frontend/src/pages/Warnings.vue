@@ -43,7 +43,7 @@ onMounted(load);
         Keine Verwarnungen aufgezeichnet.
       </div>
       <div v-else>
-        <div v-for="w in warnings" :key="w.id" class="table-row">
+        <div v-for="w in warnings" :key="w.id" class="data-row">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 text-sm">
               <span class="font-medium text-white">{{ w.username }}</span>
