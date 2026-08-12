@@ -46,16 +46,12 @@ import {
   webhookReplayBlockReason,
 } from '../webhook-sources.js';
 import { parseWebhookClearScope } from './webhook-clear-scope.js';
+import { isSafeRegexPattern, parsePositiveId } from './validation.js';
 
 export const adminRouter = new Hono();
 const autoRoleReconcileInFlight = new Set<string>();
 
 adminRouter.use('*', requireAdmin);
-
-function parsePositiveId(value: string): number | null {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
 
 adminRouter.get('/me', (c) => {
   const session = getSession(c);
@@ -1140,17 +1136,6 @@ adminRouter.get('/autoresponders', (c) => {
 });
 
 const AUTO_DELETE_MAX = 3600;
-const REDOS_DENYLIST = /(\.\*|\.\+|\w\*|\w\+)\s*[+*]|\(\s*(\.\*|\.\+|\w\*|\w\+)\s*\)[+*]|\([^)]*[+*][^)]*\)[+*]/;
-
-function isValidRegexPattern(pattern: string): boolean {
-  if (REDOS_DENYLIST.test(pattern)) return false;
-  try {
-    new RegExp(pattern, 'i');
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const autoresponderSchema = z.object({
   pattern: z.string().min(1).max(200),
@@ -1165,7 +1150,7 @@ adminRouter.post('/autoresponders', async (c) => {
   if (!parsed.success) return c.json({ ok: false, error: 'invalid body' }, 400);
 
   if (parsed.data.matchType === 'regex') {
-    if (!isValidRegexPattern(parsed.data.pattern)) {
+    if (!isSafeRegexPattern(parsed.data.pattern)) {
       return c.json({ ok: false, error: 'invalid or unsafe regex' }, 400);
     }
   }
@@ -1217,7 +1202,7 @@ adminRouter.patch('/autoresponders/:id', async (c) => {
 
   const resultingMatchType = patch.matchType ?? current.matchType;
   const resultingPattern = patch.pattern ?? current.pattern;
-  if (resultingMatchType === 'regex' && !isValidRegexPattern(resultingPattern)) {
+  if (resultingMatchType === 'regex' && !isSafeRegexPattern(resultingPattern)) {
     return c.json({ ok: false, error: 'invalid or unsafe regex' }, 400);
   }
 

@@ -82,7 +82,7 @@ export const announceCommand: SlashCommand = {
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const ping = resolvePing(interaction.guild, pingPreset, pingRoleOverride?.id, pingRoleOverride?.name);
+    const ping = resolvePing(interaction.guild, pingPreset, pingRoleOverride?.id);
 
     if (ping.parseTypes.includes('everyone') &&
         !interaction.memberPermissions?.has(PermissionFlagsBits.MentionEveryone)) {
@@ -124,7 +124,6 @@ function resolvePing(
   guild: Guild,
   preset: PingPreset,
   overrideRoleId: string | undefined,
-  overrideRoleName: string | undefined,
 ): ResolvedPing {
   if (overrideRoleId) {
     return { content: `<@&${overrideRoleId}>`, roleIds: [overrideRoleId], parseTypes: [] };

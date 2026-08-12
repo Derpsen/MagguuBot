@@ -1,9 +1,8 @@
-import { EmbedBuilder, type GuildMember, type TextChannel } from 'discord.js';
+import { EmbedBuilder, type TextChannel } from 'discord.js';
 import { and, eq, ne } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { birthdays } from '../db/schema.js';
-import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getClient } from './client.js';

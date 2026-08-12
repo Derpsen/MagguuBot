@@ -1,5 +1,5 @@
 import { ChannelType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type TextChannel } from 'discord.js';
-import { and, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { movieNightNominations, movieNights } from '../../db/schema.js';
 import { buildMovieNightComponents, buildMovieNightEmbed } from '../../embeds/movie-night.js';
