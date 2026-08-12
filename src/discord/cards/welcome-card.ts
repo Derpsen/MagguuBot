@@ -123,7 +123,6 @@ function drawBadge(
   ctx.font = `bold 22px ${FONT.bold}`;
   const metrics = ctx.measureText(text);
   const padX = 18;
-  const padY = 10;
   const w = metrics.width + padX * 2;
   const h = 42;
 

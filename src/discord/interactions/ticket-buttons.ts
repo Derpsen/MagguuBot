@@ -8,7 +8,6 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   type ButtonInteraction,
-  type CategoryChannel,
   type Guild,
   type GuildTextBasedChannel,
   type Message,
@@ -20,8 +19,8 @@ import { tickets } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
+import { createPrivateTicketChannel, TICKET_CATEGORY_NAME } from '../ticket-channel.js';
 
-const TICKET_CATEGORY_NAME = '🎫 TICKETS';
 const TICKET_LOG_CHANNEL_NAME = 'ticket-logs';
 
 export async function handleTicketButton(interaction: ButtonInteraction): Promise<void> {
@@ -76,48 +75,13 @@ async function openLegacyTicket(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const category = await ensureTicketCategory(guild);
-  const modRoles = guild.roles.cache.filter((r) => ['Admin', 'Moderator'].includes(r.name));
-  const channel = await guild.channels.create({
-    name: `ticket-${interaction.user.username}`.slice(0, 90),
-    type: ChannelType.GuildText,
-    parent: category.id,
+  const { channel, moderatorRoles } = await createPrivateTicketChannel({
+    guild,
+    opener: interaction.user,
+    botUserId: interaction.client.user?.id,
+    name: `ticket-${interaction.user.username}`,
     topic: `Ticket von ${interaction.user.displayName} · ${interaction.user.id}`,
-    permissionOverwrites: [
-      { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-      {
-        id: interaction.user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-        ],
-      },
-      ...modRoles.map((r) => ({
-        id: r.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.ManageMessages,
-        ],
-      })),
-    ],
   });
-
-  const client = interaction.client.user;
-  if (client) {
-    await channel.permissionOverwrites.create(client.id, {
-      ViewChannel: true,
-      SendMessages: true,
-      EmbedLinks: true,
-      ReadMessageHistory: true,
-      ManageMessages: true,
-      ManageChannels: true,
-    });
-  }
 
   db.insert(tickets)
     .values({
@@ -138,7 +102,7 @@ async function openLegacyTicket(interaction: ButtonInteraction): Promise<void> {
 
   const controlRow = standardControlRow();
   await channel.send({
-    content: `${interaction.user.toString()} ${modRoles.map((r) => r.toString()).join(' ')}`,
+    content: `${interaction.user.toString()} ${moderatorRoles.map((role) => role.toString()).join(' ')}`,
     embeds: [welcomeEmbed],
     components: [controlRow],
   });
@@ -512,17 +476,6 @@ function standardControlRow(): ActionRowBuilder<ButtonBuilder> {
       .setLabel('Schließen')
       .setEmoji('🔒'),
   );
-}
-
-async function ensureTicketCategory(guild: Guild): Promise<CategoryChannel> {
-  const existing = guild.channels.cache.find(
-    (c) => c.name === TICKET_CATEGORY_NAME && c.type === ChannelType.GuildCategory,
-  );
-  if (existing && existing.type === ChannelType.GuildCategory) return existing as CategoryChannel;
-  return (await guild.channels.create({
-    name: TICKET_CATEGORY_NAME,
-    type: ChannelType.GuildCategory,
-  })) as CategoryChannel;
 }
 
 async function ensureTicketLogChannel(guild: Guild): Promise<TextChannel | null> {

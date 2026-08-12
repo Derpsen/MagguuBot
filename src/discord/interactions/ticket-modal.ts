@@ -2,12 +2,8 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
   EmbedBuilder,
   MessageFlags,
-  PermissionFlagsBits,
-  type CategoryChannel,
-  type Guild,
   type ModalSubmitInteraction,
 } from 'discord.js';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -16,8 +12,7 @@ import { tickets } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getTicketCategory } from '../ticket-categories.js';
-
-const TICKET_CATEGORY_NAME = '🎫 TICKETS';
+import { createPrivateTicketChannel, ticketTopicSlug } from '../ticket-channel.js';
 
 export async function handleTicketModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const [, categoryKey] = interaction.customId.split(':');
@@ -48,54 +43,13 @@ export async function handleTicketModalSubmit(interaction: ModalSubmitInteractio
     return;
   }
 
-  const parent = await ensureTicketCategory(guild);
-  const modRoles = guild.roles.cache.filter((r) => ['Admin', 'Moderator'].includes(r.name));
-  const slugTopic = topic
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 30) || 'support';
-
-  const channel = await guild.channels.create({
-    name: `${category.emoji}-${interaction.user.username}-${slugTopic}`.slice(0, 90),
-    type: ChannelType.GuildText,
-    parent: parent.id,
+  const { channel } = await createPrivateTicketChannel({
+    guild,
+    opener: interaction.user,
+    botUserId: interaction.client.user?.id,
+    name: `${category.emoji}-${interaction.user.username}-${ticketTopicSlug(topic)}`,
     topic: `${category.label} · von ${interaction.user.displayName} · ${interaction.user.id}`,
-    permissionOverwrites: [
-      { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-      {
-        id: interaction.user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-        ],
-      },
-      ...modRoles.map((r) => ({
-        id: r.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.ManageMessages,
-        ],
-      })),
-    ],
   });
-
-  const client = interaction.client.user;
-  if (client) {
-    await channel.permissionOverwrites.create(client.id, {
-      ViewChannel: true,
-      SendMessages: true,
-      EmbedLinks: true,
-      ReadMessageHistory: true,
-      ManageMessages: true,
-      ManageChannels: true,
-    });
-  }
 
   db.insert(tickets)
     .values({
@@ -168,16 +122,4 @@ export async function handleTicketModalSubmit(interaction: ModalSubmitInteractio
     { ticket: channel.id, opener: interaction.user.id, category: category.key },
     'ticket opened (modal)',
   );
-}
-
-async function ensureTicketCategory(guild: Guild): Promise<CategoryChannel> {
-  const existing = guild.channels.cache.find(
-    (c) => c.name === TICKET_CATEGORY_NAME && c.type === ChannelType.GuildCategory,
-  );
-  if (existing && existing.type === ChannelType.GuildCategory) return existing as CategoryChannel;
-
-  return (await guild.channels.create({
-    name: TICKET_CATEGORY_NAME,
-    type: ChannelType.GuildCategory,
-  })) as CategoryChannel;
 }

@@ -1007,7 +1007,6 @@ async function upsertWelcomeEmbed(
 }
 
 const MAX_PINS_REACHED_CODE = 30003;
-const MISSING_PERMISSIONS_CODE = 50013;
 
 export interface BotPermCheckResult {
   ok: boolean;
