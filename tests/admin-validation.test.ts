@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isSafeRegexPattern, parsePositiveId } from '../src/server/admin/validation.js';
+import {
+  hasUnsafeNestedRepetition,
+  isSafeRegexPattern,
+  parsePositiveId,
+} from '../src/server/admin/validation.js';
 
 describe('admin input validation', () => {
   it('accepts only positive safe integer route ids', () => {
@@ -19,7 +23,7 @@ describe('admin input validation', () => {
 
   it('rejects invalid or obviously nested repetition', () => {
     assert.equal(isSafeRegexPattern('['), false);
-    assert.equal(isSafeRegexPattern('(a+)+$'), false);
-    assert.equal(isSafeRegexPattern('(.*)*'), false);
+    assert.equal(hasUnsafeNestedRepetition('(a+)+$'), true);
+    assert.equal(hasUnsafeNestedRepetition('(.*)*'), true);
   });
 });
