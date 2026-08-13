@@ -75,7 +75,7 @@ For each service below, set the webhook URL to `http://MagguuBot:3000/webhook/<s
 | Radarr | Settings → Connect → Webhook | `/webhook/radarr` | Same triggers as Sonarr |
 | Seerr | Settings → Notifications → Webhook | `/webhook/seerr` | Use the default JSON payload template |
 | Tautulli | Settings → Notification Agents → Webhook | `/webhook/tautulli` | Custom JSON with `"event":"{action}"` plus `sessionKey`/`ratingKey`. `{action}` `created` is treated as recently added. |
-| Prowlarr | Settings → Connect → Webhook | `/webhook/prowlarr` | Health + Health Restored + Application Update only |
+| Prowlarr | Settings → Connect → Webhook | `/webhook/prowlarr?token=<WEBHOOK_SECRET>` | Health + Health Restored + Application Update. Prowlarr cannot send custom headers. |
 
 #### Seerr notification setup
 

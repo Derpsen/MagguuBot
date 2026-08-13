@@ -53,7 +53,7 @@ npm run db:push      # drizzle-kit sync
 
 **Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compared in `server/app.ts`), **except**:
 - `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead
-- `/webhook/maintainerr` — requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; keep internal/LAN-only
+- `/webhook/maintainerr` and `/webhook/prowlarr` — require `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; Prowlarr has no custom-header field so it uses the query token; keep internal/LAN-only
 
 `/webhook/*` is rate-limited at 120 req/min/IP. Client IP resolved from `cf-connecting-ip` → `x-forwarded-for` → `x-real-ip` → `unknown`. Don't downgrade the token check to plain `===`.
 

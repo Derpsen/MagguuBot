@@ -89,17 +89,17 @@ export function buildApp(): Hono {
       return;
     }
 
-    if (c.req.path.startsWith('/webhook/maintainerr')) {
+    if (c.req.path.startsWith('/webhook/maintainerr') || c.req.path.startsWith('/webhook/prowlarr')) {
       const queryToken = c.req.query('token');
       const authorization = c.req.header('authorization');
       const headerToken = authorization?.replace(/^Bearer\s+/i, '').trim();
       const token = queryToken || headerToken;
       if (!token) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook missing auth token');
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook missing auth token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
       if (!constantTimeEquals(token, config.WEBHOOK_SECRET)) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook bad token');
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook bad token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
       await next();
