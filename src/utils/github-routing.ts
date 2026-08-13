@@ -12,3 +12,9 @@ export function parseAddonRepositories(raw: string | undefined): Set<string> {
 export function isAddonRepository(fullName: string | undefined, repositories: Set<string>): boolean {
   return Boolean(fullName && repositories.has(fullName.toLowerCase()));
 }
+
+const QUIET_WORKFLOW_CONCLUSIONS = new Set(['success', 'skipped']);
+
+export function shouldPostWorkflowConclusion(conclusion: string | null | undefined): boolean {
+  return Boolean(conclusion && !QUIET_WORKFLOW_CONCLUSIONS.has(conclusion));
+}

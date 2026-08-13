@@ -475,6 +475,7 @@ export const plexActivityMessages = sqliteTable(
     channelId: text('channel_id').notNull(),
     messageId: text('message_id').notNull(),
     state: text('state').notNull(),
+    pausedAt: integer('paused_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()
       .$defaultFn(() => new Date()),

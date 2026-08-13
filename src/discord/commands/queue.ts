@@ -9,7 +9,7 @@ export const queueCommand: SlashCommand = {
   category: 'downloads',
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('Aktuelle Download-Warteschlange aus Sonarr, Radarr und SABnzbd anzeigen') as SlashCommandBuilder,
+    .setDescription('Aktuelle Download-Warteschlange aus Sonarr und Radarr anzeigen') as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const [sonarr, radarr, sab] = await Promise.all([

@@ -3,6 +3,7 @@ import type { Hono } from 'hono';
 import { config } from '../config.js';
 import { githubWebhook } from './webhooks/github.js';
 import { maintainerrWebhook } from './webhooks/maintainerr.js';
+import { prowlarrWebhook } from './webhooks/prowlarr.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
@@ -19,6 +20,7 @@ const ROUTES: Record<ReplayableWebhookSource, Hono> = {
   sabnzbd: sabnzbdWebhook,
   maintainerr: maintainerrWebhook,
   github: githubWebhook,
+  prowlarr: prowlarrWebhook,
 };
 
 export async function replayWebhook(

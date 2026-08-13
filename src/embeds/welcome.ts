@@ -43,7 +43,7 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
       [
         '**Dein privater Downloads + Plex-Hub** — self-hosted, ad-frei, immer an.',
         '',
-        'Hier landet alles, was in meinem Stack passiert: neue Requests, Grabs von Sonarr/Radarr, fertige Downloads aus SABnzbd, Plex-Arrivals und GitHub-Pushes.',
+        'Hier landet alles, was in meinem Stack passiert: neue Requests, Grabs von Sonarr/Radarr, Downloads über NzbDAV, Plex-Arrivals und GitHub-Pushes.',
       ].join('\n'),
     )
     .addFields(
@@ -75,7 +75,7 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
         inline: true,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  Sonarr / Radarr / Seerr / SABnzbd / Tautulli' })
+    .setFooter({ text: 'MagguuBot  ·  Sonarr / Radarr / Seerr / NzbDAV / Tautulli' })
     .setTimestamp(new Date());
 }
 
@@ -125,7 +125,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '📥 Downloads',
         value: [
-          '`/queue` — Sonarr+Radarr+SAB live queue',
+          '`/queue` — Sonarr+Radarr live queue',
           '`/arr-status` — Service-Health + Disk-Space + Versionen',
           '`/search movie <query>` — Radarr-Lookup',
           '`/search show <query>` — Sonarr-Lookup',
@@ -384,11 +384,11 @@ export function buildGrabsChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setColor(Colors.info)
     .setTitle('📥 Grabs')
     .setDescription(
-      'Sonarr / Radarr haben eine Release gefunden und an SABnzbd geschickt. Noch nicht auf Plex — erst nach dem Import.',
+      'Sonarr / Radarr haben eine Release gefunden und an NzbDAV geschickt. Noch nicht auf Plex — erst nach dem Import.',
     )
     .addFields(
       { name: 'Was siehst du?', value: 'Titel · Jahr · Episode · Quality · Größe · Release-Group · Indexer' },
-      { name: 'Was kommt danach?', value: `SAB lädt → ${m(r.imports, 'imports')} → Plex` },
+      { name: 'Was kommt danach?', value: `NzbDAV lädt → ${m(r.imports, 'imports')} → Plex` },
       { name: 'Dauert zu lang?', value: '`/queue` zeigt live den Fortschritt mit Progress-Bar' },
     )
     .setFooter({ text: 'MagguuBot  ·  release grabbed' });
@@ -414,17 +414,16 @@ export function buildFailuresChannelEmbed(): EmbedBuilder {
     .setTitle('⚠️ Failures & Issues')
     .setDescription('Alles was **admin-Aufmerksamkeit** braucht — Download-Probleme UND User-gemeldete Plex-Issues.')
     .addFields(
-      { name: '`DownloadFailure`', value: 'SAB/qBit hat abgebrochen', inline: true },
+      { name: '`DownloadFailure`', value: 'NzbDAV/SAB hat abgebrochen', inline: true },
       { name: '`ImportFailure`', value: 'Download ok, aber Import in die Library gescheitert', inline: true },
       { name: '`ManualInteractionRequired`', value: 'Sonarr/Radarr brauchen manuellen Import-Entscheid', inline: true },
-      { name: '`SAB failed`', value: 'Post-Processing / par2 crashed', inline: true },
       { name: '🐛 Seerr Issues', value: 'User meldet Playback-Problem (Video/Audio/Subs) — inkl. Comments', inline: true },
       {
         name: 'Troubleshoot-Schritte',
         value: [
           '1. `/queue` — was hängt gerade?',
           '2. `/arr-status` — Service-Health auf einen Blick',
-          '3. Logs: `docker logs sabnzbd --tail 100`',
+          '3. Logs: `docker logs NzbDAV --tail 100` / Sonarr Activity',
           '4. Re-queue in Sonarr/Radarr via Activity → failed → Search again',
         ].join('\n'),
       },
@@ -438,7 +437,7 @@ export function buildHealthChannelEmbed(): EmbedBuilder {
     .setTitle('🩺 Service-Health & Updates')
     .setDescription(
       [
-        'Sonarr, Radarr und SABnzbd melden hier Warnungen + Versions-Updates:',
+        'Sonarr, Radarr und Prowlarr melden hier Warnungen + Versions-Updates:',
         '',
         '• Indexer offline / rate-limited',
         '• Disk space low',

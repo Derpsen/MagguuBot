@@ -760,13 +760,13 @@ adminRouter.post('/auto-role/reconcile', async (c) => {
 // ─── Channels ────────────────────────────────────────────────────────────────
 
 const CHANNEL_KEYS: { key: ChannelKey; label: string; description: string }[] = [
-  { key: 'grabs', label: 'Grabs', description: 'Sonarr/Radarr/SAB Grabs' },
+  { key: 'grabs', label: 'Grabs', description: 'Sonarr/Radarr Grabs' },
   { key: 'imports', label: 'Imports', description: 'Erfolgreiche Imports' },
   { key: 'failures', label: 'Failures', description: 'Fehlerhafte Downloads' },
   { key: 'requests', label: 'Requests', description: 'Seerr Approved/Declined' },
   { key: 'approvals', label: 'Approvals', description: 'Seerr Pending mit Approve/Decline' },
   { key: 'newOnPlex', label: 'New on Plex', description: 'Tautulli recently_added' },
-  { key: 'health', label: 'Health', description: 'Sonarr/Radarr/SAB Health Warnings' },
+  { key: 'health', label: 'Health', description: 'Sonarr/Radarr/Prowlarr Health Warnings' },
   { key: 'welcome', label: 'Welcome', description: 'Member-Join Welcome' },
   { key: 'auditLog', label: 'Audit Log', description: 'Joins/Leaves/Role-Changes' },
   { key: 'modLog', label: 'Mod Log', description: 'Moderation Actions' },

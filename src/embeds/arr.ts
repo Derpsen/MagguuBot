@@ -174,16 +174,23 @@ export function buildFailureEmbed(i: FailureEmbedInput): EmbedBuilder {
 }
 
 export interface AppUpdateEmbedInput {
-  service: 'sonarr' | 'radarr';
+  service: 'sonarr' | 'radarr' | 'prowlarr';
   previousVersion?: string;
   newVersion?: string;
   message?: string;
 }
 
+const APP_UPDATE_META = {
+  sonarr: { label: 'Sonarr', color: Colors.sonarr, emoji: '📺' },
+  radarr: { label: 'Radarr', color: Colors.radarr, emoji: '🎬' },
+  prowlarr: { label: 'Prowlarr', color: Colors.prowlarr, emoji: '📡' },
+} as const;
+
 export function buildAppUpdateEmbed(i: AppUpdateEmbedInput): EmbedBuilder {
-  const serviceLabel = i.service === 'sonarr' ? 'Sonarr' : 'Radarr';
-  const color = i.service === 'sonarr' ? Colors.sonarr : Colors.radarr;
-  const emoji = i.service === 'sonarr' ? '📺' : '🎬';
+  const meta = APP_UPDATE_META[i.service];
+  const serviceLabel = meta.label;
+  const color = meta.color;
+  const emoji = meta.emoji;
 
   const e = new EmbedBuilder()
     .setColor(color)

@@ -7,7 +7,7 @@ import { plexActivityMessages, type PlexActivityMessage } from '../../db/schema.
 import { getChannel, type ChannelKey } from '../../discord/channel-store.js';
 import { Colors, truncate } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
-import { plexActivityCorrelationKey, preservePlexActivityState } from '../../utils/plex-activity.js';
+import { decidePlexActivityEvent, plexActivityCorrelationKey } from '../../utils/plex-activity.js';
 import { resolveTautulliEventName } from '../../utils/tautulli-event.js';
 import { editEmbed, postEmbed } from '../discord-poster.js';
 import {
@@ -221,11 +221,35 @@ async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
     );
     return;
   }
+  const decision = decidePlexActivityEvent({
+    currentState: existing?.state,
+    incoming: incomingMeta.kind,
+    pausedAt: existing?.pausedAt,
+  });
+  if (decision.action === 'defer-pause') {
+    if (existing) {
+      db.update(plexActivityMessages)
+        .set({ pausedAt: decision.pausedAt })
+        .where(eq(plexActivityMessages.id, existing.id))
+        .run();
+    }
+    return;
+  }
+  if (decision.action === 'ignore') {
+    if (existing && existing.pausedAt?.getTime() !== decision.pausedAt?.getTime()) {
+      db.update(plexActivityMessages)
+        .set({ pausedAt: decision.pausedAt })
+        .where(eq(plexActivityMessages.id, existing.id))
+        .run();
+    }
+    return;
+  }
+
   const duplicatePlay = incomingMeta.kind === 'play'
     && existing
     && existing.updatedAt.getTime() >= Date.now() - 2 * 60_000;
   const shouldEdit = Boolean(existing && (incomingMeta.kind !== 'play' || duplicatePlay || reuseOnPlay));
-  const displayKind = preservePlexActivityState(shouldEdit ? existing?.state : undefined, incomingMeta.kind);
+  const displayKind = decision.displayKind;
   const displayMeta = EVENT_META[displayKind] ?? incomingMeta;
   const embed = buildEmbed(displayMeta);
 
@@ -240,7 +264,7 @@ async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
     });
     if (edited) {
       db.update(plexActivityMessages)
-        .set({ state: displayKind, sessionKey, updatedAt: new Date() })
+        .set({ state: displayKind, sessionKey, pausedAt: decision.pausedAt, updatedAt: new Date() })
         .where(eq(plexActivityMessages.id, existing.id))
         .run();
       return;
@@ -262,6 +286,7 @@ async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
       channelId: posted.channelId,
       messageId: posted.id,
       state: displayKind,
+      pausedAt: decision.pausedAt,
     }).run();
   }
 }

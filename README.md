@@ -6,10 +6,10 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
 
 ## Features
 
-- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd}` with shared-secret auth
+- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr}` with shared-secret auth
 - **Styled embeds** — one consistent look across services, posters, progress bars
 - **Slash commands**
-  - `/queue` — live Sonarr + Radarr + SABnzbd download queue with progress bars
+  - `/queue` — live Sonarr + Radarr download queue with progress bars
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
   - `/doctor` — checks configuration, channels, permissions, database, and integrations
@@ -75,6 +75,7 @@ For each service below, set the webhook URL to `http://MagguuBot:3000/webhook/<s
 | Radarr | Settings → Connect → Webhook | `/webhook/radarr` | Same triggers as Sonarr |
 | Seerr | Settings → Notifications → Webhook | `/webhook/seerr` | Use the default JSON payload template |
 | Tautulli | Settings → Notification Agents → Webhook | `/webhook/tautulli` | Custom JSON with `"event":"{action}"` plus `sessionKey`/`ratingKey`. `{action}` `created` is treated as recently added. |
+| Prowlarr | Settings → Connect → Webhook | `/webhook/prowlarr` | Health + Health Restored + Application Update only |
 
 #### Seerr notification setup
 
@@ -92,7 +93,7 @@ Routing is automatic after `/setup-server`: pending approvals go to `⏳・freig
 
 Failed Discord deliveries from replay-supported inbound webhooks are retried automatically after 1, 5, and 15 minutes, then 1 and 6 hours; their state remains visible in the dashboard and manual replay is still available. RSS and Blue Tracker delivery failures remain unseen and are retried on their next poll. The webhook retry count is controlled by `WEBHOOK_RETRY_MAX_ATTEMPTS`. Database backups can be downloaded with `/db-backup`; additionally, one automatic snapshot is written daily to the database directory's `backups/` folder. `AUTOMATIC_BACKUP_HOUR` and `AUTOMATIC_BACKUP_RETENTION` configure its local start hour and retention (seven by default). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
-Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause, resume, buffer, watched, and stop update the existing card. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. Tautulli's recently-added action is `created` — the bot maps that to `#neu-auf-plex`. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever).
+Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause is held for two minutes before the card flips to paused; a resume in that window never touches Discord. Watched, stop, and error still apply immediately. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. Tautulli's recently-added action is `created` — the bot maps that to `#neu-auf-plex`. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever). GitHub `workflow_run` successes and skipped runs are ignored; only failures, cancellations, timeouts, and action-required land in `#github`.
 
 Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.
 

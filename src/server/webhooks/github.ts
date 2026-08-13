@@ -10,7 +10,7 @@ import {
   buildWorkflowEmbed,
 } from '../../embeds/github.js';
 import { logger } from '../../utils/logger.js';
-import { isAddonRepository, parseAddonRepositories } from '../../utils/github-routing.js';
+import { isAddonRepository, parseAddonRepositories, shouldPostWorkflowConclusion } from '../../utils/github-routing.js';
 import { createRecentKeyCache } from '../../utils/recent-key-cache.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
@@ -200,6 +200,9 @@ export const githubWebhook = new Hono().post('/', async (c) => {
   if (eventName === 'workflow_run') {
     const p = body as WorkflowRunPayload;
     if (p.action !== 'completed' || !p.workflow_run.conclusion) return c.json({ ok: true, skipped: 'not completed' });
+    if (!shouldPostWorkflowConclusion(p.workflow_run.conclusion)) {
+      return c.json({ ok: true, skipped: `workflow ${p.workflow_run.conclusion}` });
+    }
     await postEmbed({
       channelId: getChannel('github'),
       source: 'github',

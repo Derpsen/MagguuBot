@@ -13,6 +13,7 @@ import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canon
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
 import { maintainerrWebhook } from './webhooks/maintainerr.js';
+import { prowlarrWebhook } from './webhooks/prowlarr.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
@@ -120,6 +121,7 @@ export function buildApp(): Hono {
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
   app.route('/webhook/maintainerr', maintainerrWebhook);
+  app.route('/webhook/prowlarr', prowlarrWebhook);
 
   app.use('/auth/*', async (c, next) => {
     c.header('Cache-Control', 'no-store');

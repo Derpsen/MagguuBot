@@ -51,6 +51,7 @@ export async function getServiceHealth(force = false): Promise<ServiceHealthResu
       return `${streams} aktive Streams`;
     }),
     maintainerrHealth(),
+    webhookOnlyHealth('prowlarr', 'Prowlarr'),
   ]);
   cache = { at: Date.now(), value: results };
   return results;
@@ -80,19 +81,23 @@ async function probe(
 }
 
 function maintainerrHealth(): ServiceHealthResult {
+  return webhookOnlyHealth('maintainerr', 'Maintainerr');
+}
+
+function webhookOnlyHealth(key: string, label: string): ServiceHealthResult {
   const latest = db
     .select({ status: webhookEvents.status, createdAt: webhookEvents.createdAt })
     .from(webhookEvents)
-    .where(eq(webhookEvents.source, 'maintainerr'))
+    .where(eq(webhookEvents.source, key))
     .orderBy(desc(webhookEvents.createdAt))
     .limit(1)
     .get();
   if (!latest) {
-    return { key: 'maintainerr', label: 'Maintainerr', state: 'waiting', latencyMs: null, detail: 'wartet auf ersten Webhook', lastEventAt: null };
+    return { key, label, state: 'waiting', latencyMs: null, detail: 'wartet auf ersten Webhook', lastEventAt: null };
   }
   return {
-    key: 'maintainerr',
-    label: 'Maintainerr',
+    key,
+    label,
     state: latest.status === 'failed' ? 'error' : 'ok',
     latencyMs: null,
     detail: latest.status === 'failed' ? 'letzte Zustellung fehlgeschlagen' : 'Webhook verbunden',
