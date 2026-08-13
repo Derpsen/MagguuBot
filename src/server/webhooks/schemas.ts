@@ -53,7 +53,7 @@ export const sonarrPayloadSchema = z
       .optional(),
     episodeFile: sonarrEpisodeFile.optional(),
     episodeFiles: z.array(sonarrEpisodeFile).optional(),
-    deletedFiles: z.boolean().optional(),
+    deletedFiles: z.union([z.boolean(), z.array(z.unknown())]).optional(),
     downloadClient: z.string().optional(),
     isUpgrade: z.boolean().optional(),
     level: z.enum(['ok', 'warning', 'error']).optional(),
@@ -66,6 +66,11 @@ export const sonarrPayloadSchema = z
   .passthrough();
 
 export type SonarrPayload = z.infer<typeof sonarrPayloadSchema>;
+
+export function deletedFilesPresent(value: boolean | unknown[] | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  return typeof value === 'boolean' ? value : value.length > 0;
+}
 
 export function healthLevelForEvent(
   eventType: string,
@@ -114,7 +119,7 @@ export const radarrPayloadSchema = z
       .passthrough()
       .optional(),
     movieFile: radarrMovieFile.optional(),
-    deletedFiles: z.boolean().optional(),
+    deletedFiles: z.union([z.boolean(), z.array(z.unknown())]).optional(),
     downloadClient: z.string().optional(),
     isUpgrade: z.boolean().optional(),
     level: z.enum(['ok', 'warning', 'error']).optional(),

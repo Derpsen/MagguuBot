@@ -11,7 +11,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
-import { healthLevelForEvent, radarrPayloadSchema } from './schemas.js';
+import { deletedFilesPresent, healthLevelForEvent, radarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -108,7 +108,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
           title,
           year,
           posterUrl: poster,
-          deletedFiles: body.deletedFiles,
+          deletedFiles: deletedFilesPresent(body.deletedFiles),
         }),
         source: 'radarr',
         eventType: body.eventType,

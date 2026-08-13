@@ -11,7 +11,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
-import { healthLevelForEvent, sonarrPayloadSchema } from './schemas.js';
+import { deletedFilesPresent, healthLevelForEvent, sonarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -113,7 +113,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           title: seriesTitle,
           year: body.series?.year,
           posterUrl: poster,
-          deletedFiles: body.deletedFiles,
+          deletedFiles: deletedFilesPresent(body.deletedFiles),
         }),
         source: 'sonarr',
         eventType: body.eventType,
