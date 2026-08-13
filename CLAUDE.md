@@ -103,7 +103,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `fehler` |
 | Seerr MEDIA_PENDING (with Approve/Decline buttons) | `freigaben` |
 | Seerr approved/declined/available/failed/deleted | `anfragen` |
-| Tautulli recently_added | `neuAufPlex` |
+| Tautulli recently_added / created | `neuAufPlex` |
 | Tautulli playback events | `aktivität` |
 | Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `gelöscht` |
 | Sonarr/Radarr/SAB health + warnings + ApplicationUpdate | `health` |

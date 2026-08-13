@@ -8,6 +8,7 @@ import { getChannel, type ChannelKey } from '../../discord/channel-store.js';
 import { Colors, truncate } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { plexActivityCorrelationKey, preservePlexActivityState } from '../../utils/plex-activity.js';
+import { resolveTautulliEventName } from '../../utils/tautulli-event.js';
 import { editEmbed, postEmbed } from '../discord-poster.js';
 import {
   tautulliPayloadSchema,
@@ -35,9 +36,14 @@ const EVENT_META: Record<string, EventMeta> = {
   recently_added: { kind: 'recently_added', emoji: '✨', label: 'Neu verfügbar', color: Colors.plex, channel: 'newOnPlex' },
 };
 
+export function resolveTautulliEventMeta(event: string): EventMeta | undefined {
+  const name = resolveTautulliEventName(event);
+  return name ? EVENT_META[name] : undefined;
+}
+
 function classify(input: string): EventMeta {
   const t = input.toLowerCase();
-  if (/(recently added|new media|hinzugefügt|available|now available)/.test(t)) return EVENT_META.recently_added!;
+  if (/(recently added|new media|hinzugefügt|available|now available|\bcreated\b)/.test(t)) return EVENT_META.recently_added!;
   if (/(started playing|started watching|began playing)/.test(t)) return EVENT_META.play!;
   if (/(has paused|paused)/.test(t)) return EVENT_META.pause!;
   if (/(has resumed|resumed)/.test(t)) return EVENT_META.resume!;
@@ -125,7 +131,7 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
 
 async function handleCustom(body: TautulliCustomPayload): Promise<void> {
   const event = (body.event ?? body.action ?? '').toLowerCase();
-  const meta = EVENT_META[event];
+  const meta = resolveTautulliEventMeta(event);
   if (!meta) {
     logger.debug({ event }, 'tautulli custom event ignored');
     return;

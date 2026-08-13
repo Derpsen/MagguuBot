@@ -21,30 +21,67 @@ function qualityBadge(q: string | undefined): string {
   return q;
 }
 
+export interface EpisodeRef {
+  season: number;
+  number: number;
+  title?: string;
+}
+
+export function formatEpisodeRange(episodes: EpisodeRef[]): string | undefined {
+  if (episodes.length === 0) return undefined;
+  const sorted = [...episodes].sort((a, b) => a.season - b.season || a.number - b.number);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  if (!first || !last) return undefined;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (sorted.length === 1) return `S${pad(first.season)}E${pad(first.number)}`;
+  const sameSeason = first.season === last.season;
+  const consecutive = sameSeason && last.number - first.number === sorted.length - 1
+    && sorted.every((ep, idx) => ep.season === first.season && ep.number === first.number + idx);
+  if (consecutive) return `S${pad(first.season)}E${pad(first.number)}-E${pad(last.number)}`;
+  return `S${pad(first.season)}E${pad(first.number)}–S${pad(last.season)}E${pad(last.number)}`;
+}
+
+function episodeList(i: { episode?: EpisodeRef; episodes?: EpisodeRef[] }): EpisodeRef[] {
+  if (i.episodes?.length) return i.episodes;
+  return i.episode ? [i.episode] : [];
+}
+
+function episodeTag(episodes: EpisodeRef[]): string {
+  const range = formatEpisodeRange(episodes);
+  return range ? `  ·  ${range}` : '';
+}
+
+function episodeDescription(episodes: EpisodeRef[]): string | undefined {
+  const titles = episodes.map((ep) => ep.title?.trim()).filter((title): title is string => Boolean(title));
+  if (titles.length === 0) return undefined;
+  if (titles.length <= 3) return titles.join(' · ');
+  return `${titles.slice(0, 3).join(' · ')} · +${titles.length - 3}`;
+}
+
 export interface GrabEmbedInput extends ArrCommon {
   title: string;
   year?: number | string;
-  episode?: { season: number; number: number; title?: string };
+  episode?: EpisodeRef;
+  episodes?: EpisodeRef[];
 }
 
 export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
   const serviceLabel = i.service === 'sonarr' ? 'Sonarr' : 'Radarr';
   const color = i.service === 'sonarr' ? Colors.sonarr : Colors.radarr;
   const emoji = i.service === 'sonarr' ? '📺' : '🎬';
-  const episodeTag =
-    i.episode
-      ? `  ·  S${String(i.episode.season).padStart(2, '0')}E${String(i.episode.number).padStart(2, '0')}`
-      : '';
+  const episodes = episodeList(i);
   const yearTag = i.year ? `  ·  ${i.year}` : '';
 
   const e = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${serviceLabel}  ·  Grabbed` })
-    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag}`, 256))
+    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag(episodes)}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
-  if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
+  const description = episodeDescription(episodes);
+  if (description) e.setDescription(truncate(description, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
   if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
@@ -61,7 +98,8 @@ export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
 export interface ImportEmbedInput extends ArrCommon {
   title: string;
   year?: number | string;
-  episode?: { season: number; number: number; title?: string };
+  episode?: EpisodeRef;
+  episodes?: EpisodeRef[];
   isUpgrade?: boolean;
 }
 
@@ -70,20 +108,18 @@ export function buildImportEmbed(i: ImportEmbedInput): EmbedBuilder {
   const label = i.isUpgrade ? 'Upgraded' : 'Imported';
   const serviceLabel = i.service === 'sonarr' ? 'Sonarr' : 'Radarr';
   const emoji = i.service === 'sonarr' ? '📺' : '🎬';
-  const episodeTag =
-    i.episode
-      ? `  ·  S${String(i.episode.season).padStart(2, '0')}E${String(i.episode.number).padStart(2, '0')}`
-      : '';
+  const episodes = episodeList(i);
   const yearTag = i.year ? `  ·  ${i.year}` : '';
 
   const e = new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: `${serviceLabel}  ·  ${label}` })
-    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag}`, 256))
+    .setTitle(truncate(`${emoji}  ${i.title}${yearTag}${episodeTag(episodes)}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
-  if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
+  const description = episodeDescription(episodes);
+  if (description) e.setDescription(truncate(description, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
   if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });
@@ -172,7 +208,8 @@ export interface DeleteEmbedInput {
   year?: number | string;
   reason?: string;
   posterUrl?: string | null;
-  episode?: { season: number; number: number; title?: string };
+  episode?: EpisodeRef;
+  episodes?: EpisodeRef[];
   quality?: string;
   size?: number;
   deletedFiles?: boolean;
@@ -191,20 +228,18 @@ export function buildDeleteEmbed(i: DeleteEmbedInput): EmbedBuilder {
           ? 'Episode-File gelöscht'
           : 'Movie-File gelöscht';
 
-  const episodeTag =
-    i.episode
-      ? `  ·  S${String(i.episode.season).padStart(2, '0')}E${String(i.episode.number).padStart(2, '0')}`
-      : '';
+  const episodes = episodeList(i);
   const yearTag = i.year ? `  ·  ${i.year}` : '';
 
   const e = new EmbedBuilder()
     .setColor(Colors.muted)
     .setAuthor({ name: `${serviceLabel}  ·  ${action}` })
-    .setTitle(truncate(`${icon}  ${i.title}${yearTag}${episodeTag}`, 256))
+    .setTitle(truncate(`${icon}  ${i.title}${yearTag}${episodeTag(episodes)}`, 256))
     .setTimestamp(new Date());
 
   if (i.posterUrl) e.setThumbnail(i.posterUrl);
-  if (i.episode?.title) e.setDescription(truncate(i.episode.title, 400));
+  const description = episodeDescription(episodes);
+  if (description) e.setDescription(truncate(description, 400));
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
   if (i.quality) fields.push({ name: 'Quality', value: truncate(qualityBadge(i.quality)), inline: true });

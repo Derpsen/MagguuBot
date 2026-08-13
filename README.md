@@ -71,10 +71,10 @@ For each service below, set the webhook URL to `http://MagguuBot:3000/webhook/<s
 
 | Service | Where | Path | Notes |
 |---|---|---|---|
-| Sonarr | Settings → Connect → Webhook | `/webhook/sonarr` | Triggers: Grab, Download, Import Failure, Manual Interaction, Health |
+| Sonarr | Settings → Connect → Webhook | `/webhook/sonarr` | Triggers: Grab, Import, Upgrade, Manual Interaction, Series/File Delete (not *For Upgrade*), Health, Application Update |
 | Radarr | Settings → Connect → Webhook | `/webhook/radarr` | Same triggers as Sonarr |
 | Seerr | Settings → Notifications → Webhook | `/webhook/seerr` | Use the default JSON payload template |
-| Tautulli | Settings → Notification Agents → Webhook | `/webhook/tautulli` | JSON payload: `{"event":"recently_added","title":"{title}","year":"{year}","mediaType":"{media_type}","summary":"{summary}","posterUrl":"{poster_url}","serverName":"{server_name}"}` |
+| Tautulli | Settings → Notification Agents → Webhook | `/webhook/tautulli` | Custom JSON with `"event":"{action}"` plus `sessionKey`/`ratingKey`. `{action}` `created` is treated as recently added. |
 
 #### Seerr notification setup
 
@@ -92,7 +92,9 @@ Routing is automatic after `/setup-server`: pending approvals go to `⏳・freig
 
 Failed Discord deliveries from replay-supported inbound webhooks are retried automatically after 1, 5, and 15 minutes, then 1 and 6 hours; their state remains visible in the dashboard and manual replay is still available. RSS and Blue Tracker delivery failures remain unseen and are retried on their next poll. The webhook retry count is controlled by `WEBHOOK_RETRY_MAX_ATTEMPTS`. Database backups can be downloaded with `/db-backup`; additionally, one automatic snapshot is written daily to the database directory's `backups/` folder. `AUTOMATIC_BACKUP_HOUR` and `AUTOMATIC_BACKUP_RETENTION` configure its local start hour and retention (seven by default). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
-Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause, resume, buffer, watched, and stop update the existing card. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever).
+Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause, resume, buffer, watched, and stop update the existing card. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. Tautulli's recently-added action is `created` — the bot maps that to `#neu-auf-plex`. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever).
+
+Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.
 
 Other high-volume status channels use the same principle where identity is reliable: Seerr issue comments/resolution update one issue card, GitHub pull requests and issues update one card from open to closed/reopened, and Sonarr/Radarr health restoration updates the original warning. Content feeds, imports, releases, and audit/moderation logs remain append-only so history is not lost.
 

@@ -567,7 +567,7 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
       {
         name: 'Setup in Tautulli',
         value:
-          'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched aktivieren',
+          'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched + Recently Added (`created`) + Error',
       },
     )
     .setFooter({ text: 'MagguuBot · Plex activity + live stream count' });
@@ -593,7 +593,7 @@ export function buildMaintainerrChannelEmbed(): EmbedBuilder {
       {
         name: 'Setup in Sonarr/Radarr',
         value:
-          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅',
+          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅ · *For Upgrade* aus (Upgrade kommt als Import-Karte)',
       },
     )
     .setFooter({ text: 'MagguuBot · library cleanup feed' });
