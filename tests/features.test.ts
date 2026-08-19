@@ -10,6 +10,7 @@ import { buildQueueEmbed } from '../src/embeds/queue.ts';
 import { buildWeeklyDigestEmbed } from '../src/embeds/weekly-digest.ts';
 import { deriveAchievements } from '../src/utils/achievements.ts';
 import { readResponseBytesLimited } from '../src/utils/http-body.ts';
+import { planWelcomeEmbedSync } from '../src/utils/setup-plan.ts';
 import { localScheduleParts, nextReminderRetryAt, parseFutureTime, weeklyPeriodKey } from '../src/utils/schedule.ts';
 
 test('weekly schedule respects the configured IANA timezone', () => {
@@ -148,4 +149,46 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   const help = buildBotHelpEmbed({}).toJSON();
   assert.match(help.fields?.find((field) => field.name.includes('Downloads'))?.value ?? '', /plex-now-playing/);
   assert.equal(help.fields?.every((field) => field.value.length <= 1_024), true);
+});
+
+test('setup dry-run plans welcome embed rewrites in full mode and skips them in fast mode', () => {
+  const channels = [
+    { planName: '❓・faq', status: 'exists' as const },
+    { planName: '🎬・aktivität', status: 'exists' as const },
+    { planName: '📊・wochenrückblick', status: 'exists' as const },
+  ];
+  const tracked = new Set(channels.map((channel) => channel.planName));
+  const names = new Set(channels.map((channel) => channel.planName));
+
+  const full = planWelcomeEmbedSync({
+    fullSync: true,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: tracked,
+  });
+  assert.deepEqual(full.edit, ['❓・faq', '🎬・aktivität', '📊・wochenrückblick']);
+  assert.deepEqual(full.post, []);
+
+  const fast = planWelcomeEmbedSync({
+    fullSync: false,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: tracked,
+  });
+  assert.deepEqual(fast.skip, ['❓・faq', '🎬・aktivität', '📊・wochenrückblick']);
+  assert.deepEqual(fast.edit, []);
+
+  const missingPin = planWelcomeEmbedSync({
+    fullSync: false,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: new Set(['❓・faq']),
+  });
+  assert.deepEqual(missingPin.post, ['🎬・aktivität', '📊・wochenrückblick']);
 });
