@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildMovieNightComponents, buildMovieNightEmbed } from '../src/embeds/movie-night.ts';
+import {
+  buildBotHelpEmbed,
+  buildFaqChannelEmbed,
+  buildPlexActivityChannelEmbed,
+} from '../src/embeds/welcome.ts';
 import { buildQueueEmbed } from '../src/embeds/queue.ts';
 import { buildWeeklyDigestEmbed } from '../src/embeds/weekly-digest.ts';
 import { deriveAchievements } from '../src/utils/achievements.ts';
@@ -127,4 +132,20 @@ test('live queue clamps invalid progress and field sizes', () => {
   }).toJSON();
   assert.equal(embed.fields?.every((field) => field.value.length <= 1_024), true);
   assert.match(embed.fields?.[0]?.value ?? '', /██████████████/);
+});
+
+test('pinned FAQ and Plex activity posts match current addon and session cleanup', () => {
+  const faq = buildFaqChannelEmbed({}).toJSON();
+  const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
+  assert.match(faqText, /EllesmereUI/);
+  assert.match(faqText, /MagguuUI_Media/);
+  assert.equal(/ElvUI Pflicht/.test(faqText), false);
+
+  const plex = buildPlexActivityChannelEmbed().toJSON();
+  assert.match(`${plex.description ?? ''}`, /20 Minuten/);
+  assert.match(`${plex.description ?? ''}`, /plex-now-playing/);
+
+  const help = buildBotHelpEmbed({}).toJSON();
+  assert.match(help.fields?.find((field) => field.name.includes('Downloads'))?.value ?? '', /plex-now-playing/);
+  assert.equal(help.fields?.every((field) => field.value.length <= 1_024), true);
 });

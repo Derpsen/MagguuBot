@@ -41,6 +41,9 @@ import {
   buildStarboardChannelEmbed,
   buildSuggestionsChannelEmbed,
   buildWelcomeHeroEmbed,
+  buildWeeklyDigestChannelEmbed,
+  buildDownloadLiveChannelEmbed,
+  buildMovieNightChannelEmbed,
   type ChannelRefs,
 } from '../../embeds/welcome.js';
 import { and, eq } from 'drizzle-orm';
@@ -397,6 +400,9 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '🎨・addon-updates': () => buildAddonUpdatesChannelEmbed(),
   '❓・faq': buildFaqChannelEmbed,
   '💡・vorschläge': () => buildSuggestionsChannelEmbed(),
+  '📊・wochenrückblick': () => buildWeeklyDigestChannelEmbed(),
+  '📡・live-downloads': () => buildDownloadLiveChannelEmbed(),
+  '🎬・movie-night': () => buildMovieNightChannelEmbed(),
 };
 
 const REF_AWARE_WELCOME_NAMES = new Set([
