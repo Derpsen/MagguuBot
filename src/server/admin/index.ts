@@ -234,6 +234,7 @@ adminRouter.get('/stats', async (c) => {
       automaticBackup: config.AUTOMATIC_BACKUP_ENABLED,
       webhookRetry: config.WEBHOOK_RETRY_ENABLED,
       plexActivityRetentionDays: config.PLEX_ACTIVITY_RETENTION_DAYS,
+      plexStaleSessionMinutes: config.PLEX_STALE_SESSION_MINUTES,
     },
   });
 });
