@@ -139,7 +139,8 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   const faq = buildFaqChannelEmbed({}).toJSON();
   const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
   assert.match(faqText, /EllesmereUI/);
-  assert.match(faqText, /MagguuUI_Media/);
+  assert.match(faqText, /MagguuUI/);
+  assert.equal(/MagguuUI_Data/.test(faqText), false);
   assert.equal(/ElvUI Pflicht/.test(faqText), false);
 
   const plex = buildPlexActivityChannelEmbed().toJSON();
