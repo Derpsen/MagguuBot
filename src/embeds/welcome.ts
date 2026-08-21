@@ -681,7 +681,8 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         name: '❓  Häufige Fragen',
         value: [
           '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K (auch per Magguu-Look). Feintuning unter `/mui`',
-          '`Classic-Support?` → Nein, nur Retail + PTR',
+          '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
+          '`Classic-Support?` → Nein, nur Retail',
           '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs, LittleWigs und Northern Sky sind optional',
           '`Setup-Imports?` → Erforderlich: EllesmereUI + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
@@ -695,7 +696,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
       },
       {
         name: '📝  Weitere FAQ',
-        value: '`/tag list` zeigt alle serverweiten FAQ-Einträge. `/tag get name:<tag>` ruft einen ab. Admins erweitern via `/tag add`.',
+        value: '`/tag list` zeigt alle serverweiten FAQ-Einträge. `/tag get name:<tag>` ruft einen ab.',
         inline: false,
       },
     )
