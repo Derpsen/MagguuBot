@@ -118,7 +118,11 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
             : 'World of Warcraft Retail',
           inline: true,
         },
-        { name: 'Installation', value: 'Addon-Manager aktualisieren oder den MagguuUI-Ordner aus der ZIP ersetzen.', inline: true },
+        {
+          name: 'Installation',
+          value: 'EllesmereUI muss installiert und aktiviert bleiben. Addon-Manager aktualisieren oder den MagguuUI-Ordner aus der ZIP ersetzen. Setup: `/mui`.',
+          inline: true,
+        },
         {
           name: 'Downloads',
           value: `[GitHub](${i.url}) · [CurseForge](https://www.curseforge.com/wow/addons/magguuui) · [Wago](https://addons.wago.io/addons/5NR84pK3) · [WoWInterface](https://www.wowinterface.com/downloads/info27061)`,

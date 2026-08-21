@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildMovieNightComponents, buildMovieNightEmbed } from '../src/embeds/movie-night.ts';
 import {
+  buildAddonUpdatesChannelEmbed,
   buildBotHelpEmbed,
   buildFaqChannelEmbed,
   buildPlexActivityChannelEmbed,
@@ -140,8 +141,19 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
   assert.match(faqText, /EllesmereUI/);
   assert.match(faqText, /MagguuUI/);
+  assert.match(faqText, /Magguu-Look/);
+  assert.match(faqText, /EUI, Data und Media/);
+  assert.match(faqText, /erforderliche\/optionale Imports/);
+  assert.match(faqText, /WowUp-Starter\/Optional/);
   assert.equal(/MagguuUI_Data/.test(faqText), false);
   assert.equal(/ElvUI Pflicht/.test(faqText), false);
+  assert.equal(/Naowh/i.test(faqText), false);
+  assert.equal(faq.fields?.every((field) => field.value.length <= 1_024), true);
+
+  const updates = buildAddonUpdatesChannelEmbed().toJSON();
+  assert.match(`${updates.description ?? ''}`, /einen \*\*`MagguuUI`\*\*-Ordner/);
+  assert.match(`${updates.description ?? ''}`, /Magguu-Look/);
+  assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 
   const plex = buildPlexActivityChannelEmbed().toJSON();
   assert.match(`${plex.description ?? ''}`, /20 Minuten/);

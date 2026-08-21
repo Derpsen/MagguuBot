@@ -125,7 +125,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '📥 Downloads',
         value: [
-          '`/queue` — Sonarr+Radarr live queue',
+          '`/queue` — Sonarr+Radarr live Queue',
           '`/arr-status` — Service-Health + Disk-Space + Versionen',
           '`/search movie <query>` — Radarr-Lookup',
           '`/search show <query>` — Sonarr-Lookup',
@@ -637,9 +637,9 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         'Neue Releases vom MagguuUI-Addon landen hier automatisch — mit Versionsnummer, Changelog und Download-Link.',
         '',
         '**Wie update ich?**',
-        '• Am einfachsten über CurseForge, Wago oder WowUp aktualisieren',
-        '• Manuell: ZIP entpacken und den **`MagguuUI`**-Ordner in `Interface/AddOns` ersetzen',
-        '• Danach WoW neu starten oder `/reload` — Setup liegt unter `/mui`',
+        '• Am einfachsten über CurseForge oder Wago aktualisieren (WowUp zieht von dort mit)',
+        '• Manuell: ZIP entpacken und den einen **`MagguuUI`**-Ordner in `Interface/AddOns` ersetzen',
+        '• Danach WoW neu starten oder `/reload` — Setup (4K, Magguu-Look, Imports) unter `/mui`',
         '',
         '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
       ].join('\n'),
@@ -656,15 +656,15 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'MagguuUI ist ein natives 4K-Overhaul für **EllesmereUI**. Kein eigener Installer — alles liegt unter `/mui`.',
+        'MagguuUI ist ein natives 4K-Overhaul für **EllesmereUI**. Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen).',
         '',
         '**📦  Installation**',
-        '1. **EllesmereUI** installieren (CurseForge / Wago / WowUp)',
+        '1. **EllesmereUI** 7.9.5+ installieren und aktivieren (CurseForge / Wago / WowUp)',
         `2. Neueste MagguuUI-ZIP aus ${addonRef} laden und entpacken`,
-        '3. Den einen **`MagguuUI`**-Ordner (Data und Media liegen darin) nach:',
+        '3. Den einen **`MagguuUI`**-Ordner (EUI, Data und Media liegen darin) nach:',
         '   `World of Warcraft/_retail_/Interface/AddOns/`',
         '4. Character-Select → AddOns → MagguuUI plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup** → 4K-Installation. Auf einem Alt erscheint ein Popup zum Laden der Profile',
+        '5. Einloggen → `/mui` → **Setup**: 4K-Installation, **Magguu-Look**, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -680,9 +680,10 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '❓  Häufige Fragen',
         value: [
-          '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K. Feintuning unter `/mui`',
+          '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K (auch per Magguu-Look). Feintuning unter `/mui`',
           '`Classic-Support?` → Nein, nur Retail + PTR',
           '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs, LittleWigs und Northern Sky sind optional',
+          '`Setup-Imports?` → Erforderlich: EllesmereUI + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
         ].join('\n'),
         inline: false,
