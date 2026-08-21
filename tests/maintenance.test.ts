@@ -585,6 +585,8 @@ test('addon release embeds remove duplicate changelog headers and show update li
     'World of Warcraft Retail',
   );
   assert.match(embed.fields?.find((field) => field.name === 'Downloads')?.value ?? '', /CurseForge/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI-Ordner/);
+  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /beide Ordner/);
 });
 
 test('addon release embeds derive Retail versions only from explicit release-note markers', () => {

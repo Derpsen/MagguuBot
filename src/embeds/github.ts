@@ -118,7 +118,7 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
             : 'World of Warcraft Retail',
           inline: true,
         },
-        { name: 'Installation', value: 'Addon-Manager aktualisieren oder beide Ordner aus der ZIP ersetzen.', inline: true },
+        { name: 'Installation', value: 'Addon-Manager aktualisieren oder den MagguuUI-Ordner aus der ZIP ersetzen.', inline: true },
         {
           name: 'Downloads',
           value: `[GitHub](${i.url}) · [CurseForge](https://www.curseforge.com/wow/addons/magguuui) · [Wago](https://addons.wago.io/addons/5NR84pK3) · [WoWInterface](https://www.wowinterface.com/downloads/info27061)`,
@@ -156,6 +156,7 @@ export function cleanAddonReleaseNotes(body: string | undefined): string {
       return trimmed !== '# Changelog'
         && trimmed !== 'All notable changes to the latest MagguuUI release are documented here.'
         && !/^## v?\d+\.\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?(?:\s+\(\d{4}-\d{2}-\d{2}\))?$/.test(trimmed)
+        && trimmed !== '## Next release'
         && trimmed !== '---';
     })
     .join('\n')

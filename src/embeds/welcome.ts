@@ -664,7 +664,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '3. Den einen **`MagguuUI`**-Ordner (Data und Media liegen darin) nach:',
         '   `World of Warcraft/_retail_/Interface/AddOns/`',
         '4. Character-Select → AddOns → MagguuUI plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup** → 4K-Installation',
+        '5. Einloggen → `/mui` → **Setup** → 4K-Installation. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -682,7 +682,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         value: [
           '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K. Feintuning unter `/mui`',
           '`Classic-Support?` → Nein, nur Retail + PTR',
-          '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs und Northern Sky sind optional',
+          '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs, LittleWigs und Northern Sky sind optional',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
         ].join('\n'),
         inline: false,
