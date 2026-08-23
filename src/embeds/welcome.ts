@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+﻿import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { Colors } from './colors.js';
 
 export interface ChannelRefs {
@@ -29,6 +29,7 @@ export interface ChannelRefs {
   weeklyDigest?: string;
   downloadLive?: string;
   movieNight?: string;
+  ticketLogs?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {

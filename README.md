@@ -12,9 +12,9 @@ the hub standing order (no force-push; tags need an explicit release ask).
 
 ## Features
 
-- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr}` with shared-secret auth
-- **Styled embeds** — one consistent look across services, posters, progress bars
-- **Slash commands**
+- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,maintainerr,github}` with shared-secret / HMAC auth
+- **Styled embeds** — one consistent look across services, posters, progress bars, lifecycle cards
+- **Slash commands** — 51 guild commands via `/help` (downloads, moderation, utility, admin)
   - `/queue` — live Sonarr + Radarr download queue with progress bars
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
@@ -23,8 +23,10 @@ the hub standing order (no force-push; tags need an explicit release ask).
   - `/movie-night` — nominations, voting, countdown, and automatic reminders
 - **Seerr approve / decline buttons** — straight from Discord (Administrator only)
 - **MagguuUI release feed** — user-friendly addon releases go to `#addon-updates`; technical pushes and workflows stay in `#github`
+- **Built-in admin dashboard** — Vue SPA on the same container (OAuth allowlist); not a separate Magguu-Dashboard app
 - **Activity log** — every posted embed is written to SQLite for audit/debug
 - **One container** — Node 24 + TS + Hono + discord.js + SQLite (WAL)
+- **Discord only** — no Telegram/other messengers
 
 ## Stack
 
@@ -146,65 +148,43 @@ For a runnable dev loop use Docker — `better-sqlite3` needs Python + MSVC on W
 ## Architecture
 
 ```
-Sonarr / Radarr / Seerr / Tautulli / SABnzbd
+Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr / Maintainerr / GitHub
    └─POST──► Hono webhook routes ──► embed builder ──► discord.js ──► Discord channel
                      │
-                     └──► SQLite activity log
+                     └──► SQLite activity log (+ webhook retries)
 
 Discord user ──slash cmd──► discord.js ──► service clients ──► *arr / SAB REST API
-Discord user ──button──► Seerr approval handler ──► Seerr REST API
+Discord user ──button──► Seerr approval / tickets / roles ──► REST + SQLite
+Admin browser ──OAuth──► Vue dashboard (same origin) ──► /admin API
 ```
 
 ## File layout
 
 ```
 src/
-├── index.ts                        # entry: boot discord + http server
-├── config.ts                       # zod-validated env
-├── db/
-│   ├── schema.ts                   # drizzle schema (webhook_events, seerr_requests)
-│   └── client.ts                   # better-sqlite3 + WAL + idempotent schema init
+├── index.ts                     # entry: boot discord + http server
+├── config.ts                    # zod-validated env
+├── settings.ts                  # runtime feature toggles (SQLite)
+├── db/                          # schema + WAL client + backup/restore
 ├── discord/
-│   ├── client.ts                   # discord.js client, command registration
-│   ├── commands/
-│   │   ├── index.ts
-│   │   ├── queue.ts                # /queue — sonarr+radarr+sab live queue
-│   │   ├── search.ts               # /search movie|show
-│   │   └── setup-server.ts         # /setup-server — scaffolds + welcome banners
-│   └── interactions/
-│       └── seerr-buttons.ts        # approve/decline handler
-├── embeds/
-│   ├── colors.ts                   # brand colors + formatBytes + truncate
-│   ├── arr.ts                      # grab/import/failure/health embeds
-│   ├── seerr.ts                    # request embeds + buttons
-│   ├── sabnzbd.ts                  # SAB event embeds
-│   └── queue.ts                    # /queue embed
+│   ├── commands/                # 51 slash commands (see CLAUDE.md)
+│   ├── interactions/            # Seerr, tickets, roles, suggestions, …
+│   ├── setup via commands/setup-server.ts  # STRUCTURE + channel topics
+│   └── channel-store.ts         # SQLite-first channel ID resolution
+├── embeds/                      # EmbedBuilder factories (no posting)
 ├── server/
-│   ├── app.ts                      # Hono app + shared-secret middleware
-│   ├── discord-poster.ts           # post + log every embed
-│   └── webhooks/
-│       ├── sonarr.ts
-│       ├── radarr.ts
-│       ├── seerr.ts
-│       ├── tautulli.ts
-│       └── sabnzbd.ts
-├── services/
-│   ├── arr-client.ts               # shared fetch wrapper
-│   ├── sonarr.ts
-│   ├── radarr.ts
-│   ├── seerr.ts
-│   └── sabnzbd.ts
+│   ├── app.ts                   # Hono + webhook auth + static dashboard
+│   ├── admin/                   # dashboard API
+│   └── webhooks/                # sonarr, radarr, seerr, tautulli, sabnzbd, prowlarr, maintainerr, github
+├── services/                    # *arr / SAB / Seerr / Tautulli / RSS clients
 └── utils/
-    └── logger.ts                   # pino
-
-scripts/
-└── sabnzbd-webhook.sh              # SAB post-processing hook
-unraid/
-└── magguu-bot.xml                  # community template
-.github/workflows/
-├── ci.yml                          # audit + typecheck + tests + build
-└── docker.yml                      # build + push to GHCR
+frontend/                        # Vue 3 admin dashboard (Vite → dist-frontend/)
+scripts/sabnzbd-webhook.sh
+unraid/magguu-bot.xml
+.github/workflows/               # ci.yml + docker.yml (+ codeql)
 ```
+
+Agent depth: `AGENTS.md` → `CLAUDE.md`. Channel keys and command inventory live in `CLAUDE.md`.
 
 ## Security
 
