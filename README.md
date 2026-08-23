@@ -12,6 +12,8 @@ the hub standing order (no force-push; tags need an explicit release ask).
 
 ## Features
 
+See also [CHANGELOG.md](./CHANGELOG.md).
+
 - **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,maintainerr,github}` with shared-secret / HMAC auth
 - **Styled embeds** — one consistent look across services, posters, progress bars, lifecycle cards
 - **Slash commands** — 51 guild commands via `/help` (downloads, moderation, utility, admin)
