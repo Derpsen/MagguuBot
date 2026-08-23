@@ -120,7 +120,7 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
         },
         {
           name: 'Installation',
-          value: 'EllesmereUI muss installiert und aktiviert bleiben. Addon-Manager aktualisieren oder den MagguuUI-Ordner aus der ZIP ersetzen. Setup: `/mui`.',
+          value: 'EllesmereUI 7.9.5+ muss aktiviert bleiben. Addon-Manager aktualisieren oder den einen MagguuUI-Ordner ersetzen. Setup/Skinning/QoL: `/mui`. Werkzeuge: `/mui tools`.',
           inline: true,
         },
         {

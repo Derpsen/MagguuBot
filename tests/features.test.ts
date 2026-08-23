@@ -145,14 +145,23 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /EUI, Data und Media/);
   assert.match(faqText, /erforderliche\/optionale Imports/);
   assert.match(faqText, /WowUp-Starter\/Optional/);
+  assert.match(faqText, /Ready for WoW \*\*12\.1\*\*/);
+  assert.match(faqText, /Midnight \*\*12\.0\*\*/);
+  assert.match(faqText, /\/mui tools/);
+  assert.match(faqText, /Alles installieren/);
+  assert.match(faqText, /Smart Tab/);
+  assert.match(faqText, /Quick Focus/);
+  assert.match(faqText, /Ellesmere-Lautsprecher/);
   assert.equal(/MagguuUI_Data/.test(faqText), false);
   assert.equal(/ElvUI Pflicht/.test(faqText), false);
   assert.equal(/Naowh/i.test(faqText), false);
+  assert.equal(/LittleWigs/.test(faqText), false);
   assert.equal(faq.fields?.every((field) => field.value.length <= 1_024), true);
 
   const updates = buildAddonUpdatesChannelEmbed().toJSON();
   assert.match(`${updates.description ?? ''}`, /einen \*\*`MagguuUI`\*\*-Ordner/);
   assert.match(`${updates.description ?? ''}`, /Magguu-Look/);
+  assert.match(`${updates.description ?? ''}`, /Skinning \/ QoL/);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 
   const plex = buildPlexActivityChannelEmbed().toJSON();
