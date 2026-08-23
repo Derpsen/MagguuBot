@@ -146,6 +146,27 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - SAB script: `scripts/sabnzbd-webhook.sh`
 - Unraid template: `unraid/magguu-bot.xml`
 
+
+## MagguuUI FAQ / release sync
+
+- MagguuUI stable/prerelease announcements route via `ADDON_REPO_FULL_NAMES`
+  (default `Derpsen/MagguuUI`) to `addonUpdates`.
+- Discord FAQ/tag content that describes MagguuUI must stay aligned with the
+  current MagguuUI version and install story (EllesmereUI companion, one AddOns
+  folder). Do not leave stale ElvUI-installer wording in FAQ tags.
+
+## Grok Bot / Buddy + Git publish
+
+Marco uses Grok Bot “Buddy” as the single front door; helpers report to Buddy.
+
+- Interactive/ad-hoc sessions: never commit, push, or create git tags unless
+  the user explicitly asks for that exact publish step.
+- Grok Bot helpers under Buddy's hub standing order: for clear in-scope
+  bug/tasks, may commit, push, and merge to main without a per-change ask;
+  never force-push; never publish unrelated dirty WIP; report results to Buddy.
+- Tags and releases still need an explicit release ask.
+
+Agent entrypoint: `AGENTS.md` (short) → this file for depth.
 ## What NOT to do
 
 - NEVER commit `.env`, `.env.*` (except `.env.example`), `data/`, or `dist/` — gitignored
