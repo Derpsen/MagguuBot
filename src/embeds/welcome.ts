@@ -1,4 +1,4 @@
-﻿import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { Colors } from './colors.js';
 
 export interface ChannelRefs {
@@ -673,7 +673,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '- Danach `/reload` oder `/mui`',
         '',
         '**🐛  Bug melden**',
-        '- GitHub Issue öffnen (Link in der README)',
+        '- [GitHub Issue öffnen](https://github.com/Derpsen/MagguuUI/issues)',
         '- Oder im Server posten mit **WoW-Version**, **UI-Scale** und **Repro-Schritten**',
       ].join('\n'),
     )
