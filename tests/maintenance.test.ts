@@ -586,10 +586,13 @@ test('addon release embeds remove duplicate changelog headers and show update li
   );
   assert.match(embed.fields?.find((field) => field.name === 'Downloads')?.value ?? '', /CurseForge/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI-Ordner/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /\/mui tools/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /beide Ordner/);
 });
 
 test('addon release embeds derive Retail versions only from explicit release-note markers', () => {
+  assert.equal(extractWowRetailVersion('Ready for WoW 12.1'), '12.1');
+  assert.equal(extractWowRetailVersion('Ready for WoW 12.1; still loads on Midnight 12.0'), '12.1');
   assert.equal(extractWowRetailVersion('- **Ready for WoW 12.1.0:** current Retail client.'), '12.1.0');
   assert.equal(extractWowRetailVersion('Compatible with World of Warcraft Retail 11.2.7.'), '11.2.7');
   assert.equal(extractWowRetailVersion('Supports Retail version: v12.0.9.'), '12.0.9');
