@@ -639,7 +639,7 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         '**Wie update ich?**',
         '• Am einfachsten über CurseForge oder Wago aktualisieren (WowUp zieht von dort mit)',
         '• Manuell: ZIP entpacken und den einen **`MagguuUI`**-Ordner in `Interface/AddOns` ersetzen',
-        '• Danach WoW neu starten oder `/reload` — Setup (4K, Magguu-Look, Imports) unter `/mui`',
+        '• Danach WoW neu starten oder `/reload` — Setup / Skinning / QoL unter `/mui` (Alles installieren, Magguu-Look, Scale 0.58)',
         '',
         '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
       ].join('\n'),
@@ -656,7 +656,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'MagguuUI ist ein natives 4K-Overhaul für **EllesmereUI**, ready for **WoW 12.1** (lädt weiter auf Midnight 12.0). Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen).',
+        'MagguuUI sitzt in **EllesmereUI** (Ready for WoW **12.1**, läuft weiter auf Midnight **12.0**). Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen). Tabs: **Setup** / **Skinning** / **QoL**. Werkzeuge: `/mui tools` oder MagguuUI-Header **10×** klicken.',
         '',
         '**📦  Installation**',
         '1. **EllesmereUI** 7.9.5+ installieren und aktivieren (CurseForge / Wago / WowUp)',
@@ -664,7 +664,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '3. Den einen **`MagguuUI`**-Ordner (EUI, Data und Media liegen darin) nach:',
         '   `World of Warcraft/_retail_/Interface/AddOns/`',
         '4. Character-Select → AddOns → MagguuUI plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup**: goldenes **Install everything**, **Magguu-Look**, Scale `0.58`, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
+        '5. Einloggen → `/mui` → **Setup**: goldenes **Alles installieren**, **Magguu-Look** (+ fixe Tooltips), Scale `0.58`, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -681,12 +681,11 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         name: '❓  Häufige Fragen',
         value: [
           '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K (auch per Magguu-Look). Feintuning unter `/mui`',
-          '`WoW-Version?` → Ready for Retail **12.1**, lädt weiter auf Midnight **12.0**',
-          '`QoL extra?` → Smart Tab (Chat-Kanäle), Quick Focus (Modifier-Klick), Audio-Switcher am Ellesmere-Lautsprecher',
           '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
-          '`Classic-Support?` → Nein, nur Retail',
-          '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs, LittleWigs und Northern Sky sind optional',
-          '`Setup-Imports?` → Erforderlich: EllesmereUI + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI',
+          '`WoW-Version?` → Ready for **12.1**; lädt weiterhin auf Midnight **12.0**. Nur Retail',
+          '`Was brauche ich?` → EllesmereUI 7.9.5+ + MagguuUI. Optional: BigWigs, Northern Sky, WIM, Waypoint UI',
+          '`Setup-Imports?` → Erforderlich: Ellesmere + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI. WowUp-Packs aus Setup',
+          '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alert-Opacity, Proc-Overlays ausblenden, **Smart Tab**, **Quick Focus**, Audio-Gerätewechsel am Ellesmere-Lautsprecher',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
         ].join('\n'),
         inline: false,
