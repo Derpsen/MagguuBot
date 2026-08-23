@@ -4,6 +4,12 @@ Discord bot for the download side of a media homelab. Receives webhooks from **S
 
 Designed to replace Notifiarr with something you own end-to-end — no third-party service in the loop.
 
+## Agent rules
+
+For automated helpers (Grok Bot / Buddy): start with `AGENTS.md`, then `CLAUDE.md`.
+Buddy is the single front door; clear in-scope fixes may push/merge to `main` under
+the hub standing order (no force-push; tags need an explicit release ask).
+
 ## Features
 
 - **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr}` with shared-secret auth
@@ -116,7 +122,7 @@ Events: `complete` → `imports` channel · `failed` → `failures` channel.
 
 Set `GITHUB_WEBHOOK_SECRET` in the container, then add a GitHub webhook that points to `<your dashboard URL>/webhook/github` with the same secret and JSON content type. Subscribe to releases plus whichever technical events you want in `#github`.
 
-`Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically.
+`Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically. Keep Discord FAQ/tag answers that describe MagguuUI aligned with the current MagguuUI version (EllesmereUI companion). Do not leave stale ElvUI-installer wording in those tags.
 
 ### 7. Optional admin dashboard
 
