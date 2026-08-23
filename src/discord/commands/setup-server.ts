@@ -244,7 +244,7 @@ const STRUCTURE: CategoryPlan[] = [
   },
   {
     name: '🔧 STATUS',
-    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health + Updates.', readOnly: true, adminOnly: true }],
+    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/Prowlarr Health + Updates.', readOnly: true, adminOnly: true }],
   },
   {
     name: '💬 CHAT',
@@ -293,6 +293,17 @@ const STRUCTURE: CategoryPlan[] = [
         topic: 'GitHub-Webhook-Feed — Regular+.',
         readOnly: true,
         allowedRoles: [...TRUSTED_ROLES],
+      },
+    ],
+  },
+  {
+    name: '🎫 TICKETS',
+    channels: [
+      {
+        name: 'ticket-logs',
+        topic: 'Geschlossene Tickets inkl. Transkripte (Admin/Mod).',
+        readOnly: true,
+        adminOnly: true,
       },
     ],
   },
@@ -354,6 +365,7 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '📊・wochenrückblick': 'weeklyDigest',
   '📡・live-downloads': 'downloadLive',
   '🎬・movie-night': 'movieNight',
+  'ticket-logs': 'ticketLogs',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -378,6 +390,7 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'weeklyDigest',
   'downloadLive',
   'movieNight',
+  'ticketLogs',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {

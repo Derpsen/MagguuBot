@@ -100,18 +100,21 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 |---|---|
 | Sonarr/Radarr Grab | `grabs` |
 | Sonarr/Radarr Download import, SAB complete | `imports` |
-| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `fehler` |
-| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `freigaben` |
-| Seerr approved/declined/available/failed/deleted | `anfragen` |
-| Tautulli recently_added / created | `neuAufPlex` |
-| Tautulli playback events | `aktivität` |
-| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `gelöscht` |
+| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `failures` (`⚠️・fehler`) |
+| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `approvals` (`⏳・freigaben`) |
+| Seerr approved/declined/available/failed/deleted | `requests` (`📝・anfragen`) |
+| Tautulli recently_added / created | `newOnPlex` |
+| Tautulli playback events | `plexActivity` |
+| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `maintainerr` (`🗑️・gelöscht`) |
 | Sonarr/Radarr/Prowlarr health + warnings + ApplicationUpdate | `health` |
 | Member join welcome embed | `welcome` |
 | Member join/leave + role changes | `auditLog` |
 | Moderation actions (warn/timeout/kick/ban/purge) | `modLog` |
 | GitHub events (default) | `github` |
 | Stable/prerelease announcements for repos in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
+| MagguuUI FAQ channel (tag answers) | `faq` |
+| Community suggestions (`/suggest`) | `suggestions` |
+| Ticket close + transcripts | `ticketLogs` (also auto-created as `ticket-logs`) |
 | WoW Blue-Tracker RSS | `blueTracker` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` |
