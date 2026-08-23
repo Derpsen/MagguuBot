@@ -656,7 +656,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'MagguuUI ist ein natives 4K-Overhaul für **EllesmereUI**. Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen).',
+        'MagguuUI ist ein natives 4K-Overhaul für **EllesmereUI**, ready for **WoW 12.1** (lädt weiter auf Midnight 12.0). Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen).',
         '',
         '**📦  Installation**',
         '1. **EllesmereUI** 7.9.5+ installieren und aktivieren (CurseForge / Wago / WowUp)',
@@ -664,7 +664,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '3. Den einen **`MagguuUI`**-Ordner (EUI, Data und Media liegen darin) nach:',
         '   `World of Warcraft/_retail_/Interface/AddOns/`',
         '4. Character-Select → AddOns → MagguuUI plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup**: 4K-Installation, **Magguu-Look**, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
+        '5. Einloggen → `/mui` → **Setup**: goldenes **Install everything**, **Magguu-Look**, Scale `0.58`, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -681,6 +681,8 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         name: '❓  Häufige Fragen',
         value: [
           '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K (auch per Magguu-Look). Feintuning unter `/mui`',
+          '`WoW-Version?` → Ready for Retail **12.1**, lädt weiter auf Midnight **12.0**',
+          '`QoL extra?` → Smart Tab (Chat-Kanäle), Quick Focus (Modifier-Klick), Audio-Switcher am Ellesmere-Lautsprecher',
           '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
           '`Classic-Support?` → Nein, nur Retail',
           '`Was brauche ich?` → EllesmereUI + MagguuUI. BigWigs, LittleWigs und Northern Sky sind optional',
