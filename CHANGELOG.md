@@ -7,7 +7,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## 2026-08-23
 
 ### Fixed
-- **#55** Channel docs vs code: CLAUDE channel keys (`failures` / `approvals` / `requests` / …), Health topic SAB→Prowlarr, setup creates Tickets + `ticket-logs`, cleanup protects tickets & Join-to-Create voice.
+- **#55** Channel docs vs code: CLAUDE channel keys (`failures` / `approvals` / `requests` / ...), Health topic SAB→Prowlarr, setup creates Tickets + `ticket-logs`, cleanup protects tickets & Join-to-Create voice.
 - **#56** Persist `ticketLogs` channel id when auto-creating `ticket-logs`.
 - **#54** CodeQL `init` + `analyze` aligned on v4.37.7.
 
