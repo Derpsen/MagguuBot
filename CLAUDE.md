@@ -2,7 +2,7 @@
 
 Discord bot for the download side of a media homelab. Receives webhooks from **Sonarr / Radarr / Seerr / Tautulli / SABnzbd** and posts styled embeds into dedicated Discord channels. Runs as a single container on Unraid.
 
-Scope is deliberately narrow: **downloads + Plex**, nothing else. No Prowlarr/Bazarr/Uptime/Unraid/generic — if it's not on that list, it's not in this bot.
+Scope is deliberately narrow: **downloads + Plex**. Prowlarr health belongs here because dead indexers silently break grabs. No Bazarr/Uptime/Unraid/generic — if it's not on that list, it's not in this bot.
 
 Install on Unraid via the community-template XML (no docker-compose). Image is published to GHCR by a GitHub Action.
 
@@ -15,8 +15,8 @@ No ESLint/Prettier. Tests use Node's built-in test runner.
 ## Architecture flow
 
 ```
-Sonarr / Radarr / Seerr / Tautulli / SABnzbd
-   → POST /webhook/{sonarr,radarr,seerr,tautulli,sabnzbd}
+Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr
+   → POST /webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr}
      (X-Magguu-Token header, constant-time compared)
    → embed builder
    → discord.js channel.send()
@@ -53,15 +53,15 @@ npm run db:push      # drizzle-kit sync
 
 **Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compared in `server/app.ts`), **except**:
 - `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead
-- `/webhook/maintainerr` — requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; keep internal/LAN-only
+- `/webhook/maintainerr` and `/webhook/prowlarr` — require `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; Prowlarr has no custom-header field so it uses the query token; keep internal/LAN-only
 
 `/webhook/*` is rate-limited at 120 req/min/IP. Client IP resolved from `cf-connecting-ip` → `x-forwarded-for` → `x-real-ip` → `unknown`. Don't downgrade the token check to plain `===`.
 
-**Webhook retries** — failed Discord deliveries from replay-supported inbound webhooks (Sonarr, Radarr, Seerr, Tautulli, SABnzbd, Maintainerr, and GitHub) are persisted with retry metadata and replayed by the minute scheduler. Backoff is 1m, 5m, 15m, 1h, then 6h; `WEBHOOK_RETRY_MAX_ATTEMPTS` limits attempts. Replay-generated event rows reference the original event and must not recursively schedule their own retries. RSS and Blue Tracker delivery failures remain unseen and are retried on their next poll.
+**Webhook retries** — failed Discord deliveries from replay-supported inbound webhooks (Sonarr, Radarr, Seerr, Tautulli, SABnzbd, Maintainerr, GitHub, and Prowlarr) are persisted with retry metadata and replayed by the minute scheduler. Backoff is 1m, 5m, 15m, 1h, then 6h; `WEBHOOK_RETRY_MAX_ATTEMPTS` limits attempts. Replay-generated event rows reference the original event and must not recursively schedule their own retries. RSS and Blue Tracker delivery failures remain unseen and are retried on their next poll.
 
 **Automatic backups** — the hourly scheduler creates at most one `automatic-*.db` SQLite snapshot per local day after `AUTOMATIC_BACKUP_HOUR`. Retention only prunes automatic snapshots and never deletes manual backups.
 
-**Plex activity lifecycle** — movie/episode events correlate by `sessionKey`, falling back to user/player/media identity. Music uses one `music:<user>:<player>` card across tracks and records the current session so late events from the previous track are ignored. Subsequent events edit the card, and watched takes precedence over a later stop. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion.
+**Plex activity lifecycle** — movie/episode events correlate by `sessionKey`, falling back to user/player/media identity. Music uses one `music:<user>:<player>` card across tracks and records the current session so late events from the previous track are ignored. Subsequent events edit the card, and watched takes precedence over a later stop. Pause is held for two minutes before the card flips; a resume in that window is dropped. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion. Every minute the stale-session tick terminates Tautulli sessions paused or stuck for `PLEX_STALE_SESSION_MINUTES` (default 20, `0` disables) and flips orphan play/pause cards to stopped when Tautulli no longer has a matching live session.
 
 **Generic lifecycle cards** — `event_lifecycle_messages` and `postOrEditLifecycleEmbed` keep one Discord card per stable upstream resource. It is used for Seerr issues, GitHub PRs/issues, and typed Sonarr/Radarr health checks. Do not apply it to append-only feeds such as imports, releases, RSS, or audit/mod logs.
 
@@ -100,18 +100,21 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 |---|---|
 | Sonarr/Radarr Grab | `grabs` |
 | Sonarr/Radarr Download import, SAB complete | `imports` |
-| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `fehler` |
-| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `freigaben` |
-| Seerr approved/declined/available/failed/deleted | `anfragen` |
-| Tautulli recently_added | `neuAufPlex` |
-| Tautulli playback events | `aktivität` |
-| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `gelöscht` |
-| Sonarr/Radarr/SAB health + warnings + ApplicationUpdate | `health` |
+| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `failures` (`⚠️・fehler`) |
+| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `approvals` (`⏳・freigaben`) |
+| Seerr approved/declined/available/failed/deleted | `requests` (`📝・anfragen`) |
+| Tautulli recently_added / created | `newOnPlex` |
+| Tautulli playback events | `plexActivity` |
+| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `maintainerr` (`🗑️・gelöscht`) |
+| Sonarr/Radarr/Prowlarr health + warnings + ApplicationUpdate | `health` |
 | Member join welcome embed | `welcome` |
 | Member join/leave + role changes | `auditLog` |
 | Moderation actions (warn/timeout/kick/ban/purge) | `modLog` |
 | GitHub events (default) | `github` |
 | Stable/prerelease announcements for repos in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
+| MagguuUI FAQ channel (tag answers) | `faq` |
+| Community suggestions (`/suggest`) | `suggestions` |
+| Ticket close + transcripts | `ticketLogs` (also auto-created as `ticket-logs`) |
 | WoW Blue-Tracker RSS | `blueTracker` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` |
@@ -128,7 +131,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 
 ## GitHub webhook
 
-`/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), `issues` (`opened`/`closed`/`reopened`), and `ping`. Anything else is logged + ignored.
+`/webhook/github` accepts GitHub's native payload. Signature is HMAC-SHA256 verified with `GITHUB_WEBHOOK_SECRET` (shared with each repo's Settings → Webhooks → Secret). Events handled: `push`, `workflow_run` (only on `completed`, and never `success`/`skipped`), `release` (`published`/`released`), `pull_request` (`opened`/`closed`/`reopened`/`ready_for_review`), `issues` (`opened`/`closed`/`reopened`), and `ping`. Anything else is logged + ignored.
 
 Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only release announcements for those repos go to `addonUpdates`; pushes, workflows, pull requests, and issues stay in the technical `github` channel. Release announcements are deduplicated by repository and tag because GitHub can deliver both `published` and `released` for one release. Bot posts must not create discussion threads automatically.
 
@@ -146,6 +149,27 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - SAB script: `scripts/sabnzbd-webhook.sh`
 - Unraid template: `unraid/magguu-bot.xml`
 
+
+## MagguuUI FAQ / release sync
+
+- MagguuUI stable/prerelease announcements route via `ADDON_REPO_FULL_NAMES`
+  (default `Derpsen/MagguuUI`) to `addonUpdates`.
+- Discord FAQ/tag content that describes MagguuUI must stay aligned with the
+  current MagguuUI version and install story (EllesmereUI companion, one AddOns
+  folder). Do not leave stale ElvUI-installer wording in FAQ tags.
+
+## Grok Bot / Buddy + Git publish
+
+Marco uses Grok Bot “Buddy” as the single front door; helpers report to Buddy.
+
+- Interactive/ad-hoc sessions: never commit, push, or create git tags unless
+  the user explicitly asks for that exact publish step.
+- Grok Bot helpers under Buddy's hub standing order: for clear in-scope
+  bug/tasks, may commit, push, and merge to main without a per-change ask;
+  never force-push; never publish unrelated dirty WIP; report results to Buddy.
+- Tags and releases still need an explicit release ask.
+
+Agent entrypoint: `AGENTS.md` (short) → this file for depth.
 ## What NOT to do
 
 - NEVER commit `.env`, `.env.*` (except `.env.example`), `data/`, or `dist/` — gitignored

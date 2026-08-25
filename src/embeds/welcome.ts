@@ -29,6 +29,7 @@ export interface ChannelRefs {
   weeklyDigest?: string;
   downloadLive?: string;
   movieNight?: string;
+  ticketLogs?: string;
 }
 
 function m(id: string | undefined, fallback: string): string {
@@ -43,7 +44,7 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
       [
         '**Dein privater Downloads + Plex-Hub** — self-hosted, ad-frei, immer an.',
         '',
-        'Hier landet alles, was in meinem Stack passiert: neue Requests, Grabs von Sonarr/Radarr, fertige Downloads aus SABnzbd, Plex-Arrivals und GitHub-Pushes.',
+        'Hier landet alles, was in meinem Stack passiert: neue Requests, Grabs von Sonarr/Radarr, Downloads über SABnzbd, Plex-Arrivals und GitHub-Pushes.',
       ].join('\n'),
     )
     .addFields(
@@ -68,7 +69,7 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '💡 Pro-Tipps',
         value: [
-          '• `/queue` — live Download-Stand',
+          '• `/plex-now-playing` — wer schaut gerade',
           '• `/rank` — dein Server-Level',
           '• `/remindme 2h Film` — DM-Reminder',
         ].join('\n'),
@@ -125,12 +126,13 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '📥 Downloads',
         value: [
-          '`/queue` — Sonarr+Radarr+SAB live queue',
+          '`/queue` — Sonarr+Radarr live Queue',
           '`/arr-status` — Service-Health + Disk-Space + Versionen',
           '`/search movie <query>` — Radarr-Lookup',
           '`/search show <query>` — Sonarr-Lookup',
           '`/calendar` — kommende Releases',
           '`/plex-top` — Top Filme/Serien/User aus Tautulli',
+          '`/plex-now-playing` — aktuelle Streams',
         ].join('\n'),
         inline: false,
       },
@@ -144,6 +146,8 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
           '`/remindme <zeit> <text>` — DM-Reminder',
           '`/poll <frage> <optionen>` — Reaction-Poll',
           '`/countdown create|list|remove` — Countdown-Embeds',
+          '`/movie-night` — Filmabend planen und abstimmen',
+          '`/wrapped` — dein Jahresrückblick',
           '`/userinfo` `/serverinfo` `/avatar` `/botinfo`',
         ].join('\n'),
         inline: false,
@@ -164,12 +168,14 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
           '`/announce` — styled Embed in einen Channel',
           '`/setup-server` — Struktur neu aufbauen/sortieren (idempotent)',
           '`/cleanup-server` — Orphan-Channels löschen (mit Confirm)',
+          '`/doctor` — Config, Channels, Permissions, Dienste prüfen',
+          '`/downloads-live` — Live-Downloadkarte ein/aus',
           '`/tag add|edit|delete` — Custom-Text-Antworten',
           '`/autoresponder` — Pattern-Trigger-Autoreplies',
           '`/schedule-announce` — geplante Posts (mit Wiederholung)',
           '`/sticky set|remove` — Sticky-Messages pro Channel',
           '`/ticket-panel` — Support-Tickets via Button',
-          '`/db-backup` — SQLite-Snapshot',
+          '`/db-backup` `/db-restore` — SQLite-Snapshot',
           '`/roles-panel create|add|remove` — Self-Service Rollen-Buttons',
         ].join('\n'),
         inline: false,
@@ -182,6 +188,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
           `• Fehler → ${m(r.failures, 'failures')}`,
           `• Requests-Approvals → ${m(r.approvals, 'approvals')}`,
           `• Neu auf Plex → ${m(r.newOnPlex, 'new-on-plex')}`,
+          `• Plex-Aktivität → ${m(r.plexActivity, 'aktivität')}`,
           `• Health → ${m(r.health, 'health')}`,
           `• GitHub → ${m(r.github, 'github')}`,
           `• Welcome-Card → ${m(r.welcome, 'welcomen')} (gerendertes PNG bei Join)`,
@@ -388,7 +395,7 @@ export function buildGrabsChannelEmbed(r: ChannelRefs): EmbedBuilder {
     )
     .addFields(
       { name: 'Was siehst du?', value: 'Titel · Jahr · Episode · Quality · Größe · Release-Group · Indexer' },
-      { name: 'Was kommt danach?', value: `SAB lädt → ${m(r.imports, 'imports')} → Plex` },
+      { name: 'Was kommt danach?', value: `SABnzbd lädt → ${m(r.imports, 'imports')} → Plex` },
       { name: 'Dauert zu lang?', value: '`/queue` zeigt live den Fortschritt mit Progress-Bar' },
     )
     .setFooter({ text: 'MagguuBot  ·  release grabbed' });
@@ -414,17 +421,16 @@ export function buildFailuresChannelEmbed(): EmbedBuilder {
     .setTitle('⚠️ Failures & Issues')
     .setDescription('Alles was **admin-Aufmerksamkeit** braucht — Download-Probleme UND User-gemeldete Plex-Issues.')
     .addFields(
-      { name: '`DownloadFailure`', value: 'SAB/qBit hat abgebrochen', inline: true },
+      { name: '`DownloadFailure`', value: 'SABnzbd hat abgebrochen', inline: true },
       { name: '`ImportFailure`', value: 'Download ok, aber Import in die Library gescheitert', inline: true },
       { name: '`ManualInteractionRequired`', value: 'Sonarr/Radarr brauchen manuellen Import-Entscheid', inline: true },
-      { name: '`SAB failed`', value: 'Post-Processing / par2 crashed', inline: true },
       { name: '🐛 Seerr Issues', value: 'User meldet Playback-Problem (Video/Audio/Subs) — inkl. Comments', inline: true },
       {
         name: 'Troubleshoot-Schritte',
         value: [
           '1. `/queue` — was hängt gerade?',
           '2. `/arr-status` — Service-Health auf einen Blick',
-          '3. Logs: `docker logs sabnzbd --tail 100`',
+          '3. Logs: `docker logs sabnzbd --tail 100` / Sonarr Activity',
           '4. Re-queue in Sonarr/Radarr via Activity → failed → Search again',
         ].join('\n'),
       },
@@ -438,7 +444,7 @@ export function buildHealthChannelEmbed(): EmbedBuilder {
     .setTitle('🩺 Service-Health & Updates')
     .setDescription(
       [
-        'Sonarr, Radarr und SABnzbd melden hier Warnungen + Versions-Updates:',
+        'Sonarr, Radarr und Prowlarr melden hier Warnungen + Versions-Updates:',
         '',
         '• Indexer offline / rate-limited',
         '• Disk space low',
@@ -483,8 +489,10 @@ export function buildBotCommandsChannelEmbed(): EmbedBuilder {
         'Damit die anderen Channels spam-frei bleiben, alle Slash-Commands bitte hier:',
         '',
         '• `/queue` — live Download-Status',
+        '• `/plex-now-playing` — aktuelle Plex-Streams',
         '• `/search movie|show <titel>` — *arr-Lookup',
         '• `/rank` / `/leaderboard` — XP',
+        '• `/movie-night` — Filmabend',
         '• `/userinfo` / `/serverinfo` / `/avatar` / `/botinfo`',
         '• `/poll` / `/remindme`',
         '',
@@ -522,8 +530,8 @@ export function buildAuditLogChannelEmbed(): EmbedBuilder {
       { name: '⚪ Left', value: 'Mit Join-Datum', inline: true },
       { name: '🟣 Role-Changes', value: 'Hinzugefügt + entfernt', inline: true },
       {
-        name: 'Nicht geloggt',
-        value: 'Message-Edits/Deletes — `MessageContent`-Intent ist aus (Privacy-Default). Falls benötigt, im Code einschalten und Dev-Portal zustimmen.',
+        name: 'Nachrichten',
+        value: 'Deletes/Edits holst du mit `/snipe` und `/editsnipe`. Der `MessageContent`-Intent ist an (Autoresponder).',
       },
     )
     .setFooter({ text: 'MagguuBot  ·  server audit' });
@@ -536,7 +544,7 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
     .setDescription('Live-Activity aus allen deinen Repos — push und vergessen, Bot postet hier.')
     .addFields(
       { name: '📦 Push', value: 'Commits mit Autor + SHA + Message', inline: true },
-      { name: '✅❌ Workflow-Run', value: 'CI-Status + Link zum Failed-Log', inline: true },
+      { name: '❌ Workflow-Run', value: 'Nur Failures, Cancels, Timeouts — Success/Skipped bleiben draußen', inline: true },
       { name: '🏷️ Release', value: 'Neue Tags + Release-Notes', inline: true },
       { name: '🟢🔴🟣 Pull-Request', value: 'opened / closed / merged', inline: true },
       { name: '🐛 Issues', value: 'opened / closed / reopened (inkl. Body + Labels)', inline: true },
@@ -557,17 +565,19 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
       [
         'Live-Feed was gerade auf Plex läuft: wer was schaut, pausiert, weiter-guckt oder zu Ende gesehen hat.',
         '',
+        'Pausierte oder feststeckende Sessions (oft Fire TV im Hintergrund) beendet der Bot nach **20 Minuten** automatisch. Live-Stand jederzeit mit `/plex-now-playing`.',
+        '',
         '_Live-Stream-Counter siehst du außerdem im Voice-Channel **🎬 Plex: N** in der STATISTIK-Kategorie._',
       ].join('\n'),
     )
     .addFields(
       { name: '▶️ Play / Resume', value: 'Jemand startet oder setzt fort', inline: true },
-      { name: '⏸️ Pause', value: 'Jemand hat pausiert', inline: true },
+      { name: '⏸️ Pause', value: 'Karte wechselt nach 2 Minuten Pause', inline: true },
       { name: '⏹️ Stop / Watched', value: 'Stream beendet oder zu Ende', inline: true },
       {
         name: 'Setup in Tautulli',
         value:
-          'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched aktivieren',
+          'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched + Recently Added (`created`) + Error',
       },
     )
     .setFooter({ text: 'MagguuBot · Plex activity + live stream count' });
@@ -593,7 +603,7 @@ export function buildMaintainerrChannelEmbed(): EmbedBuilder {
       {
         name: 'Setup in Sonarr/Radarr',
         value:
-          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅',
+          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅ · *For Upgrade* aus (Upgrade kommt als Import-Karte)',
       },
     )
     .setFooter({ text: 'MagguuBot · library cleanup feed' });
@@ -628,9 +638,9 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         'Neue Releases vom MagguuUI-Addon landen hier automatisch — mit Versionsnummer, Changelog und Download-Link.',
         '',
         '**Wie update ich?**',
-        '• Am einfachsten über CurseForge, Wago oder WowUp aktualisieren',
-        '• Manuell: ZIP entpacken und **`MagguuUI` + `MagguuUI_Data`** in `Interface/AddOns` ersetzen',
-        '• Danach WoW neu starten oder `/reload` eingeben',
+        '• Am einfachsten über CurseForge oder Wago aktualisieren (WowUp zieht von dort mit)',
+        '• Manuell: ZIP entpacken und den einen **`MagguuUI`**-Ordner in `Interface/AddOns` ersetzen',
+        '• Danach WoW neu starten oder `/reload` — Setup / Skinning / QoL unter `/mui` (Alles installieren, Magguu-Look, Scale 0.58)',
         '',
         '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
       ].join('\n'),
@@ -647,33 +657,36 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'Willkommen in der MagguuUI-Community. Hier findest du alles um das Addon zu installieren, updaten und Feedback zu geben.',
+        'MagguuUI sitzt in **EllesmereUI** (Ready for WoW **12.1**, läuft weiter auf Midnight **12.0**). Kein eigener Installer — öffnen mit `/mui` (MagguuUI → Optionen). Tabs: **Setup** / **Skinning** / **QoL**. Werkzeuge: `/mui tools` oder MagguuUI-Header **10×** klicken.',
         '',
         '**📦  Installation**',
-        `1. Neueste Release-ZIP aus ${addonRef} laden`,
-        '2. Datei entpacken → beide Ordner **`MagguuUI`** und **`MagguuUI_Data`** kopieren nach:',
+        '1. **EllesmereUI** 7.9.5+ installieren und aktivieren (CurseForge / Wago / WowUp)',
+        `2. Neueste MagguuUI-ZIP aus ${addonRef} laden und entpacken`,
+        '3. Den einen **`MagguuUI`**-Ordner (EUI, Data und Media liegen darin) nach:',
         '   `World of Warcraft/_retail_/Interface/AddOns/`',
-        '3. WoW starten → Character-Select → **AddOns** → beide MagguuUI-Einträge aktiviert lassen',
-        '4. Einloggen → **Install All** anklicken. ElvUI ist optional und nur für sein eigenes Profil nötig',
+        '4. Character-Select → AddOns → MagguuUI plus EllesmereUI aktiviert lassen',
+        '5. Einloggen → `/mui` → **Setup**: goldenes **Alles installieren**, **Magguu-Look** (+ fixe Tooltips), Scale `0.58`, dann erforderliche/optionale Imports. WowUp-Starter/Optional dort kopieren und in WowUp einfügen. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
-        '- Bei manuellen Updates immer beide Ordner aus derselben ZIP verwenden',
-        '- Einmal `/reload` nach WoW-Start',
+        '- Manuell denselben MagguuUI-Ordner aus der ZIP ersetzen',
+        '- Danach `/reload` oder `/mui`',
         '',
         '**🐛  Bug melden**',
-        '- GitHub Issue öffnen (Link in der README)',
-        '- Oder im Server kurz posten — mit **WoW-Version**, **UI-Scale** und **Repro-Schritten**',
-        '- Screenshots oder `/combatlog`-Output sehr hilfreich',
+        '- [GitHub Issue öffnen](https://github.com/Derpsen/MagguuUI/issues)',
+        '- Oder im Server posten mit **WoW-Version**, **UI-Scale** und **Repro-Schritten**',
       ].join('\n'),
     )
     .addFields(
       {
         name: '❓  Häufige Fragen',
         value: [
-          '`UI zu groß/klein?` → `/run SetCVar("uiScale", 0.85)` (0.7–1.0)',
-          '`Classic-Support?` → Nein, nur Retail + PTR',
-          '`ElvUI Pflicht?` → Nein. Nur das ElvUI-Profil und die ElvUI-Tags brauchen es',
+          '`UI-Skalierung?` → MagguuUI setzt `0.58` für 4K (auch per Magguu-Look). Feintuning unter `/mui`',
+          '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
+          '`WoW-Version?` → Ready for **12.1**; lädt weiterhin auf Midnight **12.0**. Nur Retail',
+          '`Was brauche ich?` → EllesmereUI 7.9.5+ + MagguuUI. Optional: BigWigs, Northern Sky, WIM, Waypoint UI',
+          '`Setup-Imports?` → Erforderlich: Ellesmere + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI. WowUp-Packs aus Setup',
+          '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alert-Opacity, Proc-Overlays ausblenden, **Smart Tab**, **Quick Focus**, Audio-Gerätewechsel am Ellesmere-Lautsprecher',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
         ].join('\n'),
         inline: false,
@@ -685,11 +698,57 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
       },
       {
         name: '📝  Weitere FAQ',
-        value: '`/tag list` zeigt alle serverweiten FAQ-Einträge. `/tag get name:<tag>` ruft einen ab. Admins erweitern via `/tag add`.',
+        value: '`/tag list` zeigt alle serverweiten FAQ-Einträge. `/tag get name:<tag>` ruft einen ab.',
         inline: false,
       },
     )
     .setFooter({ text: 'MagguuUI  ·  Community-driven FAQ' });
+}
+
+export function buildWeeklyDigestChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.plex)
+    .setTitle('📊 Wochenrückblick')
+    .setDescription(
+      [
+        'Automatischer Sonntags-Digest: neue Plex-Titel, Imports, Requests und Community-Highlights.',
+        '',
+        '_Read-only. Läuft von selbst — kein Command nötig._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  weekly digest' });
+}
+
+export function buildDownloadLiveChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.info)
+    .setTitle('📡 Live-Downloads')
+    .setDescription(
+      [
+        'Eine Karte für Sonarr, Radarr und SABnzbd — aktualisiert sich jede Minute.',
+        '',
+        'Admin: `/downloads-live enable|refresh|disable`',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  live queue card' });
+}
+
+export function buildMovieNightChannelEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(Colors.plex)
+    .setTitle('🎬 Movie-Night')
+    .setDescription(
+      [
+        'Filmabend planen, Filme nominieren und abstimmen.',
+        '',
+        '• `/movie-night create` — neue Runde (Admin)',
+        '• `/movie-night nominate` — Film vorschlagen',
+        '• `/movie-night status` — aktueller Stand',
+        '',
+        '_Voice dafür: 🎬 Movie Night._',
+      ].join('\n'),
+    )
+    .setFooter({ text: 'MagguuBot  ·  movie night' });
 }
 
 export function buildBlueTrackerChannelEmbed(): EmbedBuilder {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  deletedFilesPresent,
   parsePositiveInteger,
   radarrPayloadSchema,
   seerrPayloadSchema,
@@ -54,6 +55,22 @@ test('webhook integer coercion rejects invalid, fractional, and unsafe ids', () 
   assert.equal(parsePositiveInteger('nope'), undefined);
   assert.equal(parsePositiveInteger('1.5'), undefined);
   assert.equal(parsePositiveInteger(Number.MAX_SAFE_INTEGER + 1), undefined);
+});
+
+test('arr webhook schemas accept Sonarr/Radarr deletedFiles as boolean or file array', () => {
+  assert.equal(sonarrPayloadSchema.safeParse({
+    eventType: 'EpisodeFileDelete',
+    series: { title: 'Lost' },
+    deletedFiles: [{ path: '/tv/Lost.mkv', size: 1 }],
+  }).success, true);
+  assert.equal(radarrPayloadSchema.safeParse({
+    eventType: 'MovieDelete',
+    movie: { title: 'Dune' },
+    deletedFiles: true,
+  }).success, true);
+  assert.equal(deletedFilesPresent([{ path: '/tv/Lost.mkv' }]), true);
+  assert.equal(deletedFilesPresent([]), false);
+  assert.equal(deletedFilesPresent(true), true);
 });
 
 test('arr webhook schemas tolerate null remote poster URLs', () => {

@@ -35,7 +35,17 @@ import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 import { webhookRetryDelayMs } from '../src/utils/retry.ts';
 import { applyWebhookRetryMigration } from '../src/db/webhook-retry-migration.ts';
 import { isMaintainerrEventCode } from '../src/utils/maintainerr.ts';
-import { plexActivityCorrelationKey, preservePlexActivityState } from '../src/utils/plex-activity.ts';
+import {
+  decidePlexActivityEvent,
+  decideStaleSession,
+  nextProgressWatch,
+  plexActivityCorrelationKey,
+  plexActivityMatchesLiveSession,
+  preservePlexActivityState,
+  shouldCloseOrphanActivityCard,
+  shouldFlushDeferredPause,
+} from '../src/utils/plex-activity.ts';
+import { shouldPostWorkflowConclusion } from '../src/utils/github-routing.ts';
 
 test('sanitizePayload redacts sensitive nested fields', () => {
   const sanitized = sanitizePayload({
@@ -122,6 +132,7 @@ test('automatic webhook retries are limited to replay-supported inbound sources'
     'sabnzbd',
     'maintainerr',
     'github',
+    'prowlarr',
   ]);
   assert.equal(isReplayableWebhookSource('rss-feed'), false);
   assert.equal(isReplayableWebhookSource('blue-tracker'), false);
@@ -280,6 +291,131 @@ test('Plex activity cards correlate sessions and keep watched as final state', (
   assert.equal(plexActivityCorrelationKey({ title: 'Toy Story' }), null);
   assert.equal(preservePlexActivityState('watched', 'stop'), 'watched');
   assert.equal(preservePlexActivityState('pause', 'resume'), 'resume');
+});
+
+test('Plex pause is deferred for two minutes and cancelled by a quick resume', () => {
+  const now = new Date('2026-08-13T20:00:00.000Z');
+  const paused = decidePlexActivityEvent({ currentState: 'play', incoming: 'pause', now });
+  assert.deepEqual(paused, { action: 'defer-pause', pausedAt: now });
+  assert.equal(shouldFlushDeferredPause(now, new Date(now.getTime() + 60_000)), false);
+  assert.equal(shouldFlushDeferredPause(now, new Date(now.getTime() + 2 * 60_000)), true);
+  assert.deepEqual(
+    decidePlexActivityEvent({ currentState: 'play', incoming: 'resume', pausedAt: now, now }),
+    { action: 'ignore', pausedAt: null },
+  );
+  assert.deepEqual(
+    decidePlexActivityEvent({ currentState: 'pause', incoming: 'resume', now }),
+    { action: 'apply', displayKind: 'play', pausedAt: null },
+  );
+  assert.deepEqual(
+    decidePlexActivityEvent({ currentState: 'play', incoming: 'watched', pausedAt: now, now }),
+    { action: 'apply', displayKind: 'watched', pausedAt: null },
+  );
+});
+
+test('stale Plex sessions terminate after the pause or stuck-progress timeout', () => {
+  const staleAfterMs = 20 * 60_000;
+  const now = Date.parse('2026-08-14T18:00:00.000Z');
+  const fresh = nextProgressWatch(undefined, 12_000, now);
+  const stuck = nextProgressWatch(fresh, 12_000, now + staleAfterMs);
+
+  assert.equal(decideStaleSession({
+    state: 'paused',
+    pausedCounterSeconds: 19 * 60,
+    live: false,
+    progressWatch: fresh,
+    now,
+    staleAfterMs,
+  }), null);
+  assert.equal(decideStaleSession({
+    state: 'paused',
+    pausedCounterSeconds: 20 * 60,
+    live: false,
+    progressWatch: fresh,
+    now,
+    staleAfterMs,
+  }), 'paused');
+  assert.equal(decideStaleSession({
+    state: 'playing',
+    pausedCounterSeconds: 0,
+    live: false,
+    progressWatch: stuck,
+    now: now + staleAfterMs,
+    staleAfterMs,
+  }), 'stuck-progress');
+  assert.equal(decideStaleSession({
+    state: 'playing',
+    pausedCounterSeconds: 0,
+    live: true,
+    progressWatch: stuck,
+    now: now + staleAfterMs,
+    staleAfterMs,
+  }), null);
+  assert.equal(decideStaleSession({
+    state: 'playing',
+    pausedCounterSeconds: 0,
+    live: false,
+    progressWatch: nextProgressWatch(fresh, 45_000, now + staleAfterMs),
+    now: now + staleAfterMs,
+    staleAfterMs,
+  }), null);
+  assert.equal(decideStaleSession({
+    state: 'paused',
+    pausedCounterSeconds: 99 * 60,
+    live: false,
+    progressWatch: fresh,
+    now,
+    staleAfterMs: 0,
+  }), null);
+});
+
+test('orphan Plex activity cards close only after the live session is gone', () => {
+  const now = new Date('2026-08-14T18:10:00.000Z');
+  const updatedAt = new Date('2026-08-14T18:00:00.000Z');
+  const live = { sessionKey: '42', user: 'Magguu', player: 'Fire TV', mediaType: 'movie' };
+
+  assert.equal(plexActivityMatchesLiveSession('session:42', live), true);
+  assert.equal(plexActivityMatchesLiveSession('fallback:magguu:fire tv:toy story', live), true);
+  assert.equal(plexActivityMatchesLiveSession('music:magguu:fire tv', { ...live, mediaType: 'track' }), true);
+  assert.equal(plexActivityMatchesLiveSession('session:99', live), false);
+
+  assert.equal(shouldCloseOrphanActivityCard({
+    state: 'play',
+    correlationKey: 'session:42',
+    updatedAt,
+    sessions: [live],
+    now,
+  }), false);
+  assert.equal(shouldCloseOrphanActivityCard({
+    state: 'play',
+    correlationKey: 'session:42',
+    updatedAt,
+    sessions: [],
+    now,
+  }), true);
+  assert.equal(shouldCloseOrphanActivityCard({
+    state: 'play',
+    correlationKey: 'session:42',
+    updatedAt: new Date('2026-08-14T18:09:00.000Z'),
+    sessions: [],
+    now,
+  }), false);
+  assert.equal(shouldCloseOrphanActivityCard({
+    state: 'watched',
+    correlationKey: 'session:42',
+    updatedAt,
+    sessions: [],
+    now,
+  }), false);
+});
+
+test('GitHub workflow successes and skipped runs stay out of Discord', () => {
+  assert.equal(shouldPostWorkflowConclusion('success'), false);
+  assert.equal(shouldPostWorkflowConclusion('skipped'), false);
+  assert.equal(shouldPostWorkflowConclusion('failure'), true);
+  assert.equal(shouldPostWorkflowConclusion('cancelled'), true);
+  assert.equal(shouldPostWorkflowConclusion('timed_out'), true);
+  assert.equal(shouldPostWorkflowConclusion(null), false);
 });
 
 test('legacy databases receive webhook retry columns before their indexes', () => {
@@ -449,9 +585,14 @@ test('addon release embeds remove duplicate changelog headers and show update li
     'World of Warcraft Retail',
   );
   assert.match(embed.fields?.find((field) => field.name === 'Downloads')?.value ?? '', /CurseForge/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI-Ordner/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /\/mui tools/);
+  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /beide Ordner/);
 });
 
 test('addon release embeds derive Retail versions only from explicit release-note markers', () => {
+  assert.equal(extractWowRetailVersion('Ready for WoW 12.1'), '12.1');
+  assert.equal(extractWowRetailVersion('Ready for WoW 12.1; still loads on Midnight 12.0'), '12.1');
   assert.equal(extractWowRetailVersion('- **Ready for WoW 12.1.0:** current Retail client.'), '12.1.0');
   assert.equal(extractWowRetailVersion('Compatible with World of Warcraft Retail 11.2.7.'), '11.2.7');
   assert.equal(extractWowRetailVersion('Supports Retail version: v12.0.9.'), '12.0.9');

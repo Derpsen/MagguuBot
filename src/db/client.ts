@@ -78,6 +78,7 @@ function runMigrations(): void {
   addColumnIfMissing('seerr_requests', 'updated_at', 'INTEGER');
   addColumnIfMissing('reminders', 'attempts', 'INTEGER NOT NULL DEFAULT 0');
   addColumnIfMissing('plex_activity_messages', 'session_key', 'TEXT');
+  addColumnIfMissing('plex_activity_messages', 'paused_at', 'INTEGER');
   applyWebhookRetryMigration(sqlite);
   sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
 }
@@ -439,6 +440,7 @@ function ensureSchema(): void {
       channel_id TEXT NOT NULL,
       message_id TEXT NOT NULL,
       state TEXT NOT NULL,
+      paused_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );

@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildMovieNightComponents, buildMovieNightEmbed } from '../src/embeds/movie-night.ts';
+import {
+  buildAddonUpdatesChannelEmbed,
+  buildBotHelpEmbed,
+  buildFaqChannelEmbed,
+  buildPlexActivityChannelEmbed,
+} from '../src/embeds/welcome.ts';
 import { buildQueueEmbed } from '../src/embeds/queue.ts';
 import { buildWeeklyDigestEmbed } from '../src/embeds/weekly-digest.ts';
 import { deriveAchievements } from '../src/utils/achievements.ts';
 import { readResponseBytesLimited } from '../src/utils/http-body.ts';
+import { planWelcomeEmbedSync } from '../src/utils/setup-plan.ts';
 import { localScheduleParts, nextReminderRetryAt, parseFutureTime, weeklyPeriodKey } from '../src/utils/schedule.ts';
 
 test('weekly schedule respects the configured IANA timezone', () => {
@@ -127,4 +134,83 @@ test('live queue clamps invalid progress and field sizes', () => {
   }).toJSON();
   assert.equal(embed.fields?.every((field) => field.value.length <= 1_024), true);
   assert.match(embed.fields?.[0]?.value ?? '', /██████████████/);
+});
+
+test('pinned FAQ and Plex activity posts match current addon and session cleanup', () => {
+  const faq = buildFaqChannelEmbed({}).toJSON();
+  const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
+  assert.match(faqText, /EllesmereUI/);
+  assert.match(faqText, /MagguuUI/);
+  assert.match(faqText, /Magguu-Look/);
+  assert.match(faqText, /EUI, Data und Media/);
+  assert.match(faqText, /erforderliche\/optionale Imports/);
+  assert.match(faqText, /WowUp-Starter\/Optional/);
+  assert.match(faqText, /Ready for WoW \*\*12\.1\*\*/);
+  assert.match(faqText, /Midnight \*\*12\.0\*\*/);
+  assert.match(faqText, /\/mui tools/);
+  assert.match(faqText, /Alles installieren/);
+  assert.match(faqText, /Smart Tab/);
+  assert.match(faqText, /Quick Focus/);
+  assert.match(faqText, /Ellesmere-Lautsprecher/);
+  assert.equal(/MagguuUI_Data/.test(faqText), false);
+  assert.equal(/ElvUI Pflicht/.test(faqText), false);
+  assert.equal(/Naowh/i.test(faqText), false);
+  assert.equal(/LittleWigs/.test(faqText), false);
+  assert.equal(faq.fields?.every((field) => field.value.length <= 1_024), true);
+
+  const updates = buildAddonUpdatesChannelEmbed().toJSON();
+  assert.match(`${updates.description ?? ''}`, /einen \*\*`MagguuUI`\*\*-Ordner/);
+  assert.match(`${updates.description ?? ''}`, /Magguu-Look/);
+  assert.match(`${updates.description ?? ''}`, /Skinning \/ QoL/);
+  assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
+
+  const plex = buildPlexActivityChannelEmbed().toJSON();
+  assert.match(`${plex.description ?? ''}`, /20 Minuten/);
+  assert.match(`${plex.description ?? ''}`, /plex-now-playing/);
+
+  const help = buildBotHelpEmbed({}).toJSON();
+  assert.match(help.fields?.find((field) => field.name.includes('Downloads'))?.value ?? '', /plex-now-playing/);
+  assert.equal(help.fields?.every((field) => field.value.length <= 1_024), true);
+});
+
+test('setup dry-run plans welcome embed rewrites in full mode and skips them in fast mode', () => {
+  const channels = [
+    { planName: '❓・faq', status: 'exists' as const },
+    { planName: '🎬・aktivität', status: 'exists' as const },
+    { planName: '📊・wochenrückblick', status: 'exists' as const },
+  ];
+  const tracked = new Set(channels.map((channel) => channel.planName));
+  const names = new Set(channels.map((channel) => channel.planName));
+
+  const full = planWelcomeEmbedSync({
+    fullSync: true,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: tracked,
+  });
+  assert.deepEqual(full.edit, ['❓・faq', '🎬・aktivität', '📊・wochenrückblick']);
+  assert.deepEqual(full.post, []);
+
+  const fast = planWelcomeEmbedSync({
+    fullSync: false,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: tracked,
+  });
+  assert.deepEqual(fast.skip, ['❓・faq', '🎬・aktivität', '📊・wochenrückblick']);
+  assert.deepEqual(fast.edit, []);
+
+  const missingPin = planWelcomeEmbedSync({
+    fullSync: false,
+    rolesChanged: false,
+    refsChanged: false,
+    welcomePlanNames: names,
+    channels,
+    trackedPlanNames: new Set(['❓・faq']),
+  });
+  assert.deepEqual(missingPin.post, ['🎬・aktivität', '📊・wochenrückblick']);
 });

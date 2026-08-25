@@ -49,6 +49,8 @@ const schema = z.object({
   DISCORD_CHANNEL_WEEKLY_DIGEST: z.string().optional(),
   DISCORD_CHANNEL_DOWNLOAD_LIVE: z.string().optional(),
   DISCORD_CHANNEL_MOVIE_NIGHT: z.string().optional(),
+  DISCORD_CHANNEL_SUGGESTIONS: z.string().optional(),
+  DISCORD_CHANNEL_TICKET_LOGS: z.string().optional(),
 
   WOW_BLUE_TRACKER_URL: optionalHttpUrl,
   ADDON_REPO_FULL_NAMES: z.string().default(DEFAULT_ADDON_REPOSITORIES),
@@ -69,6 +71,7 @@ const schema = z.object({
   WEBHOOK_RETRY_ENABLED: envBoolean(true),
   WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
   PLEX_ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).max(90).default(7),
+  PLEX_STALE_SESSION_MINUTES: z.coerce.number().int().min(0).max(180).default(20),
 
   OPENAI_API_KEY: z.string().optional(),
 

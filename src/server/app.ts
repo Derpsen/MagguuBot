@@ -13,6 +13,7 @@ import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canon
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
 import { maintainerrWebhook } from './webhooks/maintainerr.js';
+import { prowlarrWebhook } from './webhooks/prowlarr.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
@@ -88,17 +89,17 @@ export function buildApp(): Hono {
       return;
     }
 
-    if (c.req.path.startsWith('/webhook/maintainerr')) {
+    if (c.req.path.startsWith('/webhook/maintainerr') || c.req.path.startsWith('/webhook/prowlarr')) {
       const queryToken = c.req.query('token');
       const authorization = c.req.header('authorization');
       const headerToken = authorization?.replace(/^Bearer\s+/i, '').trim();
       const token = queryToken || headerToken;
       if (!token) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook missing auth token');
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook missing auth token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
       if (!constantTimeEquals(token, config.WEBHOOK_SECRET)) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'maintainerr webhook bad token');
+        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook bad token');
         return c.json({ ok: false, error: 'unauthorized' }, 401);
       }
       await next();
@@ -120,6 +121,7 @@ export function buildApp(): Hono {
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
   app.route('/webhook/maintainerr', maintainerrWebhook);
+  app.route('/webhook/prowlarr', prowlarrWebhook);
 
   app.use('/auth/*', async (c, next) => {
     c.header('Cache-Control', 'no-store');

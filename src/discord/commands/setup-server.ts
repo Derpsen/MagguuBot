@@ -41,6 +41,9 @@ import {
   buildStarboardChannelEmbed,
   buildSuggestionsChannelEmbed,
   buildWelcomeHeroEmbed,
+  buildWeeklyDigestChannelEmbed,
+  buildDownloadLiveChannelEmbed,
+  buildMovieNightChannelEmbed,
   type ChannelRefs,
 } from '../../embeds/welcome.js';
 import { and, eq } from 'drizzle-orm';
@@ -50,6 +53,12 @@ import { welcomeMessages } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel, saveChannel, type ChannelKey } from '../channel-store.js';
 import { getClient } from '../client.js';
+import {
+  REF_AWARE_WELCOME_NAMES,
+  ROLE_PICKER_PLAN_NAME,
+  planWelcomeEmbedSync,
+  type SetupWelcomeChannel,
+} from '../../utils/setup-plan.js';
 import type { SlashCommand } from './index.js';
 
 type ChannelKind = 'text' | 'voice';
@@ -235,7 +244,7 @@ const STRUCTURE: CategoryPlan[] = [
   },
   {
     name: '🔧 STATUS',
-    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/SAB Health + Updates.', readOnly: true, adminOnly: true }],
+    channels: [{ name: '🩺・health', oldNames: ['health'], topic: 'Sonarr/Radarr/Prowlarr Health + Updates.', readOnly: true, adminOnly: true }],
   },
   {
     name: '💬 CHAT',
@@ -284,6 +293,17 @@ const STRUCTURE: CategoryPlan[] = [
         topic: 'GitHub-Webhook-Feed — Regular+.',
         readOnly: true,
         allowedRoles: [...TRUSTED_ROLES],
+      },
+    ],
+  },
+  {
+    name: '🎫 TICKETS',
+    channels: [
+      {
+        name: 'ticket-logs',
+        topic: 'Geschlossene Tickets inkl. Transkripte (Admin/Mod).',
+        readOnly: true,
+        adminOnly: true,
       },
     ],
   },
@@ -345,6 +365,7 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '📊・wochenrückblick': 'weeklyDigest',
   '📡・live-downloads': 'downloadLive',
   '🎬・movie-night': 'movieNight',
+  'ticket-logs': 'ticketLogs',
 };
 
 const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
@@ -369,6 +390,7 @@ const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
   'weeklyDigest',
   'downloadLive',
   'movieNight',
+  'ticketLogs',
 ]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
@@ -397,15 +419,10 @@ const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '🎨・addon-updates': () => buildAddonUpdatesChannelEmbed(),
   '❓・faq': buildFaqChannelEmbed,
   '💡・vorschläge': () => buildSuggestionsChannelEmbed(),
+  '📊・wochenrückblick': () => buildWeeklyDigestChannelEmbed(),
+  '📡・live-downloads': () => buildDownloadLiveChannelEmbed(),
+  '🎬・movie-night': () => buildMovieNightChannelEmbed(),
 };
-
-const REF_AWARE_WELCOME_NAMES = new Set([
-  '👋・willkommen',
-  '🤖・bot-hilfe',
-  '📝・anfragen',
-  '📥・grabs',
-  '❓・faq',
-]);
 
 export const setupServerCommand: SlashCommand = {
   category: 'admin',
@@ -606,7 +623,7 @@ async function applySetupServer(interaction: SetupInteraction, fullSync = false)
         || (refsChanged && REF_AWARE_WELCOME_NAMES.has(plan.name))
         || changed
         || !trackedWelcome
-        || (rolesChanged && plan.name === '🎭・rollen');
+        || (rolesChanged && plan.name === ROLE_PICKER_PLAN_NAME);
       if (!needsSync) continue;
       try {
         const embed = builder(refs);
@@ -675,15 +692,17 @@ function buildSetupDryRun(guild: Guild, fullSync: boolean): string {
   const create: string[] = [];
   const rename: string[] = [];
   const existing: string[] = [];
+  const textOutcomes: SetupWelcomeChannel[] = [];
+  let refsChanged = false;
   const remove = RETIRED_ROLE_NAMES
     .filter((name) => guild.roles.cache.some((role) => role.name === name))
     .map((name) => `Rolle ${name}`);
-  const retiredWelcomeRows = db
+  const trackedRows = db
     .select({ planName: welcomeMessages.planName })
     .from(welcomeMessages)
     .where(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID))
     .all();
-  for (const row of retiredWelcomeRows) {
+  for (const row of trackedRows) {
     if (RETIRED_WELCOME_PLAN_NAMES.includes(row.planName)) remove.push(`Welcome-Embed ${row.planName}`);
   }
   for (const role of ROLES) {
@@ -727,23 +746,52 @@ function buildSetupDryRun(guild: Guild, fullSync: boolean): string {
           candidate.parentId === parent.id && candidate.type === kind && candidate.name === name,
         ))
         : undefined;
+      const status = current ? 'exists' : old ? 'rename' : 'create';
       if (current) existing.push(`#${channel.name}`);
       else if (old) rename.push(`#${old} → ${channel.name}`);
       else create.push(`#${channel.name}`);
+      if (kind === ChannelType.GuildText) {
+        textOutcomes.push({ planName: channel.name, status });
+        const key = NAME_TO_REF_KEY[channel.name];
+        if (key && PERSISTENT_KEYS.has(key)) {
+          if (status !== 'exists') refsChanged = true;
+          else if (current && getChannel(key as ChannelKey) !== current.id) refsChanged = true;
+        }
+      }
     }
   }
+  const rolesChanged = [...create, ...rename, ...remove].some((item) => item.startsWith('Rolle '));
+  const planned = planWelcomeEmbedSync({
+    fullSync,
+    rolesChanged,
+    refsChanged,
+    welcomePlanNames: new Set(Object.keys(WELCOME_BUILDERS)),
+    channels: textOutcomes,
+    trackedPlanNames: new Set(trackedRows.map((row) => row.planName)),
+  });
+  const extra: string[] = [];
+  if (fullSync) {
+    extra.push('Kanalreihenfolge neu sortieren');
+    extra.push('alle Berechtigungen neu setzen');
+  }
   const section = (label: string, items: string[], fallback: string): string =>
-    `**${label} (${items.length})**\n${items.length ? items.slice(0, 18).map((item) => `• ${item}`).join('\n') : fallback}${items.length > 18 ? `\n… und ${items.length - 18} weitere` : ''}`;
-  return [
-    '🧪 **Setup Dry-Run – keine Änderungen vorgenommen**',
+    `**${label} (${items.length})**\n${items.length ? items.slice(0, 12).map((item) => `• ${item}`).join('\n') : fallback}${items.length > 12 ? `\n… und ${items.length - 12} weitere` : ''}`;
+  const lines = [
+    '🧪 **Setup Dry-Run – noch nichts angewendet**',
     section('Würde erstellen', create, 'Nichts'),
     section('Würde umbenennen', rename, 'Nichts'),
     section('Würde entfernen', remove, 'Nichts'),
-    `**Bereits vorhanden:** ${existing.length}`,
+    `**Würde Welcome-Embeds neu posten (${planned.post.length})**\n${planned.post.length ? planned.post.map((name) => `• #${name}`).join('\n') : 'Nichts'}`,
+    `**Würde Welcome-Embeds aktualisieren (${planned.edit.length})**\n${planned.edit.length ? planned.edit.map((name) => `• #${name}`).join('\n') : 'Nichts'}`,
+  ];
+  if (extra.length) lines.push(section('Würde zusätzlich', extra, 'Nichts'));
+  lines.push(`**Bereits vorhanden:** ${existing.length}`);
+  lines.push(
     fullSync
-      ? '_Vollmodus: Zusätzlich werden Reihenfolge, alle Berechtigungen und Welcome-Embeds neu abgeglichen._'
-      : '_Schnellmodus: Bestehende korrekte Kanäle bleiben unangetastet; nur notwendige Änderungen werden ausgeführt._',
-  ].join('\n\n').slice(0, 1_950);
+      ? '_Vollmodus. „Änderungen anwenden“ schreibt die Welcome-Pins jetzt um._'
+      : '_Schnellmodus: bestehende Pins bleiben. Für FAQ/Hilfe-Refresh `full:true` setzen._',
+  );
+  return lines.join('\n\n').slice(0, 1_950);
 }
 
 function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): boolean {

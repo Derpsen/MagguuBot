@@ -6,6 +6,7 @@ export const REPLAYABLE_WEBHOOK_SOURCES = [
   'sabnzbd',
   'maintainerr',
   'github',
+  'prowlarr',
 ] as const;
 
 export type ReplayableWebhookSource = (typeof REPLAYABLE_WEBHOOK_SOURCES)[number];

@@ -11,7 +11,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
-import { healthLevelForEvent, sonarrPayloadSchema } from './schemas.js';
+import { deletedFilesPresent, healthLevelForEvent, isUpgradeFileDelete, sonarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -29,10 +29,11 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
   logger.debug({ eventType: body.eventType }, 'sonarr webhook received');
 
   const poster = body.series?.images?.find((i) => i.coverType === 'poster')?.remoteUrl ?? null;
-  const episode = body.episodes?.[0];
-  const commonEpisode = episode
-    ? { season: episode.seasonNumber, number: episode.episodeNumber, title: episode.title }
-    : undefined;
+  const episodes = (body.episodes ?? []).map((episode) => ({
+    season: episode.seasonNumber,
+    number: episode.episodeNumber,
+    title: episode.title,
+  }));
   const seriesTitle = body.series?.title ?? 'Unknown series';
 
   switch (body.eventType) {
@@ -50,7 +51,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           title: seriesTitle,
           year: body.series?.year,
           posterUrl: poster,
-          episode: commonEpisode,
+          episodes,
           quality,
           size: body.release?.size,
           releaseGroup: body.release?.releaseGroup,
@@ -64,7 +65,8 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       });
       break;
     }
-    case 'Download': {
+    case 'Download':
+    case 'ImportComplete': {
       await postEmbed({
         channelId: getChannel('imports'),
         embed: buildImportEmbed({
@@ -72,7 +74,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           title: seriesTitle,
           year: body.series?.year,
           posterUrl: poster,
-          episode: commonEpisode,
+          episodes,
           quality: body.episodeFile?.quality ?? body.release?.quality,
           size: body.episodeFile?.size,
           releaseGroup: body.episodeFile?.releaseGroup,
@@ -113,7 +115,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           title: seriesTitle,
           year: body.series?.year,
           posterUrl: poster,
-          deletedFiles: body.deletedFiles,
+          deletedFiles: deletedFilesPresent(body.deletedFiles),
         }),
         source: 'sonarr',
         eventType: body.eventType,
@@ -122,6 +124,10 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       break;
     }
     case 'EpisodeFileDelete': {
+      if (isUpgradeFileDelete(body)) {
+        logger.debug({ eventType: body.eventType, deleteReason: body.deleteReason }, 'sonarr upgrade file delete skipped');
+        break;
+      }
       const file = body.episodeFile ?? body.episodeFiles?.[0];
       await postEmbed({
         channelId: getChannel('maintainerr'),
@@ -131,10 +137,10 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
           title: seriesTitle,
           year: body.series?.year,
           posterUrl: poster,
-          episode: commonEpisode,
+          episodes,
           quality: file?.quality,
           size: file?.size,
-          reason: body.message,
+          reason: body.message ?? body.deleteReason,
         }),
         source: 'sonarr',
         eventType: body.eventType,

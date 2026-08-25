@@ -29,8 +29,11 @@ interface TautulliEnvelope<T> {
 
 const TAUTULLI_TIMEOUT_MS = 10_000;
 
-async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}): Promise<T | null> {
-  if (!config.TAUTULLI_URL || !config.TAUTULLI_API_KEY) return null;
+async function tautulliRequest<T>(
+  cmd: string,
+  params: Record<string, string> = {},
+): Promise<{ ok: true; data: T } | { ok: false }> {
+  if (!config.TAUTULLI_URL || !config.TAUTULLI_API_KEY) return { ok: false };
   const q = new URLSearchParams({ apikey: config.TAUTULLI_API_KEY, cmd, ...params });
   const url = `${buildServiceUrl(config.TAUTULLI_URL, '/api/v2')}?${q.toString()}`;
   const ctl = new AbortController();
@@ -39,20 +42,25 @@ async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}
     const res = await fetch(url, { signal: ctl.signal });
     if (!res.ok) {
       logger.warn({ cmd, status: res.status }, 'tautulli request failed');
-      return null;
+      return { ok: false };
     }
     const envelope = (await res.json()) as TautulliEnvelope<T>;
     if (envelope.response.result !== 'success') {
       logger.warn({ cmd, message: envelope.response.message }, 'tautulli returned error');
-      return null;
+      return { ok: false };
     }
-    return envelope.response.data;
+    return { ok: true, data: envelope.response.data };
   } catch (err) {
     logger.warn({ err, cmd }, 'tautulli fetch error');
-    return null;
+    return { ok: false };
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function tautulliFetch<T>(cmd: string, params: Record<string, string> = {}): Promise<T | null> {
+  const result = await tautulliRequest<T>(cmd, params);
+  return result.ok ? result.data : null;
 }
 
 export async function getHomeStats(
@@ -73,6 +81,10 @@ interface TautulliActivityEnvelope {
 }
 
 export interface TautulliSessionRaw {
+  session_key?: string | number;
+  session_id?: string | number;
+  paused_counter?: string | number;
+  live?: string | number | boolean;
   user?: string;
   friendly_name?: string;
   player?: string;
@@ -98,6 +110,8 @@ export interface TautulliSessionRaw {
 }
 
 export interface TautulliSession {
+  sessionKey: string | null;
+  sessionId: string | null;
   user: string;
   player: string;
   state: string;
@@ -106,10 +120,26 @@ export interface TautulliSession {
   durationMs: number;
   progressMs: number;
   progressPercent: number;
+  pausedCounterSeconds: number;
+  live: boolean;
   thumbPath: string | null;
   decision: string | null;
   resolution: string | null;
   bandwidthKbps: number;
+}
+
+export async function terminateSession(input: {
+  sessionKey?: string | null;
+  sessionId?: string | null;
+  message?: string;
+}): Promise<boolean> {
+  const params: Record<string, string> = {};
+  if (input.sessionKey) params.session_key = input.sessionKey;
+  else if (input.sessionId) params.session_id = input.sessionId;
+  else return false;
+  if (input.message) params.message = input.message;
+  const result = await tautulliRequest('terminate_session', params);
+  return result.ok;
 }
 
 export async function getActivePlexStreamCount(): Promise<number | null> {
@@ -148,6 +178,8 @@ export async function getActiveSessions(): Promise<TautulliSession[] | null> {
     const progressMs = intish(s.view_offset);
     const pct = intish(s.progress_percent);
     return {
+      sessionKey: stringish(s.session_key),
+      sessionId: stringish(s.session_id),
       user: (s.friendly_name && s.friendly_name.trim()) || s.user || 'unknown',
       player: s.player || s.product || s.platform || 'unknown',
       state: s.state || 'unknown',
@@ -156,12 +188,24 @@ export async function getActiveSessions(): Promise<TautulliSession[] | null> {
       durationMs,
       progressMs,
       progressPercent: durationMs > 0 ? Math.min(100, Math.round((progressMs / durationMs) * 100)) : pct,
+      pausedCounterSeconds: intish(s.paused_counter),
+      live: isLiveFlag(s.live),
       thumbPath: s.thumb || s.art || null,
       decision: s.transcode_decision || null,
       resolution: s.stream_video_resolution || null,
       bandwidthKbps: intish(s.bandwidth),
     };
   });
+}
+
+function stringish(value: string | number | undefined | null): string | null {
+  if (value === undefined || value === null) return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+function isLiveFlag(value: string | number | boolean | undefined | null): boolean {
+  return value === true || value === 1 || value === '1';
 }
 
 export function pickStatSection(

@@ -9,6 +9,7 @@ export const Colors = {
   seerr: 0x7c3aed,
   plex: 0xe5a00d,
   sabnzbd: 0xffd100,
+  prowlarr: 0xe66000,
   tautulli: 0xfa8500,
   github: 0x24292f,
   maintainerr: 0xa855f7,

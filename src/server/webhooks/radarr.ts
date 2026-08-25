@@ -11,7 +11,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
-import { healthLevelForEvent, radarrPayloadSchema } from './schemas.js';
+import { deletedFilesPresent, healthLevelForEvent, isUpgradeFileDelete, radarrPayloadSchema } from './schemas.js';
 
 function is4kQuality(q: string | undefined): boolean {
   if (!q) return false;
@@ -60,7 +60,8 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       });
       break;
     }
-    case 'Download': {
+    case 'Download':
+    case 'ImportComplete': {
       await postEmbed({
         channelId: getChannel('imports'),
         embed: buildImportEmbed({
@@ -108,7 +109,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
           title,
           year,
           posterUrl: poster,
-          deletedFiles: body.deletedFiles,
+          deletedFiles: deletedFilesPresent(body.deletedFiles),
         }),
         source: 'radarr',
         eventType: body.eventType,
@@ -117,6 +118,10 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       break;
     }
     case 'MovieFileDelete': {
+      if (isUpgradeFileDelete(body)) {
+        logger.debug({ eventType: body.eventType, deleteReason: body.deleteReason }, 'radarr upgrade file delete skipped');
+        break;
+      }
       await postEmbed({
         channelId: getChannel('maintainerr'),
         embed: buildDeleteEmbed({
@@ -127,7 +132,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
           posterUrl: poster,
           quality: body.movieFile?.quality,
           size: body.movieFile?.size,
-          reason: body.message,
+          reason: body.message ?? body.deleteReason,
         }),
         source: 'radarr',
         eventType: body.eventType,

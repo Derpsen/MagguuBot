@@ -18,7 +18,7 @@ import { db } from '../../db/client.js';
 import { tickets } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
-import { getChannel } from '../channel-store.js';
+import { getChannel, saveChannel } from '../channel-store.js';
 import { createPrivateTicketChannel, TICKET_CATEGORY_NAME } from '../ticket-channel.js';
 
 const TICKET_LOG_CHANNEL_NAME = 'ticket-logs';
@@ -487,7 +487,10 @@ async function ensureTicketLogChannel(guild: Guild): Promise<TextChannel | null>
   const found = guild.channels.cache.find(
     (c) => c.type === ChannelType.GuildText && c.name === TICKET_LOG_CHANNEL_NAME,
   ) as TextChannel | undefined;
-  if (found) return found;
+  if (found) {
+    saveChannel('ticketLogs', found.id);
+    return found;
+  }
   try {
     const cat = guild.channels.cache.find(
       (c) => c.name === TICKET_CATEGORY_NAME && c.type === ChannelType.GuildCategory,
@@ -506,6 +509,7 @@ async function ensureTicketLogChannel(guild: Guild): Promise<TextChannel | null>
           })),
       ],
     });
+    saveChannel('ticketLogs', created.id);
     return created;
   } catch (err) {
     logger.warn({ err }, 'ticket-logs channel create failed');
