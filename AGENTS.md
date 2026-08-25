@@ -29,3 +29,9 @@ architecture, and gotchas live in `CLAUDE.md`. Human install docs live in
 
 Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
 Buddy. Prefer `CLAUDE.md` for implementation rules.
+
+## CI / merge (Grok Bot helpers)
+
+- CodeQL: `github/codeql-action/init` and `analyze` in `.github/workflows/codeql.yml` must share one commit SHA. After a Dependabot bump of only one pin, merge the matching `init` or `analyze` PR before calling main green.
+- MagguuBot merges: local only in this checkout (`gh pr merge --squash --delete-branch`). The GitHub connector Auto-review blocks MagguuBot merges. Website may use the GitHub connector or the same local `gh` path.
+- Never launch Cursor cloud agents for Dependabot, merges, or MagguuBot/Website polyfill work. Never ask Marco; report only to Buddy.

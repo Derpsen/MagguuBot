@@ -168,6 +168,8 @@ Marco uses Grok Bot “Buddy” as the single front door; helpers report to Budd
   bug/tasks, may commit, push, and merge to main without a per-change ask;
   never force-push; never publish unrelated dirty WIP; report results to Buddy.
 - Tags and releases still need an explicit release ask.
+- CodeQL `init` and `analyze` must share one commit SHA (same as Website). MagguuBot PRs merge locally via `gh pr merge`; the GitHub connector is blocked for MagguuBot merges.
+- Never raise CloudAgent/Auto-review cards to Marco.
 
 Agent entrypoint: `AGENTS.md` (short) → this file for depth.
 ## What NOT to do
