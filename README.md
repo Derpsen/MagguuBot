@@ -4,11 +4,19 @@ Discord bot for the download side of a media homelab. Receives webhooks from **S
 
 Designed to replace Notifiarr with something you own end-to-end — no third-party service in the loop.
 
+## Agent rules
+
+For automated helpers (Grok Bot / Buddy): start with `AGENTS.md`, then `CLAUDE.md`.
+Buddy is the single front door; clear in-scope fixes may push/merge to `main` under
+the hub standing order (no force-push; tags need an explicit release ask).
+
 ## Features
 
-- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr}` with shared-secret auth
-- **Styled embeds** — one consistent look across services, posters, progress bars
-- **Slash commands**
+See also [CHANGELOG.md](./CHANGELOG.md).
+
+- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,maintainerr,github}` with shared-secret / HMAC auth
+- **Styled embeds** — one consistent look across services, posters, progress bars, lifecycle cards
+- **Slash commands** — 51 guild commands via `/help` (downloads, moderation, utility, admin)
   - `/queue` — live Sonarr + Radarr download queue with progress bars
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
@@ -17,8 +25,10 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
   - `/movie-night` — nominations, voting, countdown, and automatic reminders
 - **Seerr approve / decline buttons** — straight from Discord (Administrator only)
 - **MagguuUI release feed** — user-friendly addon releases go to `#addon-updates`; technical pushes and workflows stay in `#github`
+- **Built-in admin dashboard** — Vue SPA on the same container (OAuth allowlist); not a separate Magguu-Dashboard app
 - **Activity log** — every posted embed is written to SQLite for audit/debug
 - **One container** — Node 24 + TS + Hono + discord.js + SQLite (WAL)
+- **Discord only** — no Telegram/other messengers
 
 ## Stack
 
@@ -93,7 +103,7 @@ Routing is automatic after `/setup-server`: pending approvals go to `⏳・freig
 
 Failed Discord deliveries from replay-supported inbound webhooks are retried automatically after 1, 5, and 15 minutes, then 1 and 6 hours; their state remains visible in the dashboard and manual replay is still available. RSS and Blue Tracker delivery failures remain unseen and are retried on their next poll. The webhook retry count is controlled by `WEBHOOK_RETRY_MAX_ATTEMPTS`. Database backups can be downloaded with `/db-backup`; additionally, one automatic snapshot is written daily to the database directory's `backups/` folder. `AUTOMATIC_BACKUP_HOUR` and `AUTOMATIC_BACKUP_RETENTION` configure its local start hour and retention (seven by default). `/db-restore` validates size and SQLite integrity, then applies the staged restore only on the next container restart while retaining the previous database as `.pre-restore`.
 
-Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause is held for two minutes before the card flips to paused; a resume in that window never touches Discord. Watched, stop, and error still apply immediately. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. Tautulli's recently-added action is `created` — the bot maps that to `#neu-auf-plex`. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever). GitHub `workflow_run` successes and skipped runs are ignored; only failures, cancellations, timeouts, and action-required land in `#github`.
+Plex playback notifications are lifecycle cards: movies and episodes use one message per playback session, while music reuses one now-playing card per user and player across tracks. Pause is held for two minutes before the card flips to paused; a resume in that window never touches Discord. Watched, stop, and error still apply immediately. Add `"sessionKey":"{session_key}"` and `"ratingKey":"{rating_key}"` to every Tautulli playback JSON template for exact correlation; user, player, and title are used as a fallback. Tautulli's recently-added action is `created` — the bot maps that to `#neu-auf-plex`. A later stop never overwrites an already watched state, and stale events from the previous song cannot overwrite the next song. `PLEX_ACTIVITY_RETENTION_DAYS` deletes old activity cards automatically after seven days by default (`0` keeps them forever). `PLEX_STALE_SESSION_MINUTES` (default 20, `0` disables) terminates paused or stuck Tautulli sessions and closes Discord cards whose stream is gone. Enable Tautulli playback triggers **Play, Pause, Resume, Stop, Watched**. GitHub `workflow_run` successes and skipped runs are ignored; only failures, cancellations, timeouts, and action-required land in `#github`.
 
 Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.
 
@@ -116,7 +126,7 @@ Events: `complete` → `imports` channel · `failed` → `failures` channel.
 
 Set `GITHUB_WEBHOOK_SECRET` in the container, then add a GitHub webhook that points to `<your dashboard URL>/webhook/github` with the same secret and JSON content type. Subscribe to releases plus whichever technical events you want in `#github`.
 
-`Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically.
+`Derpsen/MagguuUI` is recognized automatically: stable and prerelease announcements go to `#addon-updates`, while pushes, workflows, pull requests, and issues stay in `#github`. Stable releases include the current WoW version, readable notes, and links to GitHub, CurseForge, Wago, and WoWInterface. Duplicate release events are combined into one announcement, and bot posts do not open discussion threads automatically. Keep Discord FAQ/tag answers that describe MagguuUI aligned with the current MagguuUI version (EllesmereUI companion). Do not leave stale ElvUI-installer wording in those tags.
 
 ### 7. Optional admin dashboard
 
@@ -140,65 +150,43 @@ For a runnable dev loop use Docker — `better-sqlite3` needs Python + MSVC on W
 ## Architecture
 
 ```
-Sonarr / Radarr / Seerr / Tautulli / SABnzbd
+Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr / Maintainerr / GitHub
    └─POST──► Hono webhook routes ──► embed builder ──► discord.js ──► Discord channel
                      │
-                     └──► SQLite activity log
+                     └──► SQLite activity log (+ webhook retries)
 
 Discord user ──slash cmd──► discord.js ──► service clients ──► *arr / SAB REST API
-Discord user ──button──► Seerr approval handler ──► Seerr REST API
+Discord user ──button──► Seerr approval / tickets / roles ──► REST + SQLite
+Admin browser ──OAuth──► Vue dashboard (same origin) ──► /admin API
 ```
 
 ## File layout
 
 ```
 src/
-├── index.ts                        # entry: boot discord + http server
-├── config.ts                       # zod-validated env
-├── db/
-│   ├── schema.ts                   # drizzle schema (webhook_events, seerr_requests)
-│   └── client.ts                   # better-sqlite3 + WAL + idempotent schema init
+├── index.ts                     # entry: boot discord + http server
+├── config.ts                    # zod-validated env
+├── settings.ts                  # runtime feature toggles (SQLite)
+├── db/                          # schema + WAL client + backup/restore
 ├── discord/
-│   ├── client.ts                   # discord.js client, command registration
-│   ├── commands/
-│   │   ├── index.ts
-│   │   ├── queue.ts                # /queue — sonarr+radarr+sab live queue
-│   │   ├── search.ts               # /search movie|show
-│   │   └── setup-server.ts         # /setup-server — scaffolds + welcome banners
-│   └── interactions/
-│       └── seerr-buttons.ts        # approve/decline handler
-├── embeds/
-│   ├── colors.ts                   # brand colors + formatBytes + truncate
-│   ├── arr.ts                      # grab/import/failure/health embeds
-│   ├── seerr.ts                    # request embeds + buttons
-│   ├── sabnzbd.ts                  # SAB event embeds
-│   └── queue.ts                    # /queue embed
+│   ├── commands/                # 51 slash commands (see CLAUDE.md)
+│   ├── interactions/            # Seerr, tickets, roles, suggestions, …
+│   ├── setup via commands/setup-server.ts  # STRUCTURE + channel topics
+│   └── channel-store.ts         # SQLite-first channel ID resolution
+├── embeds/                      # EmbedBuilder factories (no posting)
 ├── server/
-│   ├── app.ts                      # Hono app + shared-secret middleware
-│   ├── discord-poster.ts           # post + log every embed
-│   └── webhooks/
-│       ├── sonarr.ts
-│       ├── radarr.ts
-│       ├── seerr.ts
-│       ├── tautulli.ts
-│       └── sabnzbd.ts
-├── services/
-│   ├── arr-client.ts               # shared fetch wrapper
-│   ├── sonarr.ts
-│   ├── radarr.ts
-│   ├── seerr.ts
-│   └── sabnzbd.ts
+│   ├── app.ts                   # Hono + webhook auth + static dashboard
+│   ├── admin/                   # dashboard API
+│   └── webhooks/                # sonarr, radarr, seerr, tautulli, sabnzbd, prowlarr, maintainerr, github
+├── services/                    # *arr / SAB / Seerr / Tautulli / RSS clients
 └── utils/
-    └── logger.ts                   # pino
-
-scripts/
-└── sabnzbd-webhook.sh              # SAB post-processing hook
-unraid/
-└── magguu-bot.xml                  # community template
-.github/workflows/
-├── ci.yml                          # audit + typecheck + tests + build
-└── docker.yml                      # build + push to GHCR
+frontend/                        # Vue 3 admin dashboard (Vite → dist-frontend/)
+scripts/sabnzbd-webhook.sh
+unraid/magguu-bot.xml
+.github/workflows/               # ci.yml + docker.yml (+ codeql)
 ```
+
+Agent depth: `AGENTS.md` → `CLAUDE.md`. Channel keys and command inventory live in `CLAUDE.md`.
 
 ## Security
 

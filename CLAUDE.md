@@ -61,7 +61,7 @@ npm run db:push      # drizzle-kit sync
 
 **Automatic backups** — the hourly scheduler creates at most one `automatic-*.db` SQLite snapshot per local day after `AUTOMATIC_BACKUP_HOUR`. Retention only prunes automatic snapshots and never deletes manual backups.
 
-**Plex activity lifecycle** — movie/episode events correlate by `sessionKey`, falling back to user/player/media identity. Music uses one `music:<user>:<player>` card across tracks and records the current session so late events from the previous track are ignored. Subsequent events edit the card, and watched takes precedence over a later stop. Pause is held for two minutes before the card flips; a resume in that window is dropped. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion.
+**Plex activity lifecycle** — movie/episode events correlate by `sessionKey`, falling back to user/player/media identity. Music uses one `music:<user>:<player>` card across tracks and records the current session so late events from the previous track are ignored. Subsequent events edit the card, and watched takes precedence over a later stop. Pause is held for two minutes before the card flips; a resume in that window is dropped. The hourly cleanup deletes tracked Discord cards older than `PLEX_ACTIVITY_RETENTION_DAYS`; zero disables deletion. Every minute the stale-session tick terminates Tautulli sessions paused or stuck for `PLEX_STALE_SESSION_MINUTES` (default 20, `0` disables) and flips orphan play/pause cards to stopped when Tautulli no longer has a matching live session.
 
 **Generic lifecycle cards** — `event_lifecycle_messages` and `postOrEditLifecycleEmbed` keep one Discord card per stable upstream resource. It is used for Seerr issues, GitHub PRs/issues, and typed Sonarr/Radarr health checks. Do not apply it to append-only feeds such as imports, releases, RSS, or audit/mod logs.
 
@@ -100,18 +100,21 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 |---|---|
 | Sonarr/Radarr Grab | `grabs` |
 | Sonarr/Radarr Download import, SAB complete | `imports` |
-| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `fehler` |
-| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `freigaben` |
-| Seerr approved/declined/available/failed/deleted | `anfragen` |
-| Tautulli recently_added / created | `neuAufPlex` |
-| Tautulli playback events | `aktivität` |
-| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `gelöscht` |
+| Sonarr/Radarr DownloadFailure/ImportFailure/ManualInteraction, SAB failed, Seerr ISSUE_* | `failures` (`⚠️・fehler`) |
+| Seerr MEDIA_PENDING (with Approve/Decline buttons) | `approvals` (`⏳・freigaben`) |
+| Seerr approved/declined/available/failed/deleted | `requests` (`📝・anfragen`) |
+| Tautulli recently_added / created | `newOnPlex` |
+| Tautulli playback events | `plexActivity` |
+| Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete, Maintainerr events | `maintainerr` (`🗑️・gelöscht`) |
 | Sonarr/Radarr/Prowlarr health + warnings + ApplicationUpdate | `health` |
 | Member join welcome embed | `welcome` |
 | Member join/leave + role changes | `auditLog` |
 | Moderation actions (warn/timeout/kick/ban/purge) | `modLog` |
 | GitHub events (default) | `github` |
 | Stable/prerelease announcements for repos in `ADDON_REPO_FULL_NAMES` | `addonUpdates` (falls back to `github`) |
+| MagguuUI FAQ channel (tag answers) | `faq` |
+| Community suggestions (`/suggest`) | `suggestions` |
+| Ticket close + transcripts | `ticketLogs` (also auto-created as `ticket-logs`) |
 | WoW Blue-Tracker RSS | `blueTracker` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` |
@@ -146,6 +149,27 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - SAB script: `scripts/sabnzbd-webhook.sh`
 - Unraid template: `unraid/magguu-bot.xml`
 
+
+## MagguuUI FAQ / release sync
+
+- MagguuUI stable/prerelease announcements route via `ADDON_REPO_FULL_NAMES`
+  (default `Derpsen/MagguuUI`) to `addonUpdates`.
+- Discord FAQ/tag content that describes MagguuUI must stay aligned with the
+  current MagguuUI version and install story (EllesmereUI companion, one AddOns
+  folder). Do not leave stale ElvUI-installer wording in FAQ tags.
+
+## Grok Bot / Buddy + Git publish
+
+Marco uses Grok Bot “Buddy” as the single front door; helpers report to Buddy.
+
+- Interactive/ad-hoc sessions: never commit, push, or create git tags unless
+  the user explicitly asks for that exact publish step.
+- Grok Bot helpers under Buddy's hub standing order: for clear in-scope
+  bug/tasks, may commit, push, and merge to main without a per-change ask;
+  never force-push; never publish unrelated dirty WIP; report results to Buddy.
+- Tags and releases still need an explicit release ask.
+
+Agent entrypoint: `AGENTS.md` (short) → this file for depth.
 ## What NOT to do
 
 - NEVER commit `.env`, `.env.*` (except `.env.example`), `data/`, or `dist/` — gitignored

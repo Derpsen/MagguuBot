@@ -8,12 +8,51 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
+  type GuildBasedChannel,
 } from 'discord.js';
 import { Colors } from '../../embeds/colors.js';
+import { TICKET_CATEGORY_NAME } from '../ticket-channel.js';
 import { KNOWN_CATEGORIES, isKnownChannelName } from './setup-server.js';
 import type { SlashCommand } from './index.js';
 
 const CONFIRM_MS = 60_000;
+
+/** Dynamic surfaces created outside STRUCTURE (tickets, join-to-create). */
+const PROTECTED_CATEGORIES = new Set([
+  TICKET_CATEGORY_NAME,
+  '🎙️ VOICE-CREATE',
+]);
+
+const PROTECTED_CHANNEL_NAMES = new Set([
+  'ticket-logs',
+  '➕ Voice erstellen',
+]);
+
+function isProtectedSurface(channel: GuildBasedChannel): boolean {
+  if (channel.type === ChannelType.GuildCategory) {
+    return KNOWN_CATEGORIES.has(channel.name) || PROTECTED_CATEGORIES.has(channel.name);
+  }
+  if (
+    channel.type !== ChannelType.GuildText
+    && channel.type !== ChannelType.GuildVoice
+    && channel.type !== ChannelType.GuildAnnouncement
+  ) {
+    return true;
+  }
+  if (isKnownChannelName(channel.name) || PROTECTED_CHANNEL_NAMES.has(channel.name)) {
+    return true;
+  }
+  const parentName = channel.parent?.name;
+  // Only dynamic categories may host unnamed children (open tickets, JTC rooms).
+  if (parentName && PROTECTED_CATEGORIES.has(parentName)) {
+    return true;
+  }
+  // JTC personal rooms if parent mapping was lost
+  if (channel.type === ChannelType.GuildVoice && channel.name.startsWith('🔊 ')) {
+    return true;
+  }
+  return false;
+}
 
 export const cleanupServerCommand: SlashCommand = {
   category: 'admin',
@@ -28,15 +67,7 @@ export const cleanupServerCommand: SlashCommand = {
       return;
     }
 
-    const orphans = interaction.guild.channels.cache.filter((c) => {
-      if (c.type === ChannelType.GuildCategory) {
-        return !KNOWN_CATEGORIES.has(c.name);
-      }
-      if (c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice) {
-        return !isKnownChannelName(c.name);
-      }
-      return false;
-    });
+    const orphans = interaction.guild.channels.cache.filter((c) => !isProtectedSurface(c));
 
     if (orphans.size === 0) {
       await interaction.editReply(
