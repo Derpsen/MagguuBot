@@ -585,9 +585,12 @@ test('addon release embeds remove duplicate changelog headers and show update li
     'World of Warcraft Retail',
   );
   assert.match(embed.fields?.find((field) => field.name === 'Downloads')?.value ?? '', /CurseForge/);
-  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI-Ordner/);
-  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /\/mui tools/);
-  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /beide Ordner/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /9\.0\.6\+/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /vier MagguuUI-Ordner/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI_Data/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Optionen \+ Changelog/);
+  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /einen MagguuUI-Ordner/);
+  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /7\.9\.5/);
 });
 
 test('addon release embeds derive Retail versions only from explicit release-note markers', () => {
