@@ -640,7 +640,7 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         '**Wie update ich?**',
         '• Am einfachsten über CurseForge oder Wago aktualisieren (WowUp zieht von dort mit)',
         '• Manuell: ZIP entpacken und die **vier** Ordner (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media`) in `Interface/AddOns` ersetzen — alle aktiviert lassen',
-        '• Danach WoW neu starten oder `/reload` — `/mui` Setup: Alles installieren, Magguu-Look | Profile laden (Scale 0.58)',
+        '• Danach WoW neu starten oder `/reload` — `/mui` Setup: Magguu-Profile übernehmen, Magguu Settings | Profile laden (Scale 0.58)',
         '',
         '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
       ].join('\n'),
@@ -665,7 +665,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '3. Die **vier** Addon-Ordner nach `World of Warcraft/_retail_/Interface/AddOns/` legen:',
         '   `MagguuUI`, `MagguuUI_Data` ([Data]), `MagguuUI_EUI` ([EUI]), `MagguuUI_Media` ([Media]) — alle vier aktiviert lassen',
         '4. Character-Select → AddOns → alle vier MagguuUI-Addons plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup**: goldenes **Alles installieren**, dann **Magguu-Look** | **Profile laden**. Scale `0.58` kommt mit Alles installieren / Magguu-Look (kein eigener Scale-Button). WowUp-Starter (inkl. EXBoss + EXCore) und Optional (inkl. KeystoneLoot) dort kopieren. Auf einem Alt erscheint ein Popup zum Laden der Profile',
+        '5. Einloggen → `/mui` → **Setup**: goldenes **Magguu-Profile übernehmen**, dann **Magguu Settings** | **Profile laden**. Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings (kein eigener Scale-Button). WowUp-Starter (inkl. EXBoss + EXCore) und Optional (inkl. KeystoneLoot) dort kopieren. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -681,7 +681,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '❓  Häufige Fragen',
         value: [
-          '`UI-Skalierung?` → `0.58` für 4K über Alles installieren / Magguu-Look (kein eigener Scale-Button). Feintuning unter `/mui`',
+          '`UI-Skalierung?` → `0.58` für 4K über Magguu-Profile übernehmen / Magguu Settings (kein eigener Scale-Button). Feintuning unter `/mui`',
           '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
           '`WoW-Version?` → Ready for **12.1**; lädt weiterhin auf Midnight **12.0**. Nur Retail',
           '`Was brauche ich?` → EllesmereUI 9.0.6+ + MagguuUI (vier Ordner: MagguuUI / Data / EUI / Media, alle aktiviert). Optional: BigWigs, Northern Sky, WIM, Waypoint UI, EXBoss, KeystoneLoot',

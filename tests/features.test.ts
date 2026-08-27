@@ -142,7 +142,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /EllesmereUI/);
   assert.match(faqText, /9\.0\.6\+/);
   assert.match(faqText, /MagguuUI/);
-  assert.match(faqText, /Magguu-Look/);
+  assert.match(faqText, /Magguu Settings/);
   assert.match(faqText, /MagguuUI_Data/);
   assert.match(faqText, /MagguuUI_EUI/);
   assert.match(faqText, /MagguuUI_Media/);
@@ -159,7 +159,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Ready for WoW \*\*12\.1\*\*/);
   assert.match(faqText, /Midnight \*\*12\.0\*\*/);
   assert.match(faqText, /\/mui tools/);
-  assert.match(faqText, /Alles installieren/);
+  assert.match(faqText, /Magguu-Profile übernehmen/);
   assert.match(faqText, /Smart Tab/);
   assert.match(faqText, /Quick Focus/);
   assert.match(faqText, /Ellesmere-Lautsprecher/);
@@ -173,7 +173,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   const updates = buildAddonUpdatesChannelEmbed().toJSON();
   assert.match(`${updates.description ?? ''}`, /vier.*Ordner/);
   assert.match(`${updates.description ?? ''}`, /MagguuUI_Data/);
-  assert.match(`${updates.description ?? ''}`, /Magguu-Look/);
+  assert.match(`${updates.description ?? ''}`, /Magguu Settings/);
   assert.match(`${updates.description ?? ''}`, /Profile laden/);
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
