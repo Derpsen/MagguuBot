@@ -120,7 +120,7 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
         },
         {
           name: 'Installation',
-          value: 'EllesmereUI 7.9.5+ muss aktiviert bleiben. Addon-Manager aktualisieren oder den einen MagguuUI-Ordner ersetzen. Setup/Skinning/QoL: `/mui`. Werkzeuge: `/mui tools`.',
+          value: 'EllesmereUI 9.0.6+ muss aktiviert bleiben. Addon-Manager aktualisieren oder die vier MagguuUI-Ordner ersetzen (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media` — alle aktiviert). Setup: `/mui`. Sidebar: Optionen + Changelog.',
           inline: true,
         },
         {
