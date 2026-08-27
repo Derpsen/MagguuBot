@@ -640,7 +640,7 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         '**Wie update ich?**',
         '• Am einfachsten über CurseForge oder Wago aktualisieren (WowUp zieht von dort mit)',
         '• Manuell: ZIP entpacken und die **vier** Ordner (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media`) in `Interface/AddOns` ersetzen — alle aktiviert lassen',
-        '• Danach WoW neu starten oder `/reload` — `/mui` Setup: Magguu-Profile übernehmen, Magguu Settings | Profile laden (Scale 0.58)',
+        '• Danach WoW neu starten oder `/reload` — Ellesmere-Startpopup wird übersprungen. `/mui` Setup: Magguu-Profile übernehmen (Edit Mode MagguuUI einmal, Window & Tooltip Skins Precheck), Magguu Settings | Profile laden. Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings',
         '',
         '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
       ].join('\n'),
@@ -657,7 +657,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setTitle('❓  Alles rund ums Addon')
     .setDescription(
       [
-        'MagguuUI sitzt in **EllesmereUI** (Ready for WoW **12.1**, läuft weiter auf Midnight **12.0**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (`/mui tools` oder Header **10×**).',
+        'MagguuUI sitzt in **EllesmereUI** (Ready for WoW **12.1**, läuft weiter auf Midnight **12.0**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (`/mui tools` oder Header **10×**). UI in **11 Client-Sprachen**.',
         '',
         '**📦  Installation**',
         '1. **EllesmereUI** 9.0.6+ installieren und aktivieren (CurseForge / Wago / WowUp)',
@@ -665,7 +665,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         '3. Die **vier** Addon-Ordner nach `World of Warcraft/_retail_/Interface/AddOns/` legen:',
         '   `MagguuUI`, `MagguuUI_Data` ([Data]), `MagguuUI_EUI` ([EUI]), `MagguuUI_Media` ([Media]) — alle vier aktiviert lassen',
         '4. Character-Select → AddOns → alle vier MagguuUI-Addons plus EllesmereUI aktiviert lassen',
-        '5. Einloggen → `/mui` → **Setup**: goldenes **Magguu-Profile übernehmen**, dann **Magguu Settings** | **Profile laden**. Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings (kein eigener Scale-Button). WowUp-Starter (inkl. EXBoss + EXCore) und Optional (inkl. KeystoneLoot) dort kopieren. Auf einem Alt erscheint ein Popup zum Laden der Profile',
+        '5. Einloggen: Ellesmere-Startpopup wird übersprungen, Magguu-Setup öffnet sich. `/mui` → **Setup**: goldenes **Magguu-Profile übernehmen** (schreibt Edit Mode **MagguuUI** einmal; Window & Tooltip Skins Precheck), dann **Magguu Settings** | **Profile laden**. Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings (kein eigener Scale-Button). WowUp-Packs dort kopieren. Auf einem Alt erscheint ein Popup zum Laden der Profile',
         '',
         '**🔄  Updaten**',
         '- Über den Addon-Manager reicht **Aktualisieren**',
@@ -679,13 +679,22 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     )
     .addFields(
       {
+        name: '📦  WowUp-Packs',
+        value: [
+          'Im Setup kopieren und in WowUp einfügen.',
+          '**Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss + EXCore',
+          '**Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot',
+        ].join('\n'),
+        inline: false,
+      },
+      {
         name: '❓  Häufige Fragen',
         value: [
           '`UI-Skalierung?` → `0.58` für 4K über Magguu-Profile übernehmen / Magguu Settings (kein eigener Scale-Button). Feintuning unter `/mui`',
           '`Tooltip?` → Bleibt an Magguus Platz, folgt nicht der Maus',
           '`WoW-Version?` → Ready for **12.1**; lädt weiterhin auf Midnight **12.0**. Nur Retail',
-          '`Was brauche ich?` → EllesmereUI 9.0.6+ + MagguuUI (vier Ordner: MagguuUI / Data / EUI / Media, alle aktiviert). Optional: BigWigs, Northern Sky, WIM, Waypoint UI, EXBoss, KeystoneLoot',
-          '`Setup-Imports?` → Erforderlich: Ellesmere + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI, EXBoss, KeystoneLoot (BiS inkl. Devourer per Profile laden). WowUp-Starter inkl. EXBoss+EXCore; Optional inkl. KeystoneLoot',
+          '`Was brauche ich?` → EllesmereUI 9.0.6+ + MagguuUI (vier Ordner: MagguuUI / Data / EUI / Media, alle aktiviert). UI in 11 Client-Sprachen',
+          '`Setup-Imports?` → Erforderlich: Ellesmere + Klassenlayouts. Optional: BigWigs, Northern Sky, WIM, Waypoint UI, EXBoss, KeystoneLoot (BiS inkl. Devourer per Profile laden). WowUp-Starter inkl. EXBoss + EXCore; Optional inkl. KeystoneLoot',
           '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alert-Opacity, Proc-Overlays ausblenden, **Smart Tab**, **Quick Focus**, Audio-Gerätewechsel am Ellesmere-Lautsprecher',
           '`Nightly Builds?` → Pre-Releases werden gepostet, aber **nicht gepingt**',
         ].join('\n'),

@@ -168,8 +168,10 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - Discord FAQ/tag content that describes MagguuUI must stay aligned with the
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
-  MagguuUI_Media, all enabled). Do not leave stale ElvUI-installer or
-  one-folder wording in FAQ tags.
+  MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
+  Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
+  übernehmen / Magguu Settings). Do not leave stale ElvUI-installer or
+  one-folder wording in FAQ tags. Do not restore MagguuKSL.
 
 ## Grok Bot / Buddy + Git publish
 

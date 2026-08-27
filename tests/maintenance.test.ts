@@ -589,6 +589,10 @@ test('addon release embeds remove duplicate changelog headers and show update li
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /vier MagguuUI-Ordner/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /MagguuUI_Data/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Optionen \+ Changelog/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Ellesmere-Startpopup/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Window & Tooltip Skins/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Edit Mode MagguuUI/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /0\.58/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /einen MagguuUI-Ordner/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /7\.9\.5/);
 });

@@ -120,7 +120,7 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
         },
         {
           name: 'Installation',
-          value: 'EllesmereUI 9.0.6+ muss aktiviert bleiben. Addon-Manager aktualisieren oder die vier MagguuUI-Ordner ersetzen (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media` — alle aktiviert). Setup: `/mui`. Sidebar: Optionen + Changelog.',
+          value: 'EllesmereUI 9.0.6+ muss aktiviert bleiben. Addon-Manager aktualisieren oder die vier MagguuUI-Ordner ersetzen (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media` — alle aktiviert). Ellesmere-Startpopup wird übersprungen. Setup: `/mui` — Magguu-Profile übernehmen (Edit Mode MagguuUI einmal, Window & Tooltip Skins Precheck), Magguu Settings | Profile laden. Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings. Sidebar: Optionen + Changelog.',
           inline: true,
         },
         {

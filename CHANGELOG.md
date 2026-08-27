@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Changed
+- MagguuUI FAQ/install embeds synced to v12.1.2: skip Ellesmere start popup, Window & Tooltip Skins precheck, Edit Mode MagguuUI once, scale 0.58 from Magguu-Profile übernehmen / Magguu Settings, full WowUp starter + optional packs, 11 client locales.
+
 ## 2026-08-23
 
 ### Fixed

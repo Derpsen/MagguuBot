@@ -153,6 +153,12 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Profile laden/);
   assert.match(faqText, /EXBoss \+ EXCore/);
   assert.match(faqText, /KeystoneLoot/);
+  assert.match(faqText, /Ellesmere-Startpopup/);
+  assert.match(faqText, /Window & Tooltip Skins/);
+  assert.match(faqText, /Edit Mode/);
+  assert.match(faqText, /BigWigs, LittleWigs, Northern Sky/);
+  assert.match(faqText, /Premade Groups Filter/);
+  assert.match(faqText, /11 Client-Sprachen/);
   assert.match(faqText, /Devourer/);
   assert.match(faqText, /Optionen/);
   assert.match(faqText, /Changelog/);
