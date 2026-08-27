@@ -6,7 +6,7 @@ Designed to replace Notifiarr with something you own end-to-end — no third-par
 
 ## Agent rules
 
-For automated helpers (Grok Bot / Buddy): start with `AGENTS.md`, then `CLAUDE.md`.
+For automated helpers (Grok Bot / Buddy): start with `AGENTS.md`.
 Buddy is the single front door; clear in-scope fixes may push/merge to `main` under
 the hub standing order (no force-push; tags need an explicit release ask).
 
@@ -169,7 +169,7 @@ src/
 ├── settings.ts                  # runtime feature toggles (SQLite)
 ├── db/                          # schema + WAL client + backup/restore
 ├── discord/
-│   ├── commands/                # 51 slash commands (see CLAUDE.md)
+│   ├── commands/                # 51 slash commands (see AGENTS.md)
 │   ├── interactions/            # Seerr, tickets, roles, suggestions, …
 │   ├── setup via commands/setup-server.ts  # STRUCTURE + channel topics
 │   └── channel-store.ts         # SQLite-first channel ID resolution
@@ -186,7 +186,7 @@ unraid/magguu-bot.xml
 .github/workflows/               # ci.yml + docker.yml (+ codeql)
 ```
 
-Agent depth: `AGENTS.md` → `CLAUDE.md`. Channel keys and command inventory live in `CLAUDE.md`.
+Agent rules, channel keys, and command inventory live in `AGENTS.md`.
 
 ## Security
 
