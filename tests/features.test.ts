@@ -151,7 +151,9 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /\[Media\]/);
   assert.match(faqText, /alle vier aktiviert/);
   assert.match(faqText, /Profile laden/);
-  assert.match(faqText, /EXBoss \+ EXCore/);
+  assert.match(faqText, /EXBoss, EXCore/);
+  assert.match(faqText, /EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore/);
+  assert.match(faqText, /BugGrabber, BugSack, HandyNotes, MDT, Raider\.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot/);
   assert.match(faqText, /KeystoneLoot/);
   assert.match(faqText, /Ellesmere-Startpopup/);
   assert.match(faqText, /Window & Tooltip Skins/);
@@ -169,6 +171,13 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Smart Tab/);
   assert.match(faqText, /Quick Focus/);
   assert.match(faqText, /Ellesmere-Lautsprecher/);
+  assert.match(faqText, /NAMEN & FARBEN/);
+  assert.match(faqText, /EXBoss-Split/);
+  assert.match(faqText, /Profile laden nur aktivieren/);
+  assert.match(faqText, /Itemlevel Party\/Raid/);
+  assert.match(faqText, /PGF\+KeystoneLoot/);
+  assert.equal(/Feintuning unter/.test(faqText), false);
+  assert.equal(/Ashvane/i.test(faqText), false);
   assert.equal(/einen MagguuUI-Ordner/.test(faqText), false);
   assert.equal(/7\.9\.5/.test(faqText), false);
   assert.equal(/MagguuKSL/.test(faqText), false);
@@ -181,6 +190,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(`${updates.description ?? ''}`, /MagguuUI_Data/);
   assert.match(`${updates.description ?? ''}`, /Magguu Settings/);
   assert.match(`${updates.description ?? ''}`, /Profile laden/);
+  assert.match(`${updates.description ?? ''}`, /aktiviert nur/);
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 

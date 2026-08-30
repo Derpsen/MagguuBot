@@ -170,8 +170,12 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
   MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
   Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
-  übernehmen / Magguu Settings). Do not leave stale ElvUI-installer or
-  one-folder wording in FAQ tags. Do not restore MagguuKSL.
+  übernehmen / Magguu Settings; Load profiles activate-only except class
+  layouts and KeystoneLoot BiS; Skinning NAMES & COLORS DualRow including
+  EXBoss split without EXBoss class-color; QoL party/raid item level;
+  WowUp optional pack includes Premade Groups Filter). Do not leave stale
+  ElvUI-installer, Ashvane, or one-folder wording in FAQ tags. Do not restore
+  MagguuKSL.
 
 ## Grok Bot / Buddy + Git publish
 

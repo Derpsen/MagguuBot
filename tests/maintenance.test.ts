@@ -593,8 +593,11 @@ test('addon release embeds remove duplicate changelog headers and show update li
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Window & Tooltip Skins/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Edit Mode MagguuUI/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /0\.58/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /aktiviert nur/);
+  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /NAMEN & FARBEN/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /einen MagguuUI-Ordner/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /7\.9\.5/);
+  assert.equal((embed.fields?.find((field) => field.name === 'Installation')?.value ?? '').length <= 1_024, true);
 });
 
 test('addon release embeds derive Retail versions only from explicit release-note markers', () => {
