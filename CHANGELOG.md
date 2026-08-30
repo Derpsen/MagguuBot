@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Fixed
+- Discord Seerr Approve/Decline failed with HTTP 403 because MagguuBot used a stale Seerr API key. Doctor and service health now probe `/api/v1/request/count` (authenticated) instead of the public `/status` endpoint.
+
 ### Changed
 - MagguuUI FAQ/install embeds synced to v12.1.2: skip Ellesmere start popup, Window & Tooltip Skins precheck, Edit Mode MagguuUI once, scale 0.58 from Magguu-Profile übernehmen / Magguu Settings, full WowUp starter + optional packs, 11 client locales, Skinning NAMEN & FARBEN DualRow (inkl. EXBoss-Split), Load profiles activate-only außer Klassenlayouts + KeystoneLoot-BiS, QoL Itemlevel.
 

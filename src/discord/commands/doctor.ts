@@ -13,7 +13,7 @@ import { db } from '../../db/client.js';
 import { Colors, truncate } from '../../embeds/colors.js';
 import { getRadarrStatus } from '../../services/radarr.js';
 import { getSabVersion } from '../../services/sabnzbd.js';
-import { getSeerrStatus } from '../../services/seerr.js';
+import { getSeerrRequestCount } from '../../services/seerr.js';
 import { getSonarrStatus } from '../../services/sonarr.js';
 import { resolveAutoRoleTarget } from '../auto-role.js';
 import { getChannel, type ChannelKey } from '../channel-store.js';
@@ -96,7 +96,7 @@ export const doctorCommand: SlashCommand = {
       serviceCheck('Sonarr', Boolean(config.SONARR_URL && config.SONARR_API_KEY), () => getSonarrStatus()),
       serviceCheck('Radarr', Boolean(config.RADARR_URL && config.RADARR_API_KEY), () => getRadarrStatus()),
       serviceCheck('SABnzbd', Boolean(config.SAB_URL && config.SAB_API_KEY), () => getSabVersion()),
-      serviceCheck('Seerr', Boolean(config.SEERR_URL && config.SEERR_API_KEY), () => getSeerrStatus()),
+      serviceCheck('Seerr', Boolean(config.SEERR_URL && config.SEERR_API_KEY), () => getSeerrRequestCount()),
     ]);
     checks.push(...services);
     const failures = checks.filter((check) => !check.ok).length;

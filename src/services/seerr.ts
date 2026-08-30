@@ -4,6 +4,17 @@ import { buildServiceUrl } from './service-url.js';
 
 const SEERR_TIMEOUT_MS = 10_000;
 
+export class SeerrRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly path: string,
+    readonly body: string,
+  ) {
+    super(`Seerr ${path} → ${status}`);
+    this.name = 'SeerrRequestError';
+  }
+}
+
 interface SeerrOpts {
   method?: 'GET' | 'POST';
   body?: unknown;
@@ -25,13 +36,13 @@ async function seerrFetch<T>(path: string, opts: SeerrOpts = {}): Promise<T> {
       body: opts.body ? JSON.stringify(opts.body) : undefined,
       signal: ctl.signal,
     });
+    const text = await res.text().catch(() => '');
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
       logger.error({ path, status: res.status, text }, 'seerr request failed');
-      throw new Error(`Seerr ${path} → ${res.status}`);
+      throw new SeerrRequestError(res.status, path, text);
     }
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    if (res.status === 204 || text.length === 0) return undefined as T;
+    return JSON.parse(text) as T;
   } finally {
     clearTimeout(timer);
   }

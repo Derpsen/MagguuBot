@@ -4,7 +4,7 @@ import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
 import { getRadarrStatus } from '../services/radarr.js';
 import { getSabVersion } from '../services/sabnzbd.js';
-import { getSeerrStatus } from '../services/seerr.js';
+import { getSeerrRequestCount } from '../services/seerr.js';
 import { getSonarrStatus } from '../services/sonarr.js';
 import { getActivePlexStreamCount } from '../services/tautulli.js';
 
@@ -36,9 +36,9 @@ export async function getServiceHealth(force = false): Promise<ServiceHealthResu
       return status.version ? `Version ${status.version}` : 'erreichbar';
     }),
     probe('seerr', 'Seerr', Boolean(config.SEERR_URL && config.SEERR_API_KEY), async () => {
-      const status = await getSeerrStatus();
-      if (!status) throw new Error('keine Statusantwort');
-      return status.version ? `Version ${status.version}` : 'erreichbar';
+      const count = await getSeerrRequestCount();
+      if (!count) throw new Error('keine Statusantwort');
+      return `pending ${count.pending} · approved ${count.approved}`;
     }),
     probe('sabnzbd', 'SABnzbd', Boolean(config.SAB_URL && config.SAB_API_KEY), async () => {
       const status = await getSabVersion();
