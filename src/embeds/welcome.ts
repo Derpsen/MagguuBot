@@ -696,7 +696,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
           '`Was brauche ich?` → EllesmereUI 9.0.6+ + MagguuUI (vier Ordner, alle aktiviert)',
           '`Setup-Imports?` → Pflicht: Ellesmere + Klassenlayouts. Optional: BigWigs, NSRT, WIM, Waypoint, EXBoss (Authors; Re-Import ersetzt Magguu), KeystoneLoot (Archon-BiS inkl. Devourer). Profile laden nur aktivieren, außer Klassenlayouts + KSL-BiS. WowUp-Starter EXBoss+EXCore; Optional PGF+KeystoneLoot',
           '`Skinning?` → **NAMEN & FARBEN** (2 Spalten): Unit/Party-Raid/EXBoss-Namen geteilt (1. Hälfte weiß, 2. Klasse; EXBoss-Split ohne EXBoss-Klassenfarbe-Option) + klassenfarbige Keybind-Modifier. Magguu Settings: alle vier an',
-          '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alerts, Itemlevel Party/Raid, **Smart Tab**, **Quick Focus**, Audio-Gerätewechsel am Ellesmere-Lautsprecher',
+          '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alerts, Itemlevel Party/Raid (2P/4P), **Smart Tab**, **Quick Focus**, Audio-Gerätewechsel am Ellesmere-Lautsprecher',
           '`Nightly Builds?` → Pre-Releases gepostet, **nicht gepingt**',
         ].join('\n'),
         inline: false,

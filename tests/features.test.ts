@@ -174,7 +174,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /NAMEN & FARBEN/);
   assert.match(faqText, /EXBoss-Split/);
   assert.match(faqText, /Profile laden nur aktivieren/);
-  assert.match(faqText, /Itemlevel Party\/Raid/);
+  assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+KeystoneLoot/);
   assert.equal(/Feintuning unter/.test(faqText), false);
   assert.equal(/Ashvane/i.test(faqText), false);
