@@ -161,7 +161,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /BigWigs, LittleWigs, Northern Sky/);
   assert.match(faqText, /Premade Groups Filter/);
   assert.match(faqText, /11 Client-Sprachen/);
-  assert.match(faqText, /Devourer/);
+  assert.match(faqText, /aktuelle Klasse, alle Specs/);
   assert.match(faqText, /Optionen/);
   assert.match(faqText, /Changelog/);
   assert.match(faqText, /Ready for WoW \*\*12\.1\*\*/);
