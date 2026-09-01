@@ -173,7 +173,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   übernehmen / Magguu Settings; Load profiles activate-only except class
   layouts and KeystoneLoot BiS; Skinning NAMES & COLORS DualRow including
   EXBoss split without EXBoss class-color; QoL party/raid item level;
-  WowUp optional pack includes Premade Groups Filter). Do not leave stale
+  WowUp optional pack includes Premade Groups Filter and Auctionator). Do not leave stale
   ElvUI-installer, Ashvane, or one-folder wording in FAQ tags. Do not restore
   MagguuKSL.
 

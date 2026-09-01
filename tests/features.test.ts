@@ -153,7 +153,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Profile laden/);
   assert.match(faqText, /EXBoss, EXCore/);
   assert.match(faqText, /EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore/);
-  assert.match(faqText, /BugGrabber, BugSack, HandyNotes, MDT, Raider\.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot/);
+  assert.match(faqText, /BugGrabber, BugSack, HandyNotes, MDT, Raider\.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot, Auctionator/);
   assert.match(faqText, /KeystoneLoot/);
   assert.match(faqText, /Ellesmere-Startpopup/);
   assert.match(faqText, /Window & Tooltip Skins/);
