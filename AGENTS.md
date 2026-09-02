@@ -177,6 +177,12 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   ElvUI-installer, Ashvane, or one-folder wording in FAQ tags. Do not restore
   MagguuKSL.
 
+## WowUp packs (2026-09-01)
+
+- **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
+- **Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot, Auctionator.
+- No WindTools. KeystoneLoot = Archon-BiS, all specs; never MagguuKSL; never name Devourer as a special include.
+
 ## Grok Bot / Buddy + Git publish
 
 Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to Buddy.
