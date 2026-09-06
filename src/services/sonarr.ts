@@ -1,7 +1,6 @@
 import { config } from '../config.js';
-import { ArrClient, type ArrDiskSpace, type ArrHealthIssue, type ArrSystemStatus } from './arr-client.js';
-
-export type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus };
+import { ArrClient } from './arr-client.js';
+import type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus } from './arr-client.js';
 
 export interface SonarrQueueItem {
   id: number;
