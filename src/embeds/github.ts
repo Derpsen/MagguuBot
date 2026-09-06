@@ -120,7 +120,7 @@ export function buildReleaseEmbed(i: ReleaseEmbedInput): EmbedBuilder {
         },
         {
           name: 'Installation',
-          value: 'EllesmereUI 9.0.6+ muss aktiviert bleiben. Addon-Manager aktualisieren oder die vier MagguuUI-Ordner ersetzen (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media` — alle aktiviert). Ellesmere-Startpopup wird übersprungen. Setup: `/mui` — Magguu-Profile übernehmen (Edit Mode MagguuUI einmal, Window & Tooltip Skins Precheck), Magguu Settings | Profile laden (aktiviert nur, außer Klassenlayouts + KeystoneLoot Archon-BiS). Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings. Skinning: NAMEN & FARBEN (2 Spalten). QoL: Itemlevel (2P/4P). WowUp-Starter: EXBoss, EXCore. Sidebar: Optionen + Changelog.',
+          value: 'EllesmereUI 9.0.6+ muss aktiviert bleiben. Addon-Manager aktualisieren oder die vier MagguuUI-Ordner ersetzen (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media` — alle aktiviert). Ellesmere-Startpopup wird übersprungen. Setup: `/mui` — Magguu-Profile übernehmen (Edit Mode MagguuUI einmal, Window & Tooltip Skins Precheck), Magguu Settings | Profile laden (aktiviert nur, außer Klassenlayouts). Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings. Skinning: NAMEN & FARBEN (2 Spalten). QoL: Itemlevel (2P/4P). WowUp-Starter: EXBoss, EXCore. Sidebar: Optionen + Changelog.',
           inline: true,
         },
         {

@@ -153,15 +153,15 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Profile laden/);
   assert.match(faqText, /EXBoss, EXCore/);
   assert.match(faqText, /EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore/);
-  assert.match(faqText, /BugGrabber, BugSack, HandyNotes, MDT, Raider\.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, KeystoneLoot, Auctionator/);
-  assert.match(faqText, /KeystoneLoot/);
+  assert.match(faqText, /BugGrabber, BugSack, HandyNotes, MDT, Raider\.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator/);
+  assert.equal(/KeystoneLoot/.test(faqText), false);
   assert.match(faqText, /Ellesmere-Startpopup/);
   assert.match(faqText, /Window & Tooltip Skins/);
   assert.match(faqText, /Edit Mode/);
   assert.match(faqText, /BigWigs, LittleWigs, Northern Sky/);
   assert.match(faqText, /Premade Groups Filter/);
   assert.match(faqText, /11 Client-Sprachen/);
-  assert.match(faqText, /Archon-BiS, alle Specs/);
+  assert.equal(/Archon-BiS/.test(faqText), false);
   assert.match(faqText, /Optionen/);
   assert.match(faqText, /Changelog/);
   assert.match(faqText, /Ready for WoW \*\*12\.1\*\*/);
@@ -175,7 +175,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /EXBoss-Split/);
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
-  assert.match(faqText, /PGF\+KeystoneLoot/);
+  assert.match(faqText, /PGF\+Auctionator/);
   assert.equal(/Feintuning unter/.test(faqText), false);
   assert.equal(/Ashvane/i.test(faqText), false);
   assert.equal(/einen MagguuUI-Ordner/.test(faqText), false);

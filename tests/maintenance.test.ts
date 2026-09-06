@@ -617,7 +617,7 @@ test('addon release embeds remove duplicate changelog headers and show update li
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /NAMEN & FARBEN/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /2 Spalten/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Itemlevel/);
-  assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Archon-BiS/);
+  assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /Archon-BiS|KeystoneLoot|KSL-BiS/);
   assert.match(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /EXBoss, EXCore/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /einen MagguuUI-Ordner/);
   assert.doesNotMatch(embed.fields?.find((field) => field.name === 'Installation')?.value ?? '', /7\.9\.5/);
