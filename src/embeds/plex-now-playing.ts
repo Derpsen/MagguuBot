@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, buildFooter, truncate } from './colors.js';
+import { Colors, buildFooter, clampProgress, progressBar, truncate } from './colors.js';
 import type { TautulliSession } from '../services/tautulli.js';
 
 const STATE_EMOJI: Record<string, string> = {
@@ -23,12 +23,6 @@ function formatDuration(ms: number): string {
   const s = seconds % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function progressBar(percent: number, width = 14): string {
-  const clamped = Math.max(0, Math.min(100, Math.round(percent)));
-  const filled = Math.round((clamped / 100) * width);
-  return `${'█'.repeat(filled)}${'░'.repeat(width - filled)} ${clamped}%`;
 }
 
 function formatBandwidth(kbps: number): string | null {
@@ -75,7 +69,7 @@ export function buildPlexNowPlayingEmbed(sessions: TautulliSession[]): EmbedBuil
     const lines = [
       `${mediaEmoji} ${truncate(s.title, 200)}`,
       `${stateEmoji} **${s.user}** · ${truncate(s.player, 80)}`,
-      progressBar(s.progressPercent),
+      `${progressBar(s.progressPercent)} ${Math.round(clampProgress(s.progressPercent))}%`,
       `${formatDuration(s.progressMs)} / ${formatDuration(s.durationMs)}`,
     ];
     if (decision) lines.push(decision);

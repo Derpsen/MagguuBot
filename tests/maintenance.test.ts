@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { enforceEmbedTotalSize, formatBytes, truncate } from '../src/embeds/colors.ts';
+import { clampProgress, enforceEmbedTotalSize, formatBytes, progressBar, truncate } from '../src/embeds/colors.ts';
 import { buildGrabEmbed } from '../src/embeds/arr.ts';
 import {
   buildReleaseEmbed,
@@ -25,7 +25,7 @@ import {
   isReplayableWebhookSource,
   webhookReplayBlockReason,
 } from '../src/server/webhook-sources.ts';
-import { healthLevelForEvent } from '../src/server/webhooks/schemas.ts';
+import { healthLevelForEvent, is4kQuality } from '../src/server/webhooks/schemas.ts';
 import { fetchRss, parseRss, RSS_MAX_BODY_BYTES } from '../src/services/rss.ts';
 import { buildServiceUrl } from '../src/services/service-url.ts';
 import { isAddonRepository, parseAddonRepositories } from '../src/utils/github-routing.ts';
@@ -500,6 +500,26 @@ test('webhook retry migration neutralizes pending rows for unsupported sources',
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+
+test('clampProgress rejects non-finite and progressBar stays width-stable', () => {
+  assert.equal(clampProgress(Number.NaN), 0);
+  assert.equal(clampProgress(Number.POSITIVE_INFINITY), 0);
+  assert.equal(clampProgress(-5), 0);
+  assert.equal(clampProgress(150), 100);
+  assert.equal(clampProgress(42.6), 42.6);
+  assert.equal(progressBar(0).length, 14);
+  assert.equal(progressBar(100).length, 14);
+  assert.equal(progressBar(50), '███████░░░░░░░');
+});
+
+test('is4kQuality matches common 4K quality labels', () => {
+  assert.equal(is4kQuality(undefined), false);
+  assert.equal(is4kQuality('Bluray-1080p'), false);
+  assert.equal(is4kQuality('Bluray-2160p'), true);
+  assert.equal(is4kQuality('WEBDL-4K'), true);
+  assert.equal(is4kQuality('Remux-UHD'), true);
 });
 
 test('embed helpers keep output inside Discord-friendly bounds', () => {

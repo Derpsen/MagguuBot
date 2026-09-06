@@ -83,6 +83,13 @@ export function isUpgradeFileDelete(payload: {
   return /\bupgrade\b/.test(reason);
 }
 
+
+export function is4kQuality(q: string | undefined): boolean {
+  if (!q) return false;
+  const l = q.toLowerCase();
+  return l.includes('2160') || l.includes('4k') || l.includes('uhd');
+}
+
 export function healthLevelForEvent(
   eventType: string,
   level: 'ok' | 'warning' | 'error' | undefined,

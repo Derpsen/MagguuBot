@@ -53,6 +53,17 @@ export function formatBytes(bytes: number): string {
   return `${n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0)} ${units[i]}`;
 }
 
+
+export function clampProgress(pct: number): number {
+  return Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
+}
+
+export function progressBar(pct: number, width = 14): string {
+  const safe = clampProgress(pct);
+  const filled = Math.round((safe / 100) * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
 export function truncate(s: string | undefined, max = 1024): string {
   if (!s) return '';
   return s.length <= max ? s : s.slice(0, max - 1) + '…';

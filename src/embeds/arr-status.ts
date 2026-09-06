@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus } from '../services/sonarr.js';
+import type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus } from '../services/arr-client.js';
 import type { SabQueueResponse, SabVersion } from '../services/sabnzbd.js';
 import type { SeerrRequestCount, SeerrStatus } from '../services/seerr.js';
 import { Colors, formatBytes, truncate } from './colors.js';

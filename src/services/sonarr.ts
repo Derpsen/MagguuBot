@@ -1,5 +1,7 @@
 import { config } from '../config.js';
-import { ArrClient } from './arr-client.js';
+import { ArrClient, type ArrDiskSpace, type ArrHealthIssue, type ArrSystemStatus } from './arr-client.js';
+
+export type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus };
 
 export interface SonarrQueueItem {
   id: number;
@@ -43,25 +45,6 @@ export async function getSonarrQueue(): Promise<SonarrQueueResponse | null> {
 export async function searchSonarr(query: string): Promise<SonarrSeries[]> {
   if (!sonarr) return [];
   return sonarr.get<SonarrSeries[]>(`/api/v3/series/lookup?term=${encodeURIComponent(query)}`);
-}
-
-export interface ArrSystemStatus {
-  version: string;
-  branch?: string;
-  startTime?: string;
-}
-
-export interface ArrHealthIssue {
-  source?: string;
-  type?: 'ok' | 'warning' | 'error';
-  message?: string;
-}
-
-export interface ArrDiskSpace {
-  path: string;
-  label?: string;
-  freeSpace: number;
-  totalSpace: number;
 }
 
 export async function getSonarrStatus(): Promise<ArrSystemStatus | null> {

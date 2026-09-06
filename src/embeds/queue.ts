@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { RadarrQueueResponse } from '../services/radarr.js';
 import type { SabQueueResponse } from '../services/sabnzbd.js';
 import type { SonarrQueueResponse } from '../services/sonarr.js';
-import { Colors, formatBytes, truncate } from './colors.js';
+import { Colors, clampProgress, formatBytes, progressBar, truncate } from './colors.js';
 
 interface Line {
   title: string;
@@ -72,15 +72,4 @@ function renderLines(lines: Line[]): string {
       return `\`${bar}\` ${pct}  ${size}${tl}\n${title}`;
     })
     .join('\n\n');
-}
-
-function progressBar(pct: number): string {
-  const width = 14;
-  const safe = clampProgress(pct);
-  const filled = Math.round((safe / 100) * width);
-  return '█'.repeat(filled) + '░'.repeat(width - filled);
-}
-
-function clampProgress(pct: number): number {
-  return Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0;
 }

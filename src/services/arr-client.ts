@@ -1,6 +1,25 @@
 import { logger } from '../utils/logger.js';
 import { buildServiceUrl } from './service-url.js';
 
+export interface ArrSystemStatus {
+  version: string;
+  branch?: string;
+  startTime?: string;
+}
+
+export interface ArrHealthIssue {
+  source?: string;
+  type?: 'ok' | 'warning' | 'error';
+  message?: string;
+}
+
+export interface ArrDiskSpace {
+  path: string;
+  label?: string;
+  freeSpace: number;
+  totalSpace: number;
+}
+
 // Without a timeout, a hung Sonarr/Radarr keeps the slash-command interaction
 // pending until Discord's 15-minute token expires. 10s is generous for *arr
 // REST APIs on a homelab LAN.

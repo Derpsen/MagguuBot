@@ -11,14 +11,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
-import { deletedFilesPresent, healthLevelForEvent, isUpgradeFileDelete, sonarrPayloadSchema } from './schemas.js';
-
-function is4kQuality(q: string | undefined): boolean {
-  if (!q) return false;
-  const l = q.toLowerCase();
-  return l.includes('2160') || l.includes('4k') || l.includes('uhd');
-}
-
+import { deletedFilesPresent, healthLevelForEvent, is4kQuality, isUpgradeFileDelete, sonarrPayloadSchema } from './schemas.js';
 export const sonarrWebhook = new Hono().post('/', async (c) => {
   const parsed = sonarrPayloadSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
