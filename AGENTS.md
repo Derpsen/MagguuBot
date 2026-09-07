@@ -165,18 +165,25 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 
 - MagguuUI stable/prerelease announcements route via `ADDON_REPO_FULL_NAMES`
   (default `Derpsen/MagguuUI`) to `addonUpdates`.
+- Host: EllesmereUI TOC min **9.0.6+** (live **9.1.6**); Magguu bake **9.0.8**.
 - Discord FAQ/tag content that describes MagguuUI must stay aligned with the
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
   MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
-  Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
-  übernehmen / Magguu Settings; Load profiles activate-only except class
-  layouts; Skinning NAMES & COLORS DualRow (unit-frame | party/raid;
-  class keybinds — do not restore EXBoss split); QoL party/raid item level
-  and Hide Services on General;
-  WowUp optional pack includes Premade Groups Filter and Auctionator). Do not leave stale
-  ElvUI-installer, Ashvane, or one-folder wording in FAQ tags. Do not restore
-  MagguuKSL.
+  Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Install All /
+  Magguu-Profile übernehmen / Magguu Settings; **Install All** = bake + look +
+  companions; **Magguu Settings** = overlay/QoL only; **Load profiles**
+  activate-only except class layouts — Settings/Load do not reimport bake;
+  Ellesmere bake delta-only; Targeted Spell Bars ON via Install All, EXBoss
+  MythicCast OFF; Boiling Point kept; TopBar / Hearth / Magguu FPS removed;
+  AuraBuff count CENTER; Hide Services secret-safe on General; Skinning
+  NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
+  restore EXBoss split); WowUp optional pack includes Premade Groups Filter
+  and Auctionator). Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
+  or one-folder wording in FAQ tags. Do not restore MagguuKSL.
+- Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
+  author/person credits; keep addon product names; never set Magguu as
+  author of a foreign addon. FAQ embeds must not contain `/Naowh/i`.
 
 ## WowUp packs (2026-09-06)
 

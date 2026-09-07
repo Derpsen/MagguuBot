@@ -173,16 +173,26 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Ellesmere-Lautsprecher/);
   assert.match(faqText, /NAMEN & FARBEN/);
   assert.equal(/EXBoss-Split/.test(faqText), false);
-  assert.match(faqText, /Hide Services auf General/);
+  assert.match(faqText, /Hide Services \(secret-safe\) auf General/);
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+Auctionator/);
+  assert.match(faqText, /Install All/);
+  assert.match(faqText, /Bake\+Look\+Companions/);
+  assert.match(faqText, /Overlay\/QoL only/);
+  assert.match(faqText, /kein Bake-Reimport/);
+  assert.match(faqText, /Targeted Spell Bars/);
+  assert.match(faqText, /MythicCast OFF/);
+  assert.match(faqText, /Boiling Point/);
+  assert.match(faqText, /AuraBuff-Count CENTER/);
+  assert.match(faqText, /Kein TopBar\/Hearth\/Magguu-FPS/);
   assert.equal(/Feintuning unter/.test(faqText), false);
   assert.equal(/Ashvane/i.test(faqText), false);
   assert.equal(/einen MagguuUI-Ordner/.test(faqText), false);
   assert.equal(/7\.9\.5/.test(faqText), false);
   assert.equal(/MagguuKSL/.test(faqText), false);
   assert.equal(/ElvUI Pflicht/.test(faqText), false);
+  assert.equal(/Authors/.test(faqText), false);
   assert.equal(/Naowh/i.test(faqText), false);
   assert.equal(faq.fields?.every((field) => field.value.length <= 1_024), true);
 
@@ -192,6 +202,9 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(`${updates.description ?? ''}`, /Magguu Settings/);
   assert.match(`${updates.description ?? ''}`, /Profile laden/);
   assert.match(`${updates.description ?? ''}`, /aktiviert nur/);
+  assert.match(`${updates.description ?? ''}`, /Install All/);
+  assert.match(`${updates.description ?? ''}`, /Overlay\/QoL only/);
+  assert.match(`${updates.description ?? ''}`, /kein Bake-Reimport/);
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 
