@@ -171,8 +171,9 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
   Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
   übernehmen / Magguu Settings; Load profiles activate-only except class
-  layouts; Skinning NAMES & COLORS DualRow including
-  EXBoss split without EXBoss class-color; QoL party/raid item level;
+  layouts; Skinning NAMES & COLORS DualRow (unit-frame | party/raid;
+  class keybinds — do not restore EXBoss split); QoL party/raid item level
+  and Hide Services on General;
   WowUp optional pack includes Premade Groups Filter and Auctionator). Do not leave stale
   ElvUI-installer, Ashvane, or one-folder wording in FAQ tags. Do not restore
   MagguuKSL.

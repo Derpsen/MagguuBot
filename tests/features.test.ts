@@ -172,7 +172,8 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Quick Focus/);
   assert.match(faqText, /Ellesmere-Lautsprecher/);
   assert.match(faqText, /NAMEN & FARBEN/);
-  assert.match(faqText, /EXBoss-Split/);
+  assert.equal(/EXBoss-Split/.test(faqText), false);
+  assert.match(faqText, /Hide Services auf General/);
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+Auctionator/);
