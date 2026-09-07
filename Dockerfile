@@ -11,9 +11,12 @@ RUN npm run build && npm prune --omit=dev
 FROM node:24-alpine AS runtime
 WORKDIR /app
 RUN apk upgrade --no-cache \
-    && apk add --no-cache tini fontconfig font-noto font-noto-emoji \
+    && apk add --no-cache tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 \
     && rm -rf /usr/local/lib/node_modules/npm \
-    && rm -f /usr/local/bin/npm /usr/local/bin/npx
+              /usr/local/lib/node_modules/corepack \
+              /opt/yarn-v1.22.22 \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx \
+             /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
