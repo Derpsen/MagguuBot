@@ -184,7 +184,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   or one-folder wording in FAQ tags. Do not restore MagguuKSL.
 - Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
   author/person credits; keep addon product names; never set Magguu as
-  author of a foreign addon. FAQ embeds must not contain `/Naowh/i`.
+  author of a foreign addon. FAQ embeds must not name foreign authors.
 
 ## WowUp packs (2026-09-06)
 

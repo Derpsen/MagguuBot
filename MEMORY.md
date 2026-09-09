@@ -12,7 +12,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - MagguuUI_EUI: **Boiling Point** kept. **TopBar / Hearth-Picker / Magguu FPS-MS removed** — no FAQ promises for them. AuraBuff bag/group **count CENTER**.
 - Hide Services: secret-safe Services/Dienste strip on General only; never bare channel index 5; do not swallow fight chat.
 - Bot copy/docs/AGENTS/MEMORY: person names only **Magguu** / **MagguuUI**. Scrub foreign author/person credits. Keep addon **product** names (EllesmereUI, BigWigs, EXBoss, …). Never set Magguu as author of a foreign addon.
-- FAQ/welcome embeds must not contain `/Naowh/i` (see `tests/features.test.ts`). Discord field values ≤ 1024 chars.
+- FAQ/welcome embeds must not name foreign authors (enforced in `tests/features.test.ts`). Discord field values ≤ 1024 chars.
 
 ## WowUp packs (2026-09-06)
 
