@@ -170,12 +170,13 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
   MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
-  Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Install All /
-  Magguu-Profile übernehmen / Magguu Settings; **Install All** = bake + look +
-  companions; **Magguu Settings** = overlay/QoL only; **Load profiles**
-  activate-only except class layouts — Settings/Load do not reimport bake;
-  Ellesmere bake delta-only; Targeted Spell Bars ON via Install All, EXBoss
-  MythicCast OFF; Boiling Point kept; TopBar / Hearth / Magguu FPS removed;
+  Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
+  übernehmen / Magguu Settings; gold **Magguu-Profile übernehmen** = bake +
+  Magguu Settings + companions; **Magguu Settings** = overlay/QoL only; **Load
+  profiles** activate-only except class layouts — Settings/Load do not reimport
+  bake; Ellesmere bake delta-only; Targeted Spell Bars ON via Magguu-Profile
+  übernehmen, EXBoss MythicCast OFF; Boiling Point kept; TopBar / Hearth /
+  Magguu FPS removed;
   AuraBuff count CENTER; Hide Services secret-safe on General; Skinning
   NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
   restore EXBoss split); WowUp optional pack includes Premade Groups Filter

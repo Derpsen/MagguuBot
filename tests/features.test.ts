@@ -177,9 +177,9 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+Auctionator/);
-  assert.match(faqText, /Install All/);
-  assert.match(faqText, /Bake\+Look\+Companions/);
-  assert.match(faqText, /Overlay\/QoL only/);
+  assert.equal(/Install All/.test(faqText), false);
+  assert.match(faqText, /Bake \+ Magguu Settings \+ Begleiter/);
+  assert.match(faqText, /nur Overlay\/QoL/);
   assert.match(faqText, /kein Bake-Reimport/);
   assert.match(faqText, /Targeted Spell Bars/);
   assert.match(faqText, /MythicCast OFF/);
@@ -202,8 +202,8 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(`${updates.description ?? ''}`, /Magguu Settings/);
   assert.match(`${updates.description ?? ''}`, /Profile laden/);
   assert.match(`${updates.description ?? ''}`, /aktiviert nur/);
-  assert.match(`${updates.description ?? ''}`, /Install All/);
-  assert.match(`${updates.description ?? ''}`, /Overlay\/QoL only/);
+  assert.equal(/Install All/.test(`${updates.description ?? ''}`), false);
+  assert.match(`${updates.description ?? ''}`, /nur Overlay\/QoL/);
   assert.match(`${updates.description ?? ''}`, /kein Bake-Reimport/);
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
