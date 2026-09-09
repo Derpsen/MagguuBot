@@ -185,6 +185,9 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
   author/person credits; keep addon product names; never set Magguu as
   author of a foreign addon. FAQ embeds must not name foreign authors.
+- CurseForge / Wago / WoWI paste files live in MagguuUI
+  `docs/store-descriptions/` (not this repo). Discord FAQ is separate and
+  still needs `/setup-server` **full** to refresh live SQLite.
 
 ## WowUp packs (2026-09-06)
 
