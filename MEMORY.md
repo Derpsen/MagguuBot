@@ -6,7 +6,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - EllesmereUI TOC min **9.0.6+**; live host **9.1.6**; Magguu Ellesmere bake **9.0.8**.
 - Four sibling AddOns: MagguuUI / MagguuUI_Data / MagguuUI_EUI / MagguuUI_Media (all enabled).
-- Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = bake + Magguu Settings + companions. **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no bake reimport). **Load profiles** = activate-only (no bake reimport), except class layouts per character.
+- Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = bake + Magguu Settings + companions (including dump addons). **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no bake reimport). **Load profiles** = activate Magguu profiles (including dump addons); no bake reimport except a missing dump once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss only.
 - Ellesmere bake is **delta-only** (feature/schema merge; no blind profile replace). Fresh / new bake deltas need Magguu-Profile übernehmen.
 - **Targeted Spell Bars** (Ellesmere Nearby Cast / Mythic+ Tools) ON via Magguu-Profile übernehmen; keep **EXBoss MythicCast OFF** (same job — do not run both).
 - MagguuUI_EUI: **Boiling Point** kept. **TopBar / Hearth-Picker / Magguu FPS-MS removed** — no FAQ promises for them. AuraBuff bag/group **count CENTER**.
