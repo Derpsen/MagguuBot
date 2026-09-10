@@ -27,6 +27,8 @@ export type ChannelKey =
   | 'downloadLive'
   | 'movieNight';
 
+const channelCache = new Map<ChannelKey, string | undefined>()
+
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
   imports: config.DISCORD_CHANNEL_IMPORTS,
@@ -53,13 +55,15 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
 };
 
 export function getChannel(key: ChannelKey): string | undefined {
+  if (channelCache.has(key)) return channelCache.get(key);
   const row = db
     .select()
     .from(channelConfig)
     .where(and(eq(channelConfig.guildId, config.DISCORD_GUILD_ID), eq(channelConfig.key, key)))
     .get();
-  if (row?.channelId) return row.channelId;
-  return FALLBACK_ENV[key];
+  const value = row?.channelId || FALLBACK_ENV[key];
+  channelCache.set(key, value);
+  return value;
 }
 
 export function saveChannel(key: ChannelKey, channelId: string): void {
@@ -70,4 +74,5 @@ export function saveChannel(key: ChannelKey, channelId: string): void {
       set: { channelId, updatedAt: new Date() },
     })
     .run();
+  channelCache.set(key, channelId);
 }

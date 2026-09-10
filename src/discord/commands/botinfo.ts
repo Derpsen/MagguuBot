@@ -2,7 +2,7 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { webhookEvents } from '../../db/schema.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, formatBytes } from '../../embeds/colors.js';
 import type { SlashCommand } from './index.js';
 
 function formatUptime(s: number): string {
@@ -12,13 +12,6 @@ function formatUptime(s: number): string {
   if (d > 0) return `${d}d ${h}h ${m}m`;
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-  return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
 }
 
 export const botinfoCommand: SlashCommand = {

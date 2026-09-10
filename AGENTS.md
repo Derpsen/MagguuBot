@@ -19,7 +19,7 @@ Human install docs live in `README.md`. This file is the agent entrypoint (stack
 
 ## Stack
 
-Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 12 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
+Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 13 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
 
 No ESLint/Prettier. Tests use Node's built-in test runner.
 
