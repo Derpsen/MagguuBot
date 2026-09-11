@@ -177,6 +177,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+Auctionator\+Smart Reminders/);
+  assert.match(faqText, /Setup-Buttons BigWigs\/NSRT\/EXBoss\/Smart Reminders/);
   assert.equal(/Install All/.test(faqText), false);
   assert.match(faqText, /Bake \+ Magguu Settings \+ Begleiter/);
   assert.match(faqText, /nur Overlay\/QoL/);
