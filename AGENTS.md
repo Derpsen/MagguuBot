@@ -180,7 +180,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   AuraBuff count CENTER; Hide Services secret-safe on General; Skinning
   NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
   restore EXBoss split); WowUp optional pack includes Premade Groups Filter
-  and Auctionator). Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
+  Auctionator, and Smart Reminders). Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
   or one-folder wording in FAQ tags. Do not restore MagguuKSL.
 - Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
   author/person credits; keep addon product names; never set Magguu as
@@ -192,7 +192,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 ## WowUp packs (2026-09-06)
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
-- **Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator.
+- **Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
 - No WindTools. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
 
 ## Grok Bot / Buddy + Git publish

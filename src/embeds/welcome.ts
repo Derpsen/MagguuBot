@@ -683,7 +683,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         value: [
           'Im Setup kopieren und in WowUp einfügen.',
           '**Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore',
-          '**Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator',
+          '**Optional:** BugGrabber, BugSack, HandyNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
         ].join('\n'),
         inline: false,
       },
@@ -694,7 +694,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
           '`Tooltip?` → Magguus Platz, folgt nicht der Maus',
           '`WoW-Version?` → Ready for **12.1**; lädt auf Midnight **12.0**',
           '`Was brauche ich?` → EllesmereUI 9.0.6+ + MagguuUI (vier Ordner, alle aktiviert)',
-          '`Setup?` → Magguu-Profile übernehmen = Bake+Settings+Begleiter (auch WIM/Waypoint/HandyNotes/TTT/GTFO/BugSack/PGF). Magguu Settings = nur Overlay/QoL. Profile laden nur aktivieren (kein Bake-Reimport), außer Klassenlayouts. Setup-Buttons nur BigWigs/NSRT/EXBoss. WowUp PGF+Auctionator',
+          '`Setup?` → Magguu-Profile übernehmen = Bake+Settings+Begleiter (WIM/Waypoint/HandyNotes/TTT/GTFO/BugSack/PGF/Smart Reminders). Magguu Settings = Overlay/QoL. Profile laden nur aktivieren (kein Bake). Setup-Buttons BigWigs/NSRT/EXBoss. WowUp PGF+Auctionator+Smart Reminders',
           '`Skinning?` → NAMEN & FARBEN DualRow (Unit | Party/Raid) + klassenfarbige Keybinds — Magguu Settings',
           '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alerts, Itemlevel Party/Raid (2P/4P), Smart Tab, Hide Services (secret-safe) auf General, Quick Focus, Ellesmere-Lautsprecher, Boiling Point; AuraBuff-Count CENTER. Targeted Spell Bars ON via Install; EXBoss MythicCast OFF. Kein TopBar/Hearth/Magguu-FPS',
           '`Nightly Builds?` → Pre-Releases gepostet, **nicht gepingt**',
