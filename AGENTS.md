@@ -105,7 +105,7 @@ npm run db:push      # drizzle-kit sync
 
 ## Channel mapping (event → channel)
 
-Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel-store.ts` (SQLite-first, env fallback). The persistent keys below match the STRUCTURE plan in `/setup-server`.
+Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel-store.ts` (SQLite-first, env fallback, process-local Map; `saveChannel` invalidates). The persistent keys below match the STRUCTURE plan in `/setup-server`. `pino-pretty` is a **devDependency** (prod logger is JSON).
 
 | Event | Channel key |
 |---|---|

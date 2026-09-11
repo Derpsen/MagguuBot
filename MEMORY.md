@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-09-10
+
+- Live Unraid container `MagguuBot` / `ghcr.io/derpsen/magguu-bot:latest` after `d095062`.
+- `getChannel` caches per process; `saveChannel` updates the Map (setup-server, ticket-buttons, admin).
+- `pino-pretty` is `devDependencies` only. `formatBytes` for `/botinfo` comes from `src/embeds/colors.ts`.
+- better-sqlite3 is **13** (AGENTS.md).
+
 ## MagguuUI product facts (2026-09-07)
 
 - EllesmereUI TOC min **9.0.6+**; live host **9.1.6**; Magguu Ellesmere bake **9.0.8**.
