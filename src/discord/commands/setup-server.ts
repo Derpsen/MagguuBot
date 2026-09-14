@@ -51,7 +51,7 @@ import { config } from '../../config.js';
 import { db } from '../../db/client.js';
 import { welcomeMessages } from '../../db/schema.js';
 import { logger } from '../../utils/logger.js';
-import { getChannel, saveChannel, type ChannelKey } from '../channel-store.js';
+import { getChannel, isChannelKey, saveChannel } from '../channel-store.js';
 import { getClient } from '../client.js';
 import {
   REF_AWARE_WELCOME_NAMES,
@@ -367,31 +367,6 @@ const NAME_TO_REF_KEY: Record<string, keyof ChannelRefs> = {
   '🎬・movie-night': 'movieNight',
   'ticket-logs': 'ticketLogs',
 };
-
-const PERSISTENT_KEYS: ReadonlySet<string> = new Set<ChannelKey>([
-  'grabs',
-  'imports',
-  'failures',
-  'requests',
-  'approvals',
-  'newOnPlex',
-  'plexActivity',
-  'maintainerr',
-  'health',
-  'welcome',
-  'auditLog',
-  'modLog',
-  'github',
-  'starboard',
-  'blueTracker',
-  'addonUpdates',
-  'faq',
-  'suggestions',
-  'weeklyDigest',
-  'downloadLive',
-  'movieNight',
-  'ticketLogs',
-]);
 
 const WELCOME_BUILDERS: Record<string, (r: ChannelRefs) => EmbedBuilder> = {
   '👋・willkommen': buildWelcomeHeroEmbed,
@@ -753,9 +728,9 @@ function buildSetupDryRun(guild: Guild, fullSync: boolean): string {
       if (kind === ChannelType.GuildText) {
         textOutcomes.push({ planName: channel.name, status });
         const key = NAME_TO_REF_KEY[channel.name];
-        if (key && PERSISTENT_KEYS.has(key)) {
+        if (key && isChannelKey(key)) {
           if (status !== 'exists') refsChanged = true;
-          else if (current && getChannel(key as ChannelKey) !== current.id) refsChanged = true;
+          else if (current && getChannel(key) !== current.id) refsChanged = true;
         }
       }
     }
@@ -798,9 +773,9 @@ function captureRef(refs: ChannelRefs, plan: ChannelPlan, channelId: string): bo
   const key = NAME_TO_REF_KEY[plan.name];
   if (!key) return false;
   refs[key] = channelId;
-  if (PERSISTENT_KEYS.has(key)) {
-    const changed = getChannel(key as ChannelKey) !== channelId;
-    saveChannel(key as ChannelKey, channelId);
+  if (isChannelKey(key)) {
+    const changed = getChannel(key) !== channelId;
+    saveChannel(key, channelId);
     return changed;
   }
   return false;

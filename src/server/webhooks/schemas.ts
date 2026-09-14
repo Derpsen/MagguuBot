@@ -7,6 +7,26 @@ import { z } from 'zod';
 // change does not break the bot. The point is to reject malformed/empty
 // bodies and to satisfy `noUncheckedIndexedAccess` without hand-rolled casts.
 
+// Shared *arr nested shapes — Sonarr/Radarr emit the same quality/release/image fields.
+const arrImage = z.object({ coverType: z.string(), remoteUrl: z.string().nullable().optional() }).passthrough();
+const arrMediaFile = z
+  .object({
+    quality: z.string().optional(),
+    size: z.number().optional(),
+    releaseGroup: z.string().optional(),
+    path: z.string().optional(),
+  })
+  .passthrough();
+const arrRelease = z
+  .object({
+    quality: z.string().optional(),
+    size: z.number().optional(),
+    releaseGroup: z.string().optional(),
+    releaseTitle: z.string().optional(),
+    indexer: z.string().optional(),
+  })
+  .passthrough();
+
 // ─── Sonarr ─────────────────────────────────────────
 
 const sonarrEpisode = z
@@ -14,15 +34,6 @@ const sonarrEpisode = z
     seasonNumber: z.number(),
     episodeNumber: z.number(),
     title: z.string().optional(),
-  })
-  .passthrough();
-
-const sonarrEpisodeFile = z
-  .object({
-    quality: z.string().optional(),
-    size: z.number().optional(),
-    releaseGroup: z.string().optional(),
-    path: z.string().optional(),
   })
   .passthrough();
 
@@ -34,25 +45,15 @@ export const sonarrPayloadSchema = z
         title: z.string(),
         year: z.number().optional(),
         path: z.string().optional(),
-        images: z
-          .array(z.object({ coverType: z.string(), remoteUrl: z.string().nullable().optional() }).passthrough())
+        images: z.array(arrImage)
           .optional(),
       })
       .passthrough()
       .optional(),
     episodes: z.array(sonarrEpisode).optional(),
-    release: z
-      .object({
-        quality: z.string().optional(),
-        size: z.number().optional(),
-        releaseGroup: z.string().optional(),
-        releaseTitle: z.string().optional(),
-        indexer: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-    episodeFile: sonarrEpisodeFile.optional(),
-    episodeFiles: z.array(sonarrEpisodeFile).optional(),
+    release: arrRelease.optional(),
+    episodeFile: arrMediaFile.optional(),
+    episodeFiles: z.array(arrMediaFile).optional(),
     deletedFiles: z.union([z.boolean(), z.array(z.unknown())]).optional(),
     deleteReason: z.string().optional(),
     downloadClient: z.string().optional(),
@@ -99,15 +100,6 @@ export function healthLevelForEvent(
 
 // ─── Radarr ─────────────────────────────────────────
 
-const radarrMovieFile = z
-  .object({
-    quality: z.string().optional(),
-    size: z.number().optional(),
-    releaseGroup: z.string().optional(),
-    path: z.string().optional(),
-  })
-  .passthrough();
-
 export const radarrPayloadSchema = z
   .object({
     eventType: z.string().min(1),
@@ -116,8 +108,7 @@ export const radarrPayloadSchema = z
         title: z.string(),
         year: z.number().optional(),
         path: z.string().optional(),
-        images: z
-          .array(z.object({ coverType: z.string(), remoteUrl: z.string().nullable().optional() }).passthrough())
+        images: z.array(arrImage)
           .optional(),
       })
       .passthrough()
@@ -126,17 +117,8 @@ export const radarrPayloadSchema = z
       .object({ title: z.string().optional(), year: z.number().optional() })
       .passthrough()
       .optional(),
-    release: z
-      .object({
-        quality: z.string().optional(),
-        size: z.number().optional(),
-        releaseGroup: z.string().optional(),
-        releaseTitle: z.string().optional(),
-        indexer: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-    movieFile: radarrMovieFile.optional(),
+    release: arrRelease.optional(),
+    movieFile: arrMediaFile.optional(),
     deletedFiles: z.union([z.boolean(), z.array(z.unknown())]).optional(),
     deleteReason: z.string().optional(),
     downloadClient: z.string().optional(),

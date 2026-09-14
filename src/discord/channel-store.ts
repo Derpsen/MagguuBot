@@ -2,32 +2,11 @@ import { and, eq } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { channelConfig } from '../db/schema.js';
+import { type ChannelKey } from './channel-catalog.js';
 
-export type ChannelKey =
-  | 'grabs'
-  | 'imports'
-  | 'failures'
-  | 'requests'
-  | 'approvals'
-  | 'newOnPlex'
-  | 'plexActivity'
-  | 'maintainerr'
-  | 'health'
-  | 'welcome'
-  | 'auditLog'
-  | 'modLog'
-  | 'github'
-  | 'starboard'
-  | 'blueTracker'
-  | 'addonUpdates'
-  | 'faq'
-  | 'suggestions'
-  | 'ticketLogs'
-  | 'weeklyDigest'
-  | 'downloadLive'
-  | 'movieNight';
+export { CHANNEL_CATALOG, isChannelKey, type ChannelKey } from './channel-catalog.js';
 
-const channelCache = new Map<ChannelKey, string | undefined>()
+const channelCache = new Map<ChannelKey, string | undefined>();
 
 const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   grabs: config.DISCORD_CHANNEL_GRABS,
