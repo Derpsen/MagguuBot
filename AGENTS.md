@@ -171,16 +171,17 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
   MagguuUI_Media, all enabled; skip Ellesmere start popup; Window & Tooltip
   Skins precheck; Edit Mode MagguuUI once; scale 0.58 from Magguu-Profile
-  übernehmen / Magguu Settings; gold **Magguu-Profile übernehmen** = bake +
+  übernehmen / Magguu Settings; gold **Magguu-Profile übernehmen** then
   Magguu Settings + companions; **Magguu Settings** = overlay/QoL only; **Load
-  profiles** activate-only except class layouts — Settings/Load do not reimport
-  bake; Ellesmere bake delta-only; Targeted Spell Bars ON via Magguu-Profile
+  profiles** activate-only except class layouts — Settings/Load do not re-import;
+  Targeted Spell Bars ON via Magguu-Profile
   übernehmen, EXBoss MythicCast OFF; Boiling Point kept; TopBar / Hearth /
   Magguu FPS removed;
   AuraBuff count CENTER; Hide Services secret-safe on General; Skinning
   NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
   restore EXBoss split); WowUp optional pack includes Premade Groups Filter
-  Auctionator, and Smart Reminders). Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
+  Auctionator, and Smart Reminders). Player-facing FAQ never says bake, dump,
+  or recapture. Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
   or one-folder wording in FAQ tags. Do not restore MagguuKSL.
 - Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
   author/person credits; keep addon product names; never set Magguu as
@@ -193,7 +194,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
 - **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
-- No WindTools. HandyNotes MapNotes is pack-only (no Magguu bake). No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
+- No WindTools. HandyNotes MapNotes is on WowUp Optional; Magguu settings apply with HandyNotes via Magguu-Profile übernehmen / Profile laden. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
 
 ## Grok Bot / Buddy + Git publish
 

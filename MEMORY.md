@@ -13,7 +13,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - EllesmereUI TOC min **9.0.6+**; live host **9.1.6**; Magguu Ellesmere bake **9.0.8**.
 - Four sibling AddOns: MagguuUI / MagguuUI_Data / MagguuUI_EUI / MagguuUI_Media (all enabled).
-- Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = bake + Magguu Settings + companions (including dump addons). **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no bake reimport). **Load profiles** = activate Magguu profiles (including dump addons); no bake reimport except a missing dump once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss only.
+- Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = Magguu profiles + Magguu Settings + companions. **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no re-import). **Load profiles** = activate Magguu profiles; no re-import except a missing companion once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss, Smart Reminders.
+- Player-facing FAQ/welcome never says bake, dump, or recapture.
 - Ellesmere bake is **delta-only** (feature/schema merge; no blind profile replace). Fresh / new bake deltas need Magguu-Profile übernehmen.
 - **Targeted Spell Bars** (Ellesmere Nearby Cast / Mythic+ Tools) ON via Magguu-Profile übernehmen; keep **EXBoss MythicCast OFF** (same job — do not run both).
 - MagguuUI_EUI: **Boiling Point** kept. **TopBar / Hearth-Picker / Magguu FPS-MS removed** — no FAQ promises for them. AuraBuff bag/group **count CENTER**.
@@ -26,7 +27,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
 - **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
-- No WindTools. HandyNotes MapNotes is pack-only (no Magguu bake). No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include. Skinning DualRow has no EXBoss split names.
+- No WindTools. HandyNotes MapNotes is on WowUp Optional; Magguu settings apply with HandyNotes via Magguu-Profile übernehmen / Profile laden. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include. Skinning DualRow has no EXBoss split names.
 ## 2026-09-14 hard-refactor
 
 - `ChannelKey` / dashboard labels live in `src/discord/channel-catalog.ts` (`CHANNEL_CATALOG` + `isChannelKey`). `channel-store` re-exports and owns SQLite/env fallbacks. `PERSISTENT_KEYS` / admin `CHANNEL_KEYS` removed as duplicates.
