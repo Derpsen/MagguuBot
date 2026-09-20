@@ -10,6 +10,8 @@ import {
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
+import { getFeatureState, setFeatureState } from './feature-state.js';
+import { hashSlashCommandBody } from './slash-body-hash.js';
 import { backfillWelcomePins, handleSetupServerButton } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
@@ -190,9 +192,17 @@ export async function startDiscord(): Promise<void> {
   await c.login(config.DISCORD_TOKEN);
 }
 
+const SLASH_HASH_KEY = 'slash_commands_hash';
+
 async function registerCommands(): Promise<void> {
   const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
   const body = Array.from(commands.values()).map((cmd) => cmd.data.toJSON());
+  const hash = hashSlashCommandBody(body);
+  if (getFeatureState(SLASH_HASH_KEY) === hash) {
+    logger.info({ count: body.length }, 'slash commands unchanged');
+    return;
+  }
   await rest.put(Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID), { body });
+  setFeatureState(SLASH_HASH_KEY, hash);
   logger.info({ count: body.length }, 'slash commands registered');
 }

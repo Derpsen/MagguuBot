@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { EmbedBuilder } from 'discord.js';
 import type { RadarrQueueResponse } from '../services/radarr.js';
 import type { SabQueueResponse } from '../services/sabnzbd.js';
@@ -58,6 +59,12 @@ export function buildQueueEmbed(i: BuildQueueEmbedInput): EmbedBuilder {
 
   e.setFooter({ text: 'MagguuBot  ·  live snapshot' });
   return e;
+}
+
+export function hashQueueEmbedPayload(embed: EmbedBuilder): string {
+  const json = { ...embed.toJSON() };
+  delete json.timestamp;
+  return createHash('sha256').update(JSON.stringify(json)).digest('hex');
 }
 
 function renderLines(lines: Line[]): string {

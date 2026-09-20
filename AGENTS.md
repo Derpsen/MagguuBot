@@ -60,7 +60,7 @@ npm run db:push      # drizzle-kit sync
 
 **better-sqlite3 on Windows** — needs Python + MSVC. Locally use `npm install --ignore-scripts` to typecheck; for a runnable bot on Windows, use Docker. The Alpine Dockerfile has the build chain.
 
-**Slash commands are per-guild** — registered to `DISCORD_GUILD_ID` on every boot via `REST.put(Routes.applicationGuildCommands)`. Instant update, no 1h global cache. Bot is single-guild by design.
+**Slash commands are per-guild** — `REST.put(Routes.applicationGuildCommands)` to `DISCORD_GUILD_ID`. Instant update, no 1h global cache. Body hash is stored in `feature_state` (`slash_commands_hash`); unchanged boots skip the PUT. Bot is single-guild by design.
 
 **Webhook auth** — all `/webhook/*` require header `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compared in `server/app.ts`), **except**:
 - `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead

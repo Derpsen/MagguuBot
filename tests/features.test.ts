@@ -7,7 +7,8 @@ import {
   buildFaqChannelEmbed,
   buildPlexActivityChannelEmbed,
 } from '../src/embeds/welcome.ts';
-import { buildQueueEmbed } from '../src/embeds/queue.ts';
+import { hashSlashCommandBody } from '../src/discord/slash-body-hash.ts';
+import { buildQueueEmbed, hashQueueEmbedPayload } from '../src/embeds/queue.ts';
 import { buildWeeklyDigestEmbed } from '../src/embeds/weekly-digest.ts';
 import { deriveAchievements } from '../src/utils/achievements.ts';
 import { readResponseBytesLimited } from '../src/utils/http-body.ts';
@@ -110,6 +111,45 @@ test('movie night renders nominations and only exposes voting while open', () =>
   assert.match(embed.description ?? '', /Dune/);
   assert.equal(buildMovieNightComponents(view).length, 1);
   assert.equal(buildMovieNightComponents({ ...view, night: { ...night, status: 'closed' } }).length, 0);
+});
+
+test('slash command body hash is stable for the same payload', () => {
+  const body = [{ name: 'ping', type: 1 }, { name: 'help', type: 1 }];
+  assert.equal(hashSlashCommandBody(body), hashSlashCommandBody(body));
+  assert.notEqual(hashSlashCommandBody(body), hashSlashCommandBody([{ name: 'ping', type: 1 }]));
+});
+
+test('live queue payload hash ignores embed timestamp', () => {
+  const empty = { sonarr: null, radarr: null, sab: null };
+  const first = buildQueueEmbed(empty)
+    .setTitle('📡 Live-Downloads')
+    .setFooter({ text: 'MagguuBot · aktualisiert jede Minute' });
+  const second = buildQueueEmbed(empty)
+    .setTitle('📡 Live-Downloads')
+    .setFooter({ text: 'MagguuBot · aktualisiert jede Minute' });
+  assert.equal(hashQueueEmbedPayload(first), hashQueueEmbedPayload(second));
+  const changed = buildQueueEmbed({
+    sonarr: {
+      page: 1,
+      pageSize: 1,
+      sortKey: 'timeleft',
+      sortDirection: 'ascending',
+      totalRecords: 1,
+      records: [{
+        id: 1,
+        title: 'Show',
+        size: 100,
+        sizeleft: 50,
+        status: 'downloading',
+        trackedDownloadState: 'downloading',
+      }],
+    },
+    radarr: null,
+    sab: null,
+  })
+    .setTitle('📡 Live-Downloads')
+    .setFooter({ text: 'MagguuBot · aktualisiert jede Minute' });
+  assert.notEqual(hashQueueEmbedPayload(first), hashQueueEmbedPayload(changed));
 });
 
 test('live queue clamps invalid progress and field sizes', () => {

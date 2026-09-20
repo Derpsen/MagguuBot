@@ -457,6 +457,7 @@ export const livePanels = sqliteTable(
     kind: text('kind', { enum: ['downloads'] }).notNull(),
     channelId: text('channel_id').notNull(),
     messageId: text('message_id').notNull(),
+    payloadHash: text('payload_hash'),
     enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .notNull()
