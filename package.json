@@ -30,9 +30,9 @@
     "discord.js": "^14.27.0",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.11.1",
-    "hono": "^4.13.7",
+    "hono": "^4.13.8",
     "pino": "^10.3.1",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@lucide/vue": "^1.45.0",
