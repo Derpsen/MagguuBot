@@ -213,15 +213,16 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(faqText, /Ellesmere-Lautsprecher/);
   assert.match(faqText, /NAMEN & FARBEN/);
   assert.equal(/EXBoss-Split/.test(faqText), false);
-  assert.match(faqText, /Hide Services \(secret-safe\) auf General/);
+  assert.equal(/Hide Services/.test(faqText), false);
   assert.match(faqText, /Profile laden nur aktivieren/);
   assert.match(faqText, /Itemlevel Party\/Raid \(2P\/4P\)/);
   assert.match(faqText, /PGF\+Auctionator\+Smart Reminders\+MapNotes/);
   assert.match(faqText, /Setup-Buttons BigWigs\/NSRT\/EXBoss\/Smart Reminders/);
   assert.equal(/Install All/.test(faqText), false);
-  assert.match(faqText, /Bake \+ Magguu Settings \+ Begleiter/);
+  assert.equal(/\bBake\b/.test(faqText), false);
+  assert.match(faqText, /Profile\+Settings\+Begleiter/);
   assert.match(faqText, /nur Overlay\/QoL/);
-  assert.match(faqText, /kein Bake-Reimport/);
+  assert.match(faqText, /kein Neuimport/);
   assert.match(faqText, /Targeted Spell Bars/);
   assert.match(faqText, /MythicCast OFF/);
   assert.match(faqText, /Boiling Point/);
@@ -245,7 +246,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.match(`${updates.description ?? ''}`, /aktiviert nur/);
   assert.equal(/Install All/.test(`${updates.description ?? ''}`), false);
   assert.match(`${updates.description ?? ''}`, /nur Overlay\/QoL/);
-  assert.match(`${updates.description ?? ''}`, /kein Bake-Reimport/);
+  assert.match(`${updates.description ?? ''}`, /kein Neuimport/);
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 

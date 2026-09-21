@@ -18,7 +18,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Ellesmere bake is **delta-only** (feature/schema merge; no blind profile replace). Fresh / new bake deltas need Magguu-Profile übernehmen.
 - **Targeted Spell Bars** (Ellesmere Nearby Cast / Mythic+ Tools) ON via Magguu-Profile übernehmen; keep **EXBoss MythicCast OFF** (same job — do not run both).
 - MagguuUI_EUI: **Boiling Point** kept. **TopBar / Hearth-Picker / Magguu FPS-MS removed** — no FAQ promises for them. AuraBuff bag/group **count CENTER**.
-- Hide Services: secret-safe Services/Dienste strip on General only; never bare channel index 5; do not swallow fight chat.
+- Magguu does not join, leave, or hide Services. Players manage that channel.
 - Bot copy/docs/AGENTS/MEMORY: person names only **Magguu** / **MagguuUI**. Scrub foreign author/person credits. Keep addon **product** names (EllesmereUI, BigWigs, EXBoss, …). Never set Magguu as author of a foreign addon.
 - FAQ/welcome embeds must not name foreign authors (enforced in `tests/features.test.ts`). Discord field values ≤ 1024 chars.
 - Store listings (CurseForge / Wago / WoWI) are MagguuUI `docs/store-descriptions/`. WoWI logo is GitHub raw `logo-300.png`, not `ui.magguu.xyz`.

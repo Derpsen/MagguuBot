@@ -177,7 +177,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   Targeted Spell Bars ON via Magguu-Profile
   übernehmen, EXBoss MythicCast OFF; Boiling Point kept; TopBar / Hearth /
   Magguu FPS removed;
-  AuraBuff count CENTER; Hide Services secret-safe on General; Skinning
+  AuraBuff count CENTER; Magguu does not join/leave/hide Services; Skinning
   NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
   restore EXBoss split); WowUp optional pack includes Premade Groups Filter
   Auctionator, and Smart Reminders). Player-facing FAQ never says bake, dump,
