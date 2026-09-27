@@ -683,7 +683,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         value: [
           'Im Setup kopieren und in WowUp einfügen.',
           '**Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore',
-          '**Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes_MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
+          '**Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
         ].join('\n'),
         inline: false,
       },
