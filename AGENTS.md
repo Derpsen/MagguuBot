@@ -213,6 +213,23 @@ Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
 - MagguuBot merges: local only in this checkout (`gh pr merge --squash --delete-branch`). The GitHub connector Auto-review blocks MagguuBot merges. Website may use the GitHub connector or the same local `gh` path.
 - Never launch Cursor cloud agents for Dependabot, merges, or MagguuBot/Website polyfill work. Never ask Marco; report only to Buddy.
 
+
+## Discord Admin-Smoke (helpers -> Buddy)
+
+MagguuBot admin is Discord-OAuth gated. If session unavailable -> **BLOCK** with reason (OAuth/session); do not invent success. After green App-Image docker, Homelab pulls; Stack merge report must say **Actions-only** vs **App-Image**.
+
+Paste template for Buddy:
+
+```
+Discord-Admin-Smoke: OK | BLOCK
+- Login/session: ...
+- Routes/pages checked: ...
+- Fail: ... (or none)
+- Live: bot.magguu.xyz / Unraid MagguuBot
+```
+
+When WowUp/copy MagguuUI product facts change, update Bot `AGENTS.md` / `MEMORY.md` together with Website + Magguu-Dashboard the same round.
+
 ## What NOT to do
 
 - NEVER commit `.env`, `.env.*` (except `.env.example`), `data/`, or `dist/` — gitignored

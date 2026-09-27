@@ -32,3 +32,9 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - `ChannelKey` / dashboard labels live in `src/discord/channel-catalog.ts` (`CHANNEL_CATALOG` + `isChannelKey`). `channel-store` re-exports and owns SQLite/env fallbacks. `PERSISTENT_KEYS` / admin `CHANNEL_KEYS` removed as duplicates.
 - Shared *arr Zod shapes: `arrImage` / `arrMediaFile` / `arrRelease` in `schemas.ts`.
+
+## 2026-09-27 autonomy
+
+- Discord Admin-Smoke OK/BLOCK template in `AGENTS.md` (OAuth/session required; no invented success).
+- Merge reports: Actions-only vs App-Image; Homelab pulls after green App-Image docker.
+- Pack/copy product-fact deltas: update Bot with Website + Magguu-Dashboard same round.
