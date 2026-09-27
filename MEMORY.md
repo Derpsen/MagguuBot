@@ -11,7 +11,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## MagguuUI product facts (2026-09-07)
 
-- EllesmereUI TOC min **9.0.6+**; live host **9.1.6**; Magguu Ellesmere bake **9.0.8**.
+- EllesmereUI TOC min **9.0.6+**; live host **9.2.9**; Magguu Ellesmere bake **9.0.8**.
 - Four sibling AddOns: MagguuUI / MagguuUI_Data / MagguuUI_EUI / MagguuUI_Media (all enabled).
 - Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = Magguu profiles + Magguu Settings + companions. **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no re-import). **Load profiles** = activate Magguu profiles; no re-import except a missing companion once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss, Smart Reminders.
 - Player-facing FAQ/welcome never says bake, dump, or recapture.
