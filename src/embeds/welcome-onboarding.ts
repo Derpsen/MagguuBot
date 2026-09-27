@@ -23,8 +23,8 @@ export function buildWelcomeChannelEmbed(args: BuildArgs): EmbedBuilder {
   const requestsId = getChannel('requests');
 
   const heroLine = isReturning
-    ? `**Welcome back, ${member.toString()}!** Schön dass du wieder hier bist.`
-    : `**Welcome, ${member.toString()}!** Schön dass du da bist.`;
+    ? `**Welcome back, ${member.toString()}!** Schön, dass du wieder hier bist.`
+    : `**Willkommen, ${member.toString()}!** Schön, dass du da bist.`;
 
   const e = new EmbedBuilder()
     .setColor(isReturning ? Colors.brand : 0x5865f2)
@@ -128,11 +128,11 @@ export function buildWelcomeDmEmbed(member: GuildMember, isReturning: boolean): 
     .setDescription(
       [
         isReturning
-          ? `Schön dass du zurück bist, ${member.user.displayName}.`
-          : `Hey ${member.user.displayName}, schön dass du da bist.`,
+          ? `Schön, dass du zurück bist, ${member.user.displayName}.`
+          : `Hallo ${member.user.displayName}, schön, dass du da bist.`,
         '',
         '**🎯 Direkt von hier aus starten:**',
-        'Klick die Buttons unten — die schalten Channels für dich frei. Toggle jederzeit, du kannst nichts kaputt machen.',
+        'Klicke die Buttons unten — sie schalten Channels für dich frei. Die Auswahl kannst du jederzeit ändern.',
         '',
         '**🎬 Plex-Fan** → MEDIA + DOWNLOADS Channels sichtbar',
         '**🎮 WoW-Fan** → blue-tracker, WoW-News',
@@ -144,7 +144,7 @@ export function buildWelcomeDmEmbed(member: GuildMember, isReturning: boolean): 
     .addFields(
       {
         name: '📌 Erste Schritte',
-        value: '• Lies die Regeln in **#📜・regeln**\n• Sag Hi in **#💬・chat**\n• Schreib `/help` für alle Commands',
+        value: '• Lies die Regeln in **#📜・regeln**\n• Melde dich kurz in **#💬・chat**\n• `/help` zeigt alle Commands',
         inline: false,
       },
       {

@@ -249,7 +249,7 @@ const STRUCTURE: CategoryPlan[] = [
   {
     name: '💬 CHAT',
     channels: [
-      { name: '💬・chat', oldNames: ['general'], topic: 'Labern + Smalltalk.' },
+      { name: '💬・chat', oldNames: ['general'], topic: 'Allgemeiner Chat und Smalltalk.' },
       {
         name: '⌨️・bot-befehle',
         oldNames: ['bot-commands'],

@@ -32,27 +32,27 @@ const STATUS_META: Record<
   approved: {
     label: '✅ Approved',
     color: Colors.success,
-    footerHint: 'request approved — download wird gestartet',
+    footerHint: 'Anfrage genehmigt — Download wird gestartet',
   },
   declined: {
     label: '❌ Declined',
     color: Colors.danger,
-    footerHint: 'request abgelehnt',
+    footerHint: 'Anfrage abgelehnt',
   },
   available: {
     label: '🎉 Available',
     color: Colors.success,
-    footerHint: 'jetzt auf Plex verfügbar',
+    footerHint: 'Jetzt auf Plex verfügbar',
   },
   failed: {
     label: '💥 Failed',
     color: Colors.danger,
-    footerHint: 'request konnte nicht ausgeliefert werden — bitte bei einem Admin melden',
+    footerHint: 'Anfrage konnte nicht ausgeliefert werden — bitte einen Admin informieren',
   },
   deleted: {
     label: '🗑️ Deleted',
     color: Colors.muted,
-    footerHint: 'request wurde entfernt',
+    footerHint: 'Anfrage wurde entfernt',
   },
 };
 
@@ -77,7 +77,7 @@ export function buildSeerrRequestEmbed(i: SeerrRequestEmbedInput): EmbedBuilder 
   if (i.requestedBy) fields.push({ name: 'Requested by', value: truncate(i.requestedBy), inline: true });
   e.addFields(fields);
 
-  e.setFooter({ text: `MagguuUI  ·  ${meta.footerHint}` });
+  e.setFooter({ text: `MagguuBot  ·  ${meta.footerHint}` });
   return e;
 }
 
@@ -190,6 +190,6 @@ export function buildSeerrIssueEmbed(i: SeerrIssueEmbedInput): EmbedBuilder {
   }
   if (fields.length) e.addFields(fields);
 
-  e.setFooter({ text: `MagguuUI  ·  ${meta.footerHint}` });
+  e.setFooter({ text: `MagguuBot  ·  ${meta.footerHint}` });
   return e;
 }

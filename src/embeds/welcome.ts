@@ -94,7 +94,7 @@ export function buildRulesEmbed(): EmbedBuilder {
       },
       {
         name: '2️⃣ Spoiler sind Spoiler',
-        value: 'Packt sie in `||Spoiler-Tags||` oder geht in `#🔇・spoiler-zone`. Ein Staffel-Finale ruiniert Freundschaften.',
+        value: 'Packt sie in `||Spoiler-Tags||` oder geht in `#🔇・spoiler-zone`. Spoiler gehören in Tags oder in die Spoiler-Zone.',
       },
       {
         name: '3️⃣ Keine Piraterie',
@@ -102,11 +102,11 @@ export function buildRulesEmbed(): EmbedBuilder {
       },
       {
         name: '4️⃣ Ein Thema → Ein Channel',
-        value: 'Downloads-Fragen ins Downloads-Channel, Smalltalk in den Chat. Admins verschieben sonst.',
+        value: 'Download-Fragen in den Downloads-Channel, Smalltalk in den Chat. Admins verschieben sonst.',
       },
       {
         name: '5️⃣ Admin hat das letzte Wort',
-        value: 'Requests können abgelehnt werden. Widerspruch per DM, nicht im Channel. Kein Nachkarten.',
+        value: 'Requests können abgelehnt werden. Widerspruch per DM, nicht im Channel.',
       },
       {
         name: '⚠️ Verstöße',
@@ -206,7 +206,7 @@ export function buildRolePickerEmbed(): EmbedBuilder {
     .setTitle('🎭 Deine Rollen')
     .setDescription(
       [
-        'Klick auf einen Button — toggelt die Rolle an/aus.',
+        'Klick auf einen Button — schaltet die Rolle an oder aus.',
         '',
         '**🔓 Interessen** (obere Reihe) — schalten Channels frei. Ohne diese siehst du als Newcomer nur das Nötigste.',
         '',
@@ -246,7 +246,7 @@ export function buildRolePickerEmbed(): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  opt-in, opt-out, alles chill' });
+    .setFooter({ text: 'MagguuBot  ·  Rollen frei wählbar' });
 }
 
 interface ButtonDef {
@@ -324,7 +324,7 @@ export function buildRequestsChannelEmbed(r: ChannelRefs): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.seerr)
     .setTitle('📝 Film oder Serie requesten')
-    .setDescription('Beide Wege laden im gleichen System — Seerr ist nur schöner.')
+    .setDescription('Beide Wege landen im gleichen System — Seerr ist die empfohlene Oberfläche.')
     .addFields(
       {
         name: '🌐 Seerr (empfohlen)',
@@ -419,7 +419,7 @@ export function buildFailuresChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.danger)
     .setTitle('⚠️ Failures & Issues')
-    .setDescription('Alles was **admin-Aufmerksamkeit** braucht — Download-Probleme UND User-gemeldete Plex-Issues.')
+    .setDescription('Alles, was **Admin-Aufmerksamkeit** braucht — Download-Probleme und von Nutzern gemeldete Plex-Issues.')
     .addFields(
       { name: '`DownloadFailure`', value: 'SABnzbd hat abgebrochen', inline: true },
       { name: '`ImportFailure`', value: 'Download ok, aber Import in die Library gescheitert', inline: true },
@@ -466,7 +466,7 @@ export function buildGeneralChatEmbed(): EmbedBuilder {
     .setTitle('💬 General Chat')
     .setDescription(
       [
-        'Willkommen im Herzen des Servers — hier wird gelabert, empfohlen, gezankt und gelacht.',
+        'Allgemeiner Chat — Empfehlungen, Diskussionen und Smalltalk.',
         '',
         '**Themen die immer gehen:**',
         '• Was kuckst du gerade?',
@@ -477,7 +477,7 @@ export function buildGeneralChatEmbed(): EmbedBuilder {
         '_Keine Spoiler ohne Tag. Keine Links zu Piraten-Quellen._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  plauder-zone' });
+    .setFooter({ text: 'MagguuBot  ·  Community-Chat' });
 }
 
 export function buildBotCommandsChannelEmbed(): EmbedBuilder {
@@ -524,7 +524,7 @@ export function buildAuditLogChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.muted)
     .setTitle('📋 Audit-Log')
-    .setDescription('Wer ist joined / geleaved / hat neue Rollen bekommen.')
+    .setDescription('Wer beigetreten oder gegangen ist und welche Rollen sich geändert haben.')
     .addFields(
       { name: '🟢 Joined', value: 'Mit Account-Alter und Member-Nummer', inline: true },
       { name: '⚪ Left', value: 'Mit Join-Datum', inline: true },
@@ -541,7 +541,7 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.info)
     .setTitle('🔨 GitHub-Feed')
-    .setDescription('Live-Activity aus allen deinen Repos — push und vergessen, Bot postet hier.')
+    .setDescription('Live-Activity aus den verbundenen Repos — der Bot postet Push-, Workflow-, Release- und Issue-Events hier.')
     .addFields(
       { name: '📦 Push', value: 'Commits mit Autor + SHA + Message', inline: true },
       { name: '❌ Workflow-Run', value: 'Nur Failures, Cancels, Timeouts — Success/Skipped bleiben draußen', inline: true },
@@ -563,7 +563,7 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
     .setTitle('🎬 Plex Activity')
     .setDescription(
       [
-        'Live-Feed was gerade auf Plex läuft: wer was schaut, pausiert, weiter-guckt oder zu Ende gesehen hat.',
+        'Live-Feed der aktuellen Plex-Sessions: wer was schaut, pausiert, fortsetzt oder zu Ende gesehen hat.',
         '',
         'Pausierte oder feststeckende Sessions (oft Fire TV im Hintergrund) beendet der Bot nach **20 Minuten** automatisch. Live-Stand jederzeit mit `/plex-now-playing`.',
         '',
@@ -683,7 +683,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         value: [
           'Im Setup kopieren und in WowUp einfügen.',
           '**Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore',
-          '**Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
+          '**Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes_MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
         ].join('\n'),
         inline: false,
       },
@@ -703,7 +703,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
       },
       {
         name: '🔔  Updates abonnieren',
-        value: `Button **🎨 MagguuUI** in ${rolesRef} klicken — macht den Channel für dich sichtbar. Plus **🔨 GitHub** für Release-Pings.`,
+        value: `Button **🎨 MagguuUI** in ${rolesRef} klicken — schaltet den Channel frei. Zusätzlich **🔨 GitHub** für Release-Pings.`,
         inline: false,
       },
       {
@@ -712,7 +712,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuUI  ·  Community-driven FAQ' });
+    .setFooter({ text: 'MagguuUI  ·  Addon & Homelab FAQ' });
 }
 
 export function buildWeeklyDigestChannelEmbed(): EmbedBuilder {
@@ -790,7 +790,7 @@ export function buildSuggestionsChannelEmbed(): EmbedBuilder {
       [
         'Hier landen alle Vorschläge der Community — von kleinen QoL-Wünschen bis großen Feature-Ideen.',
         '',
-        '**So gehts:**',
+        "**So geht's:**",
         '• `/suggest <text>` — schickt deinen Vorschlag mit Vote-Buttons in diesen Channel',
         '• 👍 / 👎 — andere voten, du selbst kannst nicht für deinen eigenen voten',
         '• Status-Updates: 💡 Offen → 🛠️ In Arbeit → ✅ Angenommen oder ❌ Abgelehnt',
@@ -807,10 +807,10 @@ export function buildSpoilerChannelEmbed(): EmbedBuilder {
     .setTitle('🔇 Spoiler-Zone')
     .setDescription(
       [
-        '**Hier ist alles erlaubt** — Staffel-Finales, Plot-Twists, wer stirbt.',
+        '**Hier sind Spoiler erlaubt** — Staffelfinales, Plot-Twists und ähnliche Inhalte.',
         '',
         '_Kein ||Tag|| nötig. Wenn du nicht verspoilert werden willst: einfach diesen Channel muten._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  enter at your own risk' });
+    .setFooter({ text: 'MagguuBot  ·  Spoiler-Zone ohne Tags' });
 }

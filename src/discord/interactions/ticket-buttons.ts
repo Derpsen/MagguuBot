@@ -96,7 +96,7 @@ async function openLegacyTicket(interaction: ButtonInteraction): Promise<void> {
     .setColor(Colors.info)
     .setTitle('🎫 Ticket offen')
     .setDescription(
-      `Hi ${interaction.user.toString()} — beschreib dein Problem, ein Mod antwortet bald.`,
+      `Hallo ${interaction.user.toString()} — beschreibe dein Anliegen; ein Moderator antwortet in Kürze.`,
     )
     .setFooter({ text: 'Ticket-ID: ' + channel.id });
 

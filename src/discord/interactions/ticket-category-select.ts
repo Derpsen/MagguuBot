@@ -31,7 +31,7 @@ export async function handleTicketCategorySelect(
 
   const topicInput = new TextInputBuilder()
     .setCustomId('topic')
-    .setLabel('Worum gehts? (kurz)')
+    .setLabel("Worum geht's? (kurz)")
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
     .setMaxLength(100)

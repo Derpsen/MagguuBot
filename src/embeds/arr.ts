@@ -91,7 +91,7 @@ export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
   if (i.releaseTitle) fields.push({ name: 'Release', value: `\`${truncate(i.releaseTitle, 1000)}\``, inline: false });
   if (fields.length) e.addFields(fields);
 
-  e.setFooter({ text: 'MagguuUI  ·  download started' });
+  e.setFooter({ text: 'MagguuBot  ·  Download gestartet' });
   return e;
 }
 
@@ -127,7 +127,7 @@ export function buildImportEmbed(i: ImportEmbedInput): EmbedBuilder {
   if (i.releaseGroup) fields.push({ name: 'Release Group', value: truncate(i.releaseGroup), inline: true });
   if (fields.length) e.addFields(fields);
 
-  e.setFooter({ text: `MagguuUI  ·  available on Plex` });
+  e.setFooter({ text: `MagguuBot  ·  auf Plex verfügbar` });
   return e;
 }
 
@@ -161,7 +161,7 @@ export function buildFailureEmbed(i: FailureEmbedInput): EmbedBuilder {
     .setAuthor({ name: `${serviceLabel}  ·  ${meta.label}` })
     .setTitle(truncate(`${meta.icon}  ${i.title}`, 256))
     .setDescription(truncate(i.reason ?? 'No reason provided.', 1500))
-    .setFooter({ text: `MagguuUI  ·  ${meta.hint}` })
+    .setFooter({ text: `MagguuBot  ·  ${meta.hint}` })
     .setTimestamp(new Date());
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
@@ -204,7 +204,7 @@ export function buildAppUpdateEmbed(i: AppUpdateEmbedInput): EmbedBuilder {
   if (fields.length) e.addFields(fields);
   if (i.message) e.setDescription(truncate(i.message, 1500));
 
-  e.setFooter({ text: `MagguuUI  ·  ${serviceLabel} restart empfohlen wenn nötig` });
+  e.setFooter({ text: `MagguuBot  ·  ${serviceLabel}-Neustart empfohlen, falls nötig` });
   return e;
 }
 
@@ -259,7 +259,7 @@ export function buildDeleteEmbed(i: DeleteEmbedInput): EmbedBuilder {
     : i.deletedFiles
       ? 'inkl. Files auf Disk'
       : 'nur aus der Library entfernt';
-  e.setFooter({ text: `MagguuUI  ·  ${footerHint}` });
+  e.setFooter({ text: `MagguuBot  ·  ${footerHint}` });
   return e;
 }
 

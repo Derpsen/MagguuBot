@@ -72,10 +72,10 @@ export async function handleTicketModalSubmit(interaction: ModalSubmitInteractio
     .setTitle(`Ticket #${channel.id.slice(-4)} · ${interaction.user.displayName}`)
     .setDescription(
       [
-        `**Worum gehts:** ${topic}`,
+        `**Worum geht's:** ${topic}`,
         details ? `\n**Details:**\n${details}` : '',
         '',
-        `Hi ${interaction.user.toString()} — beschreib dein Problem hier, ein Mod meldet sich.`,
+        `Hallo ${interaction.user.toString()} — beschreibe dein Anliegen hier; ein Moderator meldet sich.`,
         '',
         `_Auto-close nach 48h Inaktivität, Warnung nach 24h._`,
       ].join('\n'),
