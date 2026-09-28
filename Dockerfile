@@ -1,4 +1,4 @@
-FROM node:24-alpine AS builder
+﻿FROM node:24-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
@@ -10,8 +10,9 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
+# apk upgrade + explicit libexpat: Trivy HIGH CVE-2026-93990 (2.8.4-r0 -> 2.8.5-r0)
 RUN apk upgrade --no-cache \
-    && apk add --no-cache tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 \
+    && apk add --no-cache --upgrade tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 libexpat \
     && rm -rf /usr/local/lib/node_modules/npm \
               /usr/local/lib/node_modules/corepack \
               /opt/yarn-v1.22.22 \
