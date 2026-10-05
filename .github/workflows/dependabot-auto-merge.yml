@@ -2,6 +2,7 @@ name: Dependabot auto-merge
 
 on:
   pull_request:
+    types: [opened]
   workflow_run:
     workflows: [ci]
     types: [completed]
