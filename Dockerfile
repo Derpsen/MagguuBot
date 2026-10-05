@@ -10,9 +10,9 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
-# apk upgrade + explicit libexpat: Trivy HIGH CVE-2026-93990 (2.8.4-r0 -> 2.8.5-r0)
+# apk upgrade + explicit libexpat/libpng: Trivy HIGH CVE-2026-93990 (libexpat 2.8.5-r0), CVE-2026-46675 (libpng 1.6.59-r0)
 RUN apk upgrade --no-cache \
-    && apk add --no-cache --upgrade tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 libexpat \
+    && apk add --no-cache --upgrade tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 libexpat libpng \
     && rm -rf /usr/local/lib/node_modules/npm \
               /usr/local/lib/node_modules/corepack \
               /opt/yarn-v1.22.22 \
