@@ -165,7 +165,9 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 
 - MagguuUI stable/prerelease announcements route via `ADDON_REPO_FULL_NAMES`
   (default `Derpsen/MagguuUI`) to `addonUpdates`.
-- Host: EllesmereUI TOC min **9.0.6+** (live **9.2.9**); Magguu bake **9.0.8**.
+- Host: EllesmereUI TOC min **9.0.6+** (live **9.2.9**); Magguu bake is
+  **dump-based** (Magguu multi-export, dump values win); release notes
+  reference **v12.1.6** (latest MagguuUI tag).
 - Discord FAQ/tag content that describes MagguuUI must stay aligned with the
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
@@ -179,21 +181,26 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   Magguu FPS removed;
   AuraBuff count CENTER; Magguu does not join/leave/hide Services; Skinning
   NAMES & COLORS DualRow (unit-frame | party/raid; class keybinds — do not
-  restore EXBoss split); WowUp optional pack includes Premade Groups Filter
-  Auctionator, and Smart Reminders). Player-facing FAQ never says bake, dump,
+  restore EXBoss split); Setup buttons BigWigs / Northern Sky / EXBoss / Smart
+  Reminders / Whisper Messenger; WowUp optional pack includes Whisper
+  Messenger, HandyNotes MapNotes, Premade Groups Filter, Auctionator, and Smart
+  Reminders — no WIM / Ellesmere WIM Skin in the pack). Player-facing FAQ never says bake, dump,
   or recapture. Do not leave stale ElvUI-installer, Ashvane, TopBar/FPS,
   or one-folder wording in FAQ tags. Do not restore MagguuKSL.
 - Bot copy/docs: person names only Magguu / MagguuUI; scrub foreign
   author/person credits; keep addon product names; never set Magguu as
   author of a foreign addon. FAQ embeds must not name foreign authors.
+- Public tone: factual Magguu voice. Public contact is **contact@magguu.xyz**
+  (no personal addresses in bot copy).
 - CurseForge / Wago / WoWI paste files live in MagguuUI
   `docs/store-descriptions/` (not this repo). Discord FAQ is separate and
   still needs `/setup-server` **full** to refresh live SQLite.
 
-## WowUp packs (2026-09-15)
+## WowUp packs (2026-10-05)
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
-- **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, WIM, Ellesmere WIM Skin, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
+- **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, Whisper Messenger (WhisperMessenger), Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
+- **Whisper Messenger** replaced WIM / Ellesmere WIM Skin in the Optional pack (Setup button). No WIM and no Ellesmere WIM Skin in WowUp lists; old WIM settings still apply as a companion via Magguu-Profile übernehmen / Profile laden.
 - No WindTools. HandyNotes MapNotes is on WowUp Optional; Magguu settings apply with HandyNotes via Magguu-Profile übernehmen / Profile laden. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
 
 ## Grok Bot / Buddy + Git publish
