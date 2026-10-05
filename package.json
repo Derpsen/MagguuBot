@@ -55,10 +55,13 @@
   "overrides": {
     "esbuild": "0.28.1",
     "discord.js": {
-      "undici": "6.28.0"
+      "undici": "6.28.1"
     },
     "@discordjs/rest": {
-      "undici": "6.28.0"
+      "undici": "6.28.1"
+    },
+    "cheerio": {
+      "undici": "7.29.1"
     }
   }
 }
