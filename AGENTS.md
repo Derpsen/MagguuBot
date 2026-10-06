@@ -8,6 +8,15 @@ Install on Unraid via the community-template XML (no docker-compose). Image is p
 
 Human install docs live in `README.md`. This file is the agent entrypoint (stack, architecture, gotchas, channel map, slash inventory, MagguuUI FAQ, Grok Bot / Buddy, CI).
 
+
+## Live ops baseline (2026-10-06)
+
+- Container `MagguuBot` / `ghcr.io/derpsen/magguu-bot:latest` digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) - **bereits live, kein Re-Pull**.
+- Wave: #97 (pino) + #98 (@lucide/vue); Homelab already on that digest.
+- Discord `/setup-server full` Done - FAQ/welcome embeds = **Whisper Messenger**, nicht WIM / Ellesmere WIM Skin.
+- Pack-/Author-HARD: Magguu/MagguuUI only in Magguu copy; foreign authors untouched; Optional = Whisper Messenger.
+- Prefer **Done-Wave Capture** after App-Image waves; keine neuen Specialist-Bots.
+
 ## Safe Working Rules
 
 - Read this file (and the touched module) before changing behavior.
@@ -196,7 +205,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   `docs/store-descriptions/` (not this repo). Discord FAQ is separate and
   still needs `/setup-server` **full** to refresh live SQLite.
 
-## WowUp packs (2026-10-05)
+## WowUp packs (2026-10-06)
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
 - **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, Whisper Messenger (WhisperMessenger), Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
@@ -236,6 +245,7 @@ Discord-Admin-Smoke: OK | BLOCK
 ```
 
 When WowUp/copy MagguuUI product facts change, update Bot `AGENTS.md` / `MEMORY.md` together with Website + Magguu-Dashboard the same round.
+Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/PM); skip Homelab recreate if live already on handoff digest; keine neuen Specialist-Bots.
 
 ## What NOT to do
 

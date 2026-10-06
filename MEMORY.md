@@ -45,3 +45,10 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## 2026-10-05
 
 - Docs/FAQ refresh: Whisper Messenger replaces WIM / Ellesmere WIM Skin in WowUp Optional (FAQ embed + test); bake dump-based; notes v12.1.6; public contact contact@magguu.xyz.
+
+## 2026-10-06 Ops sync (Buddy Inventur)
+
+- #97+#98 merged; Container-Baseline digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) - already live, kein Re-Pull.
+- Discord `/setup-server full` Done - embeds **Whisper Messenger**, nicht WIM / Ellesmere WIM Skin.
+- Pack-/Author-HARD unveraendert; Optional = Whisper Messenger (WhisperMessenger).
+- Prefer Done-Wave Capture after App-Image waves; keine neuen Specialist-Bots.
