@@ -35,7 +35,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@lucide/vue": "^1.49.0",
+    "@lucide/vue": "^1.51.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.19.1",
