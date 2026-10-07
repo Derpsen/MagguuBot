@@ -36,14 +36,16 @@ WORKDIR /app
 
 # apk upgrade + explicit libexpat/libpng: Trivy HIGH CVE-2026-93990 (libexpat 2.8.5-r0), CVE-2026-46675 (libpng 1.6.59-r0)
 RUN apk upgrade --no-cache \
-    && apk add --no-cache --upgrade tini fontconfig font-noto font-noto-emoji libssl3 libcrypto3 libexpat libpng \
+    && apk add --no-cache --upgrade tini su-exec fontconfig font-noto font-noto-emoji libssl3 libcrypto3 libexpat libpng \
     && rm -rf /usr/local/lib/node_modules/npm \
               /usr/local/lib/node_modules/corepack \
               /opt/yarn-v1.22.22 \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx \
              /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    PUID=99 \
+    PGID=100
 
 LABEL org.opencontainers.image.title="MagguuBot" \
       org.opencontainers.image.description="Discord bot + admin dashboard for Magguu media homelab" \
@@ -55,12 +57,16 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-frontend ./dist-frontend
 COPY --from=builder /app/package.json ./package.json
+# Live /app/data is root-owned. The entrypoint chowns it to PUID:PGID and drops.
+# PUID=0 keeps the old root process.
 RUN mkdir -p /app/data
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:' + (process.env.HTTP_PORT || 3000) + '/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
