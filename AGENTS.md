@@ -30,6 +30,8 @@ Human install docs live in `README.md`. This file is the agent entrypoint (stack
 
 Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 13 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
 
+Overrides stay on `source-map-js` **1.2.2** and `fast-copy` **4.1.2** (dev, via `pino-pretty`). Do not jump Node 26, TypeScript 7, or `@types/node` 26.
+
 No ESLint/Prettier. Tests use Node's built-in test runner.
 
 ## Architecture flow
@@ -62,8 +64,9 @@ npm run db:push      # drizzle-kit sync
 ## Verification after changes
 
 1. `npm run typecheck` — strict TS, no errors, no `any`
-2. `npm run build` — must succeed, outputs `dist/` and `dist-frontend/`
-3. Docker changes: locally buildable with `docker build .`; CI publishes to GHCR
+2. `npm test` — node:test regressions
+3. `npm run build` — must succeed, outputs `dist/` and `dist-frontend/`
+4. Docker changes: locally buildable with `docker build .`; CI publishes to GHCR
 
 ## Critical gotchas
 
