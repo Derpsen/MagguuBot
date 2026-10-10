@@ -20,7 +20,7 @@ export interface ServiceHealthResult {
 }
 
 let cache: { at: number; value: ServiceHealthResult[] } | null = null;
-const CACHE_MS = 20_000;
+const CACHE_MS = 60_000;
 
 export async function getServiceHealth(force = false): Promise<ServiceHealthResult[]> {
   if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.value;
