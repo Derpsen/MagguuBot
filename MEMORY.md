@@ -11,7 +11,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## MagguuUI product facts (2026-10-05)
 
-- EllesmereUI TOC min **9.0.6+**; live host **9.2.9**; Magguu Ellesmere bake is **dump-based**; release notes reference **v12.1.6** (latest MagguuUI tag).
+- EllesmereUI TOC min **9.0.6+**; live host **9.2.9**; Magguu Ellesmere bake is **dump-based**; release notes reference **v12.1.7** (latest MagguuUI tag).
 - Four sibling AddOns: MagguuUI / MagguuUI_Data / MagguuUI_EUI / MagguuUI_Media (all enabled).
 - Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = Magguu profiles + Magguu Settings + companions. **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no re-import). **Load profiles** = activate Magguu profiles; no re-import except a missing companion once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss, Smart Reminders, Whisper Messenger.
 - Player-facing FAQ/welcome never says bake, dump, or recapture.
@@ -44,7 +44,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-05
 
-- Docs/FAQ refresh: Whisper Messenger replaces WIM / Ellesmere WIM Skin in WowUp Optional (FAQ embed + test); bake dump-based; notes v12.1.6; public contact contact@magguu.xyz.
+- Docs/FAQ refresh: Whisper Messenger replaces WIM / Ellesmere WIM Skin in WowUp Optional (FAQ embed + test); bake dump-based; notes v12.1.7; public contact contact@magguu.xyz.
 
 ## 2026-10-06 Ops sync (Buddy Inventur)
 

@@ -179,7 +179,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   (default `Derpsen/MagguuUI`) to `addonUpdates`.
 - Host: EllesmereUI TOC min **9.0.6+** (live **9.2.9**); Magguu bake is
   **dump-based** (Magguu multi-export, dump values win); release notes
-  reference **v12.1.6** (latest MagguuUI tag).
+  reference **v12.1.7** (latest MagguuUI tag).
 - Discord FAQ/tag content that describes MagguuUI must stay aligned with the
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
