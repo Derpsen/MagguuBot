@@ -212,7 +212,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 
 - **Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore.
 - **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, Whisper Messenger (WhisperMessenger), Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
-- **Whisper Messenger** replaced WIM / Ellesmere WIM Skin in the Optional pack (Setup button). No WIM and no Ellesmere WIM Skin in WowUp lists; old WIM settings still apply as a companion via Magguu-Profile übernehmen / Profile laden.
+- **Whisper Messenger** is the whisper addon (Setup button). WIM and Ellesmere WIM Skin are retired. Do not list them or import WIM.
 - No WindTools. HandyNotes MapNotes is on WowUp Optional; Magguu settings apply with HandyNotes via Magguu-Profile übernehmen / Profile laden. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
 
 ## Grok Bot / Buddy + Git publish
