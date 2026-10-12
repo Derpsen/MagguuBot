@@ -12,7 +12,7 @@ Human install docs live in `README.md`. This file is the agent entrypoint (stack
 ## Live ops baseline (2026-10-06)
 
 - Container `MagguuBot` / `ghcr.io/derpsen/magguu-bot:latest` digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) - **bereits live, kein Re-Pull**.
-- Wave: #97 (pino) + #98 (@lucide/vue); Homelab already on that digest.
+- Wave: #97 (pino) + #98 (@lucide/vue); Homebase already on that digest.
 - Discord `/setup-server full` Done - FAQ/welcome embeds = **Whisper Messenger**, nicht WIM / Ellesmere WIM Skin.
 - Pack-/Author-HARD: Magguu/MagguuUI only in Magguu copy; foreign authors untouched; Optional = Whisper Messenger.
 - Prefer **Done-Wave Capture** after App-Image waves; keine neuen Specialist-Bots.
@@ -228,6 +228,10 @@ Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
   never force-push; never publish unrelated dirty WIP; report results to Buddy.
 - Tags and releases still need an explicit release ask.
 
+## Grok Bot helpers and rooms (2026-10-12)
+
+Botsmith owns this repo and Magguu-Dashboard (room: Bot Lab). Webcraft owns MagguuUI-Website only; Luaforge owns the addon Lua; Sentinel reviews; Launchpad releases (Tag-Gate); Homebase does Unraid; Captain does Notion; Buddy is the front door. IDs did not change. Old names: Stack Fixer, Bot Fixer, Addon Fixer, Reviewer, Release Helfer, Homelab Helfer, Projects Manager.
+
 ## CI / merge (Grok Bot helpers)
 
 - CodeQL: `github/codeql-action/init` and `analyze` in `.github/workflows/codeql.yml` must share one commit SHA. After a Dependabot bump of only one pin, merge the matching `init` or `analyze` PR before calling main green.
@@ -237,7 +241,7 @@ Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
 
 ## Discord Admin-Smoke (helpers -> Buddy)
 
-MagguuBot admin is Discord-OAuth gated. If session unavailable -> **BLOCK** with reason (OAuth/session); do not invent success. After green App-Image docker, Homelab pulls; Stack merge report must say **Actions-only** vs **App-Image**.
+MagguuBot admin is Discord-OAuth gated. If session unavailable -> **BLOCK** with reason (OAuth/session); do not invent success. After green App-Image docker, Homebase pulls; Botsmith merge report must say **Actions-only** vs **App-Image**.
 
 Paste template for Buddy:
 
@@ -250,7 +254,7 @@ Discord-Admin-Smoke: OK | BLOCK
 ```
 
 When WowUp/copy MagguuUI product facts change, update Bot `AGENTS.md` / `MEMORY.md` together with Website + Magguu-Dashboard the same round.
-Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/PM); skip Homelab recreate if live already on handoff digest; keine neuen Specialist-Bots.
+Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/PM); skip Homebase recreate if live already on handoff digest; keine neuen Specialist-Bots.
 
 ## What NOT to do
 
@@ -260,3 +264,12 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/PM); skip Homelab rec
 - NEVER post embeds directly from route handlers — always through `postEmbed()` so everything gets logged
 - NEVER add `any` — use `unknown` + narrow with Zod or type guards
 - NEVER expose port 3000 to the public internet — internal Docker network only
+
+## 2026-10-12 Docs/Bots-Sync
+
+- Helpers renamed (IDs unchanged): Botsmith = MagguuBot + Magguu-Dashboard; Webcraft = MagguuUI-Website only; Luaforge = addon Lua; Sentinel = review; Launchpad = releases/Tag-Gate; Homebase = Unraid; Captain = Notion; Buddy = front door. Old names: Stack Fixer/Stack, Bot Fixer, Addon Fixer, Reviewer, Release Helfer, Homelab Helfer, Projects Manager.
+- Rooms: Addon HQ, Web Studio, Bot Lab, Dashboard Deck, Homebase Ops.
+- Buddy makes small MagguuUI-Website design/text changes directly (own PR, green CI, squash, one pull); bigger work goes to the helpers.
+- Addon live v12.1.7. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
+- Website live `sha-1febf58`; legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
+- Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 needs Marco's yes; locked TS 7, h3 2, @types/node 26; uid 99 + Cosign; `engines.node >=24.17`; no tags without Marco's yes; never remove third-party author names.
