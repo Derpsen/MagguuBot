@@ -8,6 +8,7 @@ import { postEmbed } from '../server/discord-poster.js';
 import { fetchRss, type RssItem } from '../services/rss.js';
 import { logger } from '../utils/logger.js';
 import { normalizeFeedTitle, rememberDeliveredFeedItem, wasEmbedDelivered } from './feed-delivery.js';
+import { htmlToText } from '../utils/html.js';
 
 const MAX_SEEN = 200;
 const MAX_POST_PER_RUN = 5;
@@ -144,16 +145,5 @@ function trimSeen(seen: Set<string>): Set<string> {
 }
 
 function stripHtml(s: string): string {
-  return s
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li)>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return htmlToText(s);
 }

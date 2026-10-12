@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { EnrichedBluePost } from '../services/blue-tracker-enrich.js';
 import type { RssItem } from '../services/rss.js';
 import { truncate } from './colors.js';
+import { htmlToText } from '../utils/html.js';
 
 const BLIZZARD_BLUE = 0x148ae3;
 const SOFT_WORD_CAP = 180;
@@ -104,16 +105,5 @@ function findBreakpoint(body: string, softLimit: number): number {
 }
 
 function stripHtml(s: string): string {
-  return s
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li)>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return htmlToText(s);
 }
