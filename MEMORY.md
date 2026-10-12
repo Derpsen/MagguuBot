@@ -39,7 +39,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## 2026-09-27 autonomy
 
 - Discord Admin-Smoke OK/BLOCK template in `AGENTS.md` (OAuth/session required; no invented success).
-- Merge reports: Actions-only vs App-Image; Homelab pulls after green App-Image docker.
+- Merge reports: Actions-only vs App-Image; Homebase pulls after green App-Image docker.
 - Pack/copy product-fact deltas: update Bot with Website + Magguu-Dashboard same round.
 
 ## 2026-10-05
@@ -59,3 +59,12 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Container runs as **uid 99** (entrypoint drops to `PUID=99`/`PGID=100` via su-exec; `PUID=0` keeps root). Images are signed with **Cosign keyless** (GitHub OIDC) in `docker.yml`.
 - **WIM is removed** everywhere. Whisper Messenger is the whisper chat in embeds/FAQ. Player button: **Apply Magguu profiles**.
 - Node: `engines.node >=24.17`, Node 24 locked. Node 26 only after Marco's yes (~end of Oct 2026).
+
+## 2026-10-12 Docs/Bots-Sync
+
+- Helpers renamed (IDs unchanged): Botsmith = MagguuBot + Magguu-Dashboard; Webcraft = MagguuUI-Website only; Luaforge = addon Lua; Sentinel = review; Launchpad = releases/Tag-Gate; Homebase = Unraid; Captain = Notion; Buddy = front door. Old names: Stack Fixer/Stack, Bot Fixer, Addon Fixer, Reviewer, Release Helfer, Homelab Helfer, Projects Manager.
+- Rooms: Addon HQ, Web Studio, Bot Lab, Dashboard Deck, Homebase Ops.
+- Buddy makes small MagguuUI-Website design/text changes directly (own PR, green CI, squash, one pull); bigger work goes to the helpers.
+- Addon live v12.1.7. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
+- Website live `sha-1febf58`; legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
+- Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 needs Marco's yes; locked TS 7, h3 2, @types/node 26; uid 99 + Cosign; `engines.node >=24.17`; no tags without Marco's yes; never remove third-party author names.
