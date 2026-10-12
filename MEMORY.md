@@ -52,3 +52,10 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Discord `/setup-server full` Done - embeds **Whisper Messenger**, nicht WIM / Ellesmere WIM Skin.
 - Pack-/Author-HARD unveraendert; Optional = Whisper Messenger (WhisperMessenger).
 - Prefer Done-Wave Capture after App-Image waves; keine neuen Specialist-Bots.
+
+## 2026-10-12 Facts refresh
+
+- MagguuUI addon live **v12.1.7**.
+- Container runs as **uid 99** (entrypoint drops to `PUID=99`/`PGID=100` via su-exec; `PUID=0` keeps root). Images are signed with **Cosign keyless** (GitHub OIDC) in `docker.yml`.
+- **WIM is removed** everywhere. Whisper Messenger is the whisper chat in embeds/FAQ. Player button: **Apply Magguu profiles**.
+- Node: `engines.node >=24.17`, Node 24 locked. Node 26 only after Marco's yes (~end of Oct 2026).
