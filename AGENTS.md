@@ -32,6 +32,8 @@ Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · bette
 
 Overrides stay on `source-map-js` **1.2.2** and `fast-copy` **4.1.2** (dev, via `pino-pretty`). Do not jump Node 26, TypeScript 7, or `@types/node` 26.
 
+As of 2026-10-12: addon live **v12.1.7**; container runs as **uid 99**; images are **Cosign keyless** signed; **WIM is removed** (Whisper Messenger is the whisper chat); `engines.node >=24.17`, Node 24 locked, Node 26 only after Marco's yes (~end of Oct).
+
 No ESLint/Prettier. Tests use Node's built-in test runner.
 
 ## Architecture flow
