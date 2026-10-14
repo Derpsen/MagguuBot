@@ -54,6 +54,10 @@ const schema = z.object({
 
   WOW_BLUE_TRACKER_URL: optionalHttpUrl,
   ADDON_REPO_FULL_NAMES: z.string().default(DEFAULT_ADDON_REPOSITORIES),
+  // Read-only token for the private addon repo; enables the release poller.
+  MAGGUUUI_READ_TOKEN: z.preprocess(emptyEnvToUndefined, z.string().min(1).optional()),
+  MAGGUUUI_RELEASE_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/).default('Derpsen/MagguuUI'),
+  ADDON_RELEASE_POLL_MINUTES: z.coerce.number().int().min(0).max(1440).default(15),
   TIME_ZONE: z.string().default('Europe/Berlin').refine((value) => {
     try {
       new Intl.DateTimeFormat('de-DE', { timeZone: value });

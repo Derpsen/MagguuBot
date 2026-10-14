@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { config } from '../../config.js';
+import { markAddonReleaseAnnounced, wasAddonReleaseAnnounced } from '../../discord/addon-release-poller.js';
 import { getChannel } from '../../discord/channel-store.js';
 import {
   buildIssueEmbed,
@@ -234,6 +235,11 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       );
       return c.json({ ok: true, skipped: 'duplicate release' });
     }
+    const pollerOwnsRelease =
+      isAddonRepository(p.repository.full_name, addonRepos) && !p.release.prerelease;
+    if (!isReplay && pollerOwnsRelease && wasAddonReleaseAnnounced(p.release.tag_name)) {
+      return c.json({ ok: true, skipped: 'already announced by release poller' });
+    }
     await postEmbed({
       channelId: resolveReleaseChannel(p.repository),
       source: 'github',
@@ -251,6 +257,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
       }),
       pingRoles: p.release.prerelease ? [] : ['ping-github'],
     });
+    if (pollerOwnsRelease) markAddonReleaseAnnounced(p.release.tag_name);
     return c.json({ ok: true });
   }
 

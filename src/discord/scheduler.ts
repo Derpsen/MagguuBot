@@ -8,6 +8,7 @@ import { logger } from '../utils/logger.js';
 import { nextReminderRetryAt } from '../utils/schedule.js';
 import { tickBirthdays } from './birthday.js';
 import { recoverAntiRaidProtection } from './anti-raid.js';
+import { runAddonReleasePollTick } from './addon-release-poller.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
@@ -48,6 +49,7 @@ let remindersTimer: NodeJS.Timeout | null = null;
 let statsTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
+let addonReleaseTimer: NodeJS.Timeout | null = null;
 let topicsTimer: NodeJS.Timeout | null = null;
 let countdownTimer: NodeJS.Timeout | null = null;
 let rssTimer: NodeJS.Timeout | null = null;
@@ -85,6 +87,13 @@ export function startScheduler(): void {
     blueTrackerTimer = setInterval(() => {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker tick failed');
     }, BLUE_TRACKER_TICK_MS);
+  }
+
+  const addonReleasePollEnabled = Boolean(config.MAGGUUUI_READ_TOKEN) && config.ADDON_RELEASE_POLL_MINUTES > 0;
+  if (addonReleasePollEnabled) {
+    addonReleaseTimer = setInterval(() => {
+      runTick('addon-release', runAddonReleasePollTick, 'addon release poll tick failed');
+    }, config.ADDON_RELEASE_POLL_MINUTES * 60_000);
   }
 
   topicsTimer = setInterval(() => {
@@ -164,6 +173,9 @@ export function startScheduler(): void {
     if (config.WOW_BLUE_TRACKER_URL) {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
     }
+    if (addonReleasePollEnabled) {
+      runTick('addon-release', runAddonReleasePollTick, 'addon release poll boot tick failed');
+    }
   });
 
   logger.info(
@@ -178,6 +190,7 @@ export function startScheduler(): void {
       birthdayMs: BIRTHDAY_TICK_MS,
       ticketAutoCloseMs: TICKET_AUTOCLOSE_TICK_MS,
       blueTrackerMs: config.WOW_BLUE_TRACKER_URL ? BLUE_TRACKER_TICK_MS : 'disabled',
+      addonReleasePollMs: addonReleasePollEnabled ? config.ADDON_RELEASE_POLL_MINUTES * 60_000 : 'disabled',
       weeklyDigestMs: config.WEEKLY_DIGEST_ENABLED ? WEEKLY_DIGEST_TICK_MS : 'disabled',
       movieNightMs: MOVIE_NIGHT_TICK_MS,
       downloadLiveMs: DOWNLOAD_LIVE_TICK_MS,
@@ -207,6 +220,7 @@ export function stopScheduler(): void {
   if (statsTimer) clearInterval(statsTimer);
   if (announceTimer) clearInterval(announceTimer);
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
+  if (addonReleaseTimer) clearInterval(addonReleaseTimer);
   if (topicsTimer) clearInterval(topicsTimer);
   if (countdownTimer) clearInterval(countdownTimer);
   if (rssTimer) clearInterval(rssTimer);
@@ -225,6 +239,7 @@ export function stopScheduler(): void {
   statsTimer = null;
   announceTimer = null;
   blueTrackerTimer = null;
+  addonReleaseTimer = null;
   topicsTimer = null;
   countdownTimer = null;
   rssTimer = null;
