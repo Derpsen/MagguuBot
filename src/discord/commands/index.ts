@@ -35,6 +35,7 @@ import { remindmeCommand } from './remindme.js';
 import { repCommand } from './rep.js';
 import { rolesPanelCommand } from './roles-panel.js';
 import { scheduleAnnounceCommand } from './schedule-announce.js';
+import { statusCommand } from './status.js';
 import { stickyCommand } from './sticky.js';
 import { tagCommand } from './tag.js';
 import { ticketPanelCommand } from './ticket-panel.js';
@@ -92,6 +93,7 @@ const all: SlashCommand[] = [
   serverinfoCommand,
   avatarCommand,
   botinfoCommand,
+  statusCommand,
   rolesPanelCommand,
   tagCommand,
   autoresponderCommand,

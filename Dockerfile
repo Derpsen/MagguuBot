@@ -45,7 +45,9 @@ RUN apk upgrade --no-cache \
 
 ENV NODE_ENV=production \
     PUID=99 \
-    PGID=100
+    PGID=100 \
+    MAGGUU_BUILD_SHA=${VCS_REF} \
+    MAGGUU_BUILD_DATE=${BUILD_DATE}
 
 LABEL org.opencontainers.image.title="MagguuBot" \
       org.opencontainers.image.description="Discord bot + admin dashboard for Magguu media homelab" \
