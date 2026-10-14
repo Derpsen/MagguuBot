@@ -14,7 +14,18 @@ permissions:
 
 jobs:
   typecheck:
+    name: typecheck (node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    # Node 26 is an early-warning lane only; Node 24 stays the locked runtime.
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: 24
+            experimental: false
+          - node: 26
+            experimental: true
     steps:
       - name: Checkout repository
         # actions/checkout@v7.0.0
@@ -23,9 +34,18 @@ jobs:
         # actions/setup-node@v6.4.0
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci --ignore-scripts
+      - if: ${{ !matrix.experimental }}
+        run: npm ci --ignore-scripts
+      # Full install so better-sqlite3 and @napi-rs/canvas resolve/build their native bindings.
+      - if: ${{ matrix.experimental }}
+        run: npm ci
+      - if: ${{ matrix.experimental }}
+        name: Native module smoke (better-sqlite3, @napi-rs/canvas)
+        run: |
+          node -e "const D=require('better-sqlite3');const d=new D(':memory:');console.log('better-sqlite3', d.prepare('select sqlite_version() v').get().v);d.close()"
+          node -e "const {createCanvas}=require('@napi-rs/canvas');const c=createCanvas(8,8);c.getContext('2d').fillRect(0,0,8,8);console.log('@napi-rs/canvas png bytes', c.toBuffer('image/png').length)"
       - run: npm audit --omit=dev
       - run: npm run typecheck
       - run: npm test
