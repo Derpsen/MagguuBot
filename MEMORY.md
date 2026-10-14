@@ -84,3 +84,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - `GET /api/status` (read-only JSON: uptime, build SHA/date, last webhook per source; no secrets) – disabled unless `STATUS_API_TOKEN` is set, then requires `Authorization: Bearer`. Used by the Magguu-Dashboard „Magguu-Dienste“ view.
 - Renovate replaces Dependabot (`renovate.json`, `.github/dependabot.yml` removed; Node <26, @types/node <25, TS <7, h3 <2, satori ~0.41). Renovate GitHub App not installed yet – Marco/Buddy must install. `dependabot-auto-merge.yml` kept for Dependabot security PRs.
 - Homebase: add to the Unraid template `MAGGUUUI_READ_TOKEN` (masked), `STATUS_API_TOKEN` (masked), `FAQ_AUTOANSWER_CHANNEL_IDS`; optional `ADDON_RELEASE_POLL_MINUTES`.
+
+## 2026-10-15 Arbeitscomputer
+
+- Helfer-Arbeitscomputer ist die Unraid-VM `Ubuntu` (machineId `3ff4cee8-7e7c-4cc9-a262-ebf10016d570`), Repos unter `~/Projekte` nach Homebase-Umzug. Marcos PC (`f01cf815-a384-40fb-ac18-c8450b4d5889`) nur noch für WoW-AddOns-Deploy, darf aus sein.
+- Botsmith schreibt Marco nie im 1:1; Status/Done nur an Buddy.
