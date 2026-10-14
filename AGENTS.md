@@ -241,7 +241,7 @@ Botsmith owns this repo and Magguu-Dashboard (room: Bot Lab). Webcraft owns Magg
 
 ## Discord Admin-Smoke (helpers -> Buddy)
 
-MagguuBot admin is Discord-OAuth gated. If session unavailable -> **BLOCK** with reason (OAuth/session); do not invent success. After green App-Image docker, Homebase pulls; Botsmith merge report must say **Actions-only** vs **App-Image**.
+MagguuBot admin is Discord-OAuth gated. If session unavailable -> **BLOCK** with reason (OAuth/session); do not invent success. Pipeline: push to `main`, Buddy reviews commits afterwards; after green App-Image Docker publish, Homebase pulls; Botsmith merge report must say **Actions-only** vs **App-Image**.
 
 Paste template for Buddy:
 
@@ -254,7 +254,7 @@ Discord-Admin-Smoke: OK | BLOCK
 ```
 
 When WowUp/copy MagguuUI product facts change, update Bot `AGENTS.md` / `MEMORY.md` together with Website + Magguu-Dashboard the same round.
-Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/PM); skip Homebase recreate if live already on handoff digest; keine neuen Specialist-Bots.
+Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/Captain); skip Homebase recreate if live already on handoff digest; keine neuen Specialist-Bots.
 
 ## What NOT to do
 
