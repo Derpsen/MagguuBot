@@ -10,6 +10,7 @@ import { tickBirthdays } from './birthday.js';
 import { recoverAntiRaidProtection } from './anti-raid.js';
 import { runAddonReleasePollTick } from './addon-release-poller.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
+import { faqAutoanswerEnabled, refreshWebsiteFaqCache } from './faq-autoanswer.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
@@ -30,6 +31,7 @@ const REMINDER_TICK_MS = 30_000;
 const STATS_TICK_MS = 5 * 60_000;
 const ANNOUNCE_TICK_MS = 30_000;
 const BLUE_TRACKER_TICK_MS = 15 * 60_000;
+const WEBSITE_FAQ_TICK_MS = 60 * 60_000;
 const TOPICS_TICK_MS = 5 * 60_000;
 const COUNTDOWN_TICK_MS = 60_000;
 const RSS_TICK_MS = 15 * 60_000;
@@ -50,6 +52,7 @@ let statsTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
 let addonReleaseTimer: NodeJS.Timeout | null = null;
+let websiteFaqTimer: NodeJS.Timeout | null = null;
 let topicsTimer: NodeJS.Timeout | null = null;
 let countdownTimer: NodeJS.Timeout | null = null;
 let rssTimer: NodeJS.Timeout | null = null;
@@ -94,6 +97,12 @@ export function startScheduler(): void {
     addonReleaseTimer = setInterval(() => {
       runTick('addon-release', runAddonReleasePollTick, 'addon release poll tick failed');
     }, config.ADDON_RELEASE_POLL_MINUTES * 60_000);
+  }
+
+  if (faqAutoanswerEnabled()) {
+    websiteFaqTimer = setInterval(() => {
+      runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ refresh failed');
+    }, WEBSITE_FAQ_TICK_MS);
   }
 
   topicsTimer = setInterval(() => {
@@ -176,6 +185,9 @@ export function startScheduler(): void {
     if (addonReleasePollEnabled) {
       runTick('addon-release', runAddonReleasePollTick, 'addon release poll boot tick failed');
     }
+    if (faqAutoanswerEnabled()) {
+      runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ boot refresh failed');
+    }
   });
 
   logger.info(
@@ -221,6 +233,7 @@ export function stopScheduler(): void {
   if (announceTimer) clearInterval(announceTimer);
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
   if (addonReleaseTimer) clearInterval(addonReleaseTimer);
+  if (websiteFaqTimer) clearInterval(websiteFaqTimer);
   if (topicsTimer) clearInterval(topicsTimer);
   if (countdownTimer) clearInterval(countdownTimer);
   if (rssTimer) clearInterval(rssTimer);
@@ -240,6 +253,7 @@ export function stopScheduler(): void {
   announceTimer = null;
   blueTrackerTimer = null;
   addonReleaseTimer = null;
+  websiteFaqTimer = null;
   topicsTimer = null;
   countdownTimer = null;
   rssTimer = null;

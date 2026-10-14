@@ -57,6 +57,14 @@ const schema = z.object({
   // Read-only token for the private addon repo; enables the release poller.
   MAGGUUUI_READ_TOKEN: z.preprocess(emptyEnvToUndefined, z.string().min(1).optional()),
   MAGGUUUI_RELEASE_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/).default('Derpsen/MagguuUI'),
+  // Website FAQ auto-answer: comma-separated help channel IDs; empty disables it.
+  FAQ_AUTOANSWER_CHANNEL_IDS: z.string().default(''),
+  WEBSITE_FAQ_API_URL: httpUrl.default('https://ui.magguu.xyz/api/v1/faqs'),
+  WEBSITE_FAQ_PAGE_URL: httpUrl.default('https://ui.magguu.xyz/faq'),
+  FAQ_AUTOANSWER_MIN_SCORE: z.coerce.number().min(0.4).max(1).default(0.6),
+  FAQ_AUTOANSWER_USER_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(86_400).default(300),
+  FAQ_AUTOANSWER_CHANNEL_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(86_400).default(60),
+  FAQ_AUTOANSWER_REPEAT_WINDOW_MINUTES: z.coerce.number().int().min(1).max(10_080).default(360),
   ADDON_RELEASE_POLL_MINUTES: z.coerce.number().int().min(0).max(1440).default(15),
   TIME_ZONE: z.string().default('Europe/Berlin').refine((value) => {
     try {

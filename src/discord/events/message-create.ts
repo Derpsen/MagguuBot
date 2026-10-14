@@ -4,6 +4,7 @@ import { handleAfkMessage } from '../afk.js';
 import { runAiModeration } from '../ai-automod.js';
 import { runAutomod } from '../automod.js';
 import { runAutoresponder } from '../autoresponder.js';
+import { runFaqAutoanswer } from '../faq-autoanswer.js';
 import { renderLevelUpCard } from '../cards/level-up-card.js';
 import { scheduleStickyRepost } from '../sticky.js';
 import { handleTicketMessage } from '../ticket-message-handler.js';
@@ -47,6 +48,12 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
       await runAutoresponder(message);
     } catch (err) {
       logger.error({ err }, 'autoresponder failed');
+    }
+
+    try {
+      await runFaqAutoanswer(message);
+    } catch (err) {
+      logger.error({ err, channelId: message.channelId }, 'faq auto-answer failed');
     }
 
     try {
