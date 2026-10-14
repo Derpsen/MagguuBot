@@ -1,0 +1,59 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Europe/Berlin",
+  "schedule": ["* 0-12 * * 1"],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "platformAutomerge": true,
+  "ignoreTests": false,
+  "packageRules": [
+    {
+      "description": "npm non-major updates in one PR",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major"
+    },
+    {
+      "description": "GitHub Actions in one PR (digest pins kept)",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "Automerge minor/patch only, after green CI",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Majors never automerge",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Node locked to 24 (Node 26 only after Marco's yes)",
+      "matchDatasources": ["docker", "node-version"],
+      "matchPackageNames": ["node"],
+      "allowedVersions": "<26"
+    },
+    {
+      "description": "@types/node stays 24.x",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<25"
+    },
+    {
+      "description": "TypeScript 7 locked",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "h3 2 locked",
+      "matchPackageNames": ["h3"],
+      "allowedVersions": "<2"
+    },
+    {
+      "description": "satori pinned to 0.41",
+      "matchPackageNames": ["satori"],
+      "allowedVersions": "~0.41.0"
+    }
+  ]
+}
