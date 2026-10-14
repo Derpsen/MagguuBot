@@ -32,7 +32,7 @@ Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · bette
 
 Overrides stay on `source-map-js` **1.2.2** and `fast-copy` **4.1.2** (dev, via `pino-pretty`). Do not jump Node 26, TypeScript 7, or `@types/node` 26.
 
-As of 2026-10-12: addon live **v12.1.7**; container runs as **uid 99**; images are **Cosign keyless** signed; **WIM is removed** (Whisper Messenger is the whisper chat); `engines.node >=24.17`, Node 24 locked, Node 26 only after Marco's yes (~end of Oct).
+As of 2026-10-14: addon live **v12.1.8**; container runs as **uid 99**; images are **Cosign keyless** signed; **WIM is removed** (Whisper Messenger is the whisper chat); `engines.node >=24.17`, Node 24 locked, Node 26 only after Marco's yes (~end of Oct).
 
 No ESLint/Prettier. Tests use Node's built-in test runner.
 
@@ -181,7 +181,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
   (default `Derpsen/MagguuUI`) to `addonUpdates`.
 - Host: EllesmereUI TOC min **9.0.6+** (live **9.2.9**); Magguu bake is
   **dump-based** (Magguu multi-export, dump values win); release notes
-  reference **v12.1.7** (latest MagguuUI tag).
+  reference **v12.1.8** (latest MagguuUI tag).
 - Discord FAQ/tag content that describes MagguuUI must stay aligned with the
   current MagguuUI version and install story (EllesmereUI 9.0.6+ companion;
   four sibling AddOns folders MagguuUI / MagguuUI_Data / MagguuUI_EUI /
@@ -270,7 +270,7 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/Captain); skip Homeba
 - Helpers renamed (IDs unchanged): Botsmith = MagguuBot + Magguu-Dashboard; Webcraft = MagguuUI-Website only; Luaforge = addon Lua; Sentinel = review; Launchpad = releases/Tag-Gate; Homebase = Unraid; Captain = Notion; Buddy = front door. Old names: Stack Fixer/Stack, Bot Fixer, Addon Fixer, Reviewer, Release Helfer, Homelab Helfer, Projects Manager.
 - Rooms: Addon HQ, Web Studio, Bot Lab, Dashboard Deck, Homebase Ops.
 - Buddy makes small MagguuUI-Website design/text changes directly; bigger work goes to the helpers. Since 2026-10-12 helpers and Buddy push directly to `main` (no PRs, no Sentinel pre-review); Buddy reviews commits afterwards; Homebase pulls autonomously after green Docker publish.
-- Addon live v12.1.7. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
+- Addon live v12.1.8. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
 - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
 - Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 needs Marco's yes; locked TS 7, h3 2, @types/node 26; uid 99 + Cosign; `engines.node >=24.17`; no tags without Marco's yes; never remove third-party author names.
 
