@@ -46,3 +46,19 @@ test('status embed reports unknown version without a build SHA', () => {
   const embed = buildStatusEmbed({ uptimeSeconds: 5, build: { sha: null, date: null }, lastWebhookAt: new Map(), staleHours: 24, now }).toJSON();
   assert.match(embed.fields?.[1]?.value ?? '', /unbekannt/);
 });
+
+test('status snapshot JSON has every source and no secrets', async () => {
+  const { buildStatusSnapshot } = await import('../src/embeds/status.ts');
+  const snap = buildStatusSnapshot({
+    uptimeSeconds: 12.7,
+    build: { sha: 'abc1234', date: null },
+    lastWebhookAt: new Map([['sonarr', new Date(now.getTime() - 60_000)]]),
+    staleHours: 24,
+    now,
+  });
+  assert.equal(snap.uptimeSeconds, 12);
+  assert.deepEqual(snap.webhooks.sonarr, { lastReceivedAt: '2026-10-14T09:59:00.000Z', state: 'ok' });
+  assert.deepEqual(snap.webhooks.radarr, { lastReceivedAt: null, state: 'never' });
+  assert.equal(Object.keys(snap.webhooks).length, STATUS_WEBHOOK_SOURCES.length);
+  assert.doesNotMatch(JSON.stringify(snap), /token|secret/i);
+});

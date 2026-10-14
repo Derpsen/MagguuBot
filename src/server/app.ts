@@ -18,6 +18,7 @@ import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
 import { sonarrWebhook } from './webhooks/sonarr.js';
+import { buildStatusSnapshot, currentBuildInfo, lastWebhookBySource } from './status-snapshot.js';
 import { tautulliWebhook } from './webhooks/tautulli.js';
 
 const FRONTEND_DIR = resolve(process.cwd(), 'dist-frontend');
@@ -72,6 +73,24 @@ export function buildApp(): Hono {
       logger.warn({ err }, 'healthz db check failed');
     }
     return c.json({ ok: dbOk, db: dbOk ? 'ok' : 'fail' }, dbOk ? 200 : 503);
+  });
+
+  // Read-only status JSON for Home Assistant. Off unless STATUS_API_TOKEN is set, because the
+  // dashboard host is public and build/webhook timing is not for anonymous callers.
+  app.get('/api/status', (c) => {
+    const expected = config.STATUS_API_TOKEN;
+    if (!expected) return c.json({ ok: false, error: 'not found' }, 404);
+    const header = c.req.header('authorization') ?? '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token || !constantTimeEquals(token, expected)) return c.json({ ok: false, error: 'unauthorized' }, 401);
+    c.header('cache-control', 'no-store');
+    return c.json(buildStatusSnapshot({
+      uptimeSeconds: process.uptime(),
+      build: currentBuildInfo(),
+      lastWebhookAt: lastWebhookBySource(),
+      staleHours: config.STATUS_STALE_HOURS,
+      now: new Date(),
+    }));
   });
 
   app.use('/webhook/*', webhookRateLimit());

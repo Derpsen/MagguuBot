@@ -112,6 +112,8 @@ const schema = z.object({
   // GitHub webhook secret is enforced if any GitHub repo points at the bot.
   // Required >= 16 chars when present; absent disables the route at runtime.
   GITHUB_WEBHOOK_SECRET: optionalSecret,
+  // Bearer token for GET /api/status (Home Assistant); empty disables the route.
+  STATUS_API_TOKEN: optionalSecret,
 
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SESSION_SECRET: optionalSecret,

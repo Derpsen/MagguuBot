@@ -105,3 +105,31 @@ export function buildStatusEmbed(input: StatusInput): EmbedBuilder {
     .setFooter({ text: warnings > 0 ? `${warnings} Quelle(n) mit Warnung` : 'Alle Quellen aktiv' })
     .setTimestamp(now);
 }
+
+export interface StatusSnapshot {
+  ok: boolean;
+  uptimeSeconds: number;
+  build: BuildInfo;
+  staleHours: number;
+  webhooks: Record<string, { lastReceivedAt: string | null; state: SourceState }>;
+  generatedAt: string;
+}
+
+export function buildStatusSnapshot(
+  input: { uptimeSeconds: number; build: BuildInfo; lastWebhookAt: ReadonlyMap<string, Date>; staleHours: number; now: Date },
+): StatusSnapshot {
+  const webhooks: StatusSnapshot['webhooks'] = {};
+  for (const source of STATUS_WEBHOOK_SOURCES) {
+    const last = input.lastWebhookAt.get(source);
+    webhooks[source] = { lastReceivedAt: last?.toISOString() ?? null, state: sourceState(last, input.staleHours, input.now) };
+  }
+  return {
+    ok: true,
+    uptimeSeconds: Math.floor(input.uptimeSeconds),
+    build: input.build,
+    staleHours: input.staleHours,
+    webhooks,
+    generatedAt: input.now.toISOString(),
+  };
+}
+
