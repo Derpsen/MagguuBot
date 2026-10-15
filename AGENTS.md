@@ -219,6 +219,13 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 
 ## Grok Bot / Buddy + Git publish
 
+## Arbeitscomputer (2026-10-15)
+
+- Checkout: Unraid-VM `Ubuntu`, machineId `3ff4cee8-7e7c-4cc9-a262-ebf10016d570`, path `~/Projekte/MagguuBot` (repos ready).
+- Marcos PC (`f01cf815-a384-40fb-ac18-c8450b4d5889` / DESKTOP-MA0R4G0) only for WoW AddOns deploy; may be offline.
+- Report only to Buddy; never 1:1 Marco (except Auto-review cards with no text).
+
+
 Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to Buddy.
 
 - Interactive/ad-hoc sessions: do not commit, push, or create git tags unless
