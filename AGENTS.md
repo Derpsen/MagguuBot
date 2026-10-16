@@ -296,3 +296,8 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/Captain); skip Homeba
 - `GET /api/status` (read-only JSON: uptime, build SHA/date, last webhook per source; no secrets) – disabled unless `STATUS_API_TOKEN` is set, then requires `Authorization: Bearer`. Used by the Magguu-Dashboard „Magguu-Dienste“ view.
 - Renovate replaces Dependabot (`renovate.json`, `.github/dependabot.yml` removed; Node <26, @types/node <25, TS <7, h3 <2, satori ~0.41). Renovate GitHub App not installed yet – Marco/Buddy must install. `dependabot-auto-merge.yml` kept for Dependabot security PRs.
 - Homebase: add to the Unraid template `MAGGUUUI_READ_TOKEN` (masked), `STATUS_API_TOKEN` (masked), `FAQ_AUTOANSWER_CHANNEL_IDS`; optional `ADDON_RELEASE_POLL_MINUTES`.
+
+## Renovate automerge & pre-push hook (2026-10-16)
+
+- `renovate.json`: minor/patch/pin/digest automerge with `automergeType: "branch"` + `platformAutomerge` (lands directly on `main` only after required status checks / CI are green; `ignoreTests: false`). Majors never automerge. Locked majors stay blocked via `allowedVersions`: Node <26, TypeScript <7, @types/node <25 (stricter than <26).
+- In-repo pre-push hook `.githooks/pre-push` runs `npm run typecheck` + `npm test` (no lint script; no ESLint by design) plus `actionlint` (.github/workflows) and `shellcheck` (tracked `*.sh`); missing tools only warn and skip. Enable once per checkout: `git config core.hooksPath .githooks` (set on the Ubuntu VM checkout).

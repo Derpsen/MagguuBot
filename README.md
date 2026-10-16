@@ -218,3 +218,7 @@ New service:
 New slash command:
 1. `src/discord/commands/<name>.ts` — implement `SlashCommand`
 2. Add to `all[]` in `src/discord/commands/index.ts`
+
+## Git pre-push hook
+
+Enable the in-repo pre-push checks once per checkout: `git config core.hooksPath .githooks`
