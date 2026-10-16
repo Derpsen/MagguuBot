@@ -29,7 +29,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -43,13 +42,16 @@ jobs:
       - name: Checkout repository
         # actions/checkout@v7.0.0
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         # actions/setup-node@v6.4.0
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26
-          cache: npm
+          # no npm cache in the publishing workflow (cache-poisoning guard)
+          package-manager-cache: false
 
       - run: npm ci --ignore-scripts
       - run: npm audit --omit=dev
@@ -68,6 +70,8 @@ jobs:
       - name: Checkout
         # actions/checkout@v7.0.0
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         # docker/setup-buildx-action@v4.2.0
