@@ -94,3 +94,4 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - 2026-10-16: docker.yml push paths allowlist; non-image pushes (docs, hooks, renovate.json, tests) no longer publish an image. Renovate App active (Dependency Dashboard #111).
 - 2026-10-16: deps refreshed (non-major + undici overrides 6.29.1/7.30.1, esbuild 0.28.2); discord.js 14.27 already latest stable, undici 8 not applicable (transitive, discord.js needs ^6, cheerio ^7).
 - 2026-10-16: Node 26 live: engines >=26, Dockerfile node:26-alpine@sha256:6f08a523…, CI/docker/version-check Node 26, Renovate Node hold removed.
+- Security (2026-10-16): `scorecard.yml` (ossf/scorecard-action v2.5.0, SHA-pinned; push main + weekly; SARIF → code scanning, upload-sarif SHA = codeql.yml SHA, bump together) and `dependency-review.yml` (actions/dependency-review-action v5.0.0, PRs, fails on >= moderate). Secret scanning + push protection enabled via `gh api` (verified enabled).
