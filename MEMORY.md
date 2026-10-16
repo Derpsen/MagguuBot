@@ -91,3 +91,4 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Botsmith schreibt Marco nie im 1:1; Status/Done nur an Buddy.
 
 - 2026-10-16: Renovate branch-automerge (minor/patch/pin/digest after green CI, majors manual; Node<26, TS<7, @types/node<25 locked). Pre-push hook `.githooks/pre-push` (checks + actionlint + shellcheck), enable via `git config core.hooksPath .githooks`; VM checkout enabled.
+- 2026-10-16: docker.yml push paths allowlist; non-image pushes (docs, hooks, renovate.json, tests) no longer publish an image. Renovate App active (Dependency Dashboard #111).

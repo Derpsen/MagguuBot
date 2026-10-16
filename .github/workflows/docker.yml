@@ -4,6 +4,23 @@ on:
   push:
     branches: [main]
     tags: ['v*.*.*']
+    # Only image inputs trigger a publish (docs/.githooks/renovate.json etc. do not).
+    # Path filters are not applied to tag pushes, so v*.*.* tags always build.
+    # main is unprotected (no required checks), so a workflow-level filter is safe.
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - docker-entrypoint.sh
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - vite.config.ts
+      - tailwind.config.ts
+      - postcss.config.js
+      - drizzle.config.ts
+      - src/**
+      - frontend/**
+      - .github/workflows/docker.yml
   workflow_dispatch:
 
 concurrency:
