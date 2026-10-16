@@ -51,17 +51,6 @@
       "automerge": false
     },
     {
-      "description": "Node locked to 24 (Node 26 only after Marco's yes)",
-      "matchDatasources": [
-        "docker",
-        "node-version"
-      ],
-      "matchPackageNames": [
-        "node"
-      ],
-      "allowedVersions": "<26"
-    },
-    {
       "description": "@types/node stays 24.x",
       "matchPackageNames": [
         "@types/node"

@@ -27,12 +27,12 @@ See also [CHANGELOG.md](./CHANGELOG.md).
 - **MagguuUI release feed** — user-friendly addon releases go to `#addon-updates`; technical pushes and workflows stay in `#github`
 - **Built-in admin dashboard** — Vue SPA on the same container (OAuth allowlist); not a separate Magguu-Dashboard app
 - **Activity log** — every posted embed is written to SQLite for audit/debug
-- **One container** — Node 24 + TS + Hono + discord.js + SQLite (WAL)
+- **One container** — Node 26 + TS + Hono + discord.js + SQLite (WAL)
 - **Discord only** — no Telegram/other messengers
 
 ## Stack
 
-Node 24 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
+Node 26 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
 
 ## Install on Unraid (via the custom template)
 

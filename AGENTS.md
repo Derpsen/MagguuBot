@@ -28,11 +28,11 @@ Human install docs live in `README.md`. This file is the agent entrypoint (stack
 
 ## Stack
 
-Node 24 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 13 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
+Node 26 · TypeScript 6 · Vue 3.5 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 13 (WAL) · Drizzle 0.45 · Zod 4 · Pino 10
 
-Overrides stay on `source-map-js` **1.2.2** and `fast-copy` **4.1.2** (dev, via `pino-pretty`). Do not jump Node 26, TypeScript 7, or `@types/node` 26.
+Overrides stay on `source-map-js` **1.2.2** and `fast-copy` **4.1.2** (dev, via `pino-pretty`). Do not jump TypeScript 7 or `@types/node` 26 (Node 26 is live since 2026-10-16).
 
-As of 2026-10-14: addon live **v12.1.8**; container runs as **uid 99**; images are **Cosign keyless** signed; **WIM is removed** (Whisper Messenger is the whisper chat); `engines.node >=24.17`, Node 24 locked, Node 26 only after Marco's yes (~end of Oct).
+As of 2026-10-14: addon live **v12.1.8**; container runs as **uid 99**; images are **Cosign keyless** signed; **WIM is removed** (Whisper Messenger is the whisper chat); `engines.node >=26`, Node 26 live (approved 2026-10-16).
 
 No ESLint/Prettier. Tests use Node's built-in test runner.
 
@@ -279,12 +279,12 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/Captain); skip Homeba
 - Buddy makes small MagguuUI-Website design/text changes directly; bigger work goes to the helpers. Since 2026-10-12 helpers and Buddy push directly to `main` (no PRs, no Sentinel pre-review); Buddy reviews commits afterwards; Homebase pulls autonomously after green Docker publish.
 - Addon live v12.1.8. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
 - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, v12.1.8 changelog notes); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
-- Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 needs Marco's yes; locked TS 7, h3 2, @types/node 26; uid 99 + Cosign; `engines.node >=24.17`; no tags without Marco's yes; never remove third-party author names.
+- Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 live; locked TS 7, h3 2, @types/node 26; uid 99 + Cosign; `engines.node >=26`; no tags without Marco's yes; never remove third-party author names.
 
 ## 2026-10-14 Botsmith wave
 
 - `/status` (utility, ephemeral): uptime, image version from `MAGGUU_BUILD_SHA`/`MAGGUU_BUILD_DATE` (Dockerfile ENV from `VCS_REF`/`BUILD_DATE` build-args, set in `docker.yml` to `github.sha` + OCI created; falls back to "unbekannt"), last webhook per source (Sonarr, Radarr, Seerr, Tautulli, SABnzbd, Prowlarr, Maintainerr, GitHub) via `MAX(created_at)` on `webhook_events` (no new table; replay rows excluded). Warning when silent > `STATUS_STALE_HOURS` (default 24). Builder in `src/embeds/status.ts`, tests in `tests/status.test.ts`.
-- CI: `ci.yml` matrix Node 24 (required) + Node 26 (`continue-on-error`, full `npm ci` + better-sqlite3/@napi-rs/canvas smoke). No engines/package bump; Node 24 stays locked.
+- CI: `ci.yml` runs Node 26 only (full `npm ci` + better-sqlite3/@napi-rs/canvas smoke); docker.yml + version-check.yml use Node 26.
 - `scripts/check-versions.mjs` + `version-check.yml` (daily + dispatch): truth = latest MagguuUI release tag (TOC `## Version` is `@project-version@`); Bot mismatches fail, Website mismatches only warn. MagguuUI is private: needs secret `MAGGUUUI_READ_TOKEN`, otherwise the job only warns.
 - Helper rename finished (Captain, Homebase); pipeline push-to-main, Buddy reviews afterwards, Homebase pulls after green Docker publish.
 
@@ -294,11 +294,12 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy/Captain); skip Homeba
 - Release embed (`src/embeds/addon-release.ts`): deterministic summary of the newest version block of the release body, markdown stripped, headings Große Neuerungen / Weitere Features / Bugfixes, top 3 bullets each (+ "… und N weitere"), link to the full release; field ≤1024, description ≤4096.
 - **Website FAQ auto-answer** (`src/discord/faq-autoanswer.ts`, matcher `src/utils/faq-matcher.ts`): source `GET https://ui.magguu.xyz/api/v1/faqs` (public, grouped by category), hourly cache. Only in `FAQ_AUTOANSWER_CHANNEL_IDS` (empty = off), only question-like messages, conservative token-overlap score (`FAQ_AUTOANSWER_MIN_SCORE` 0.6, ≥2 shared tokens, clear lead over runner-up), per-user 300 s / per-channel 60 s cooldowns, same FAQ not repeated per channel within 360 min; otherwise silent. MessageContent intent is already requested in code (`client.ts`); must stay enabled in the Developer Portal.
 - `GET /api/status` (read-only JSON: uptime, build SHA/date, last webhook per source; no secrets) – disabled unless `STATUS_API_TOKEN` is set, then requires `Authorization: Bearer`. Used by the Magguu-Dashboard „Magguu-Dienste“ view.
-- Renovate replaces Dependabot (`renovate.json`, `.github/dependabot.yml` removed; Node <26, @types/node <25, TS <7, h3 <2, satori ~0.41). Renovate GitHub App not installed yet – Marco/Buddy must install. `dependabot-auto-merge.yml` kept for Dependabot security PRs.
+- Renovate replaces Dependabot (`renovate.json`, `.github/dependabot.yml` removed; @types/node <25, TS <7, h3 <2, satori ~0.41). Renovate GitHub App installed 2026-10-16 (Dependency Dashboard #111). `dependabot-auto-merge.yml` kept for Dependabot security PRs.
 - Homebase: add to the Unraid template `MAGGUUUI_READ_TOKEN` (masked), `STATUS_API_TOKEN` (masked), `FAQ_AUTOANSWER_CHANNEL_IDS`; optional `ADDON_RELEASE_POLL_MINUTES`.
 
 ## Renovate automerge & pre-push hook (2026-10-16)
 
-- `renovate.json`: minor/patch/pin/digest automerge with `automergeType: "branch"` + `platformAutomerge` (lands directly on `main` only after required status checks / CI are green; `ignoreTests: false`). Majors never automerge. Locked majors stay blocked via `allowedVersions`: Node <26, TypeScript <7, @types/node <25 (stricter than <26).
+- `renovate.json`: minor/patch/pin/digest automerge with `automergeType: "branch"` + `platformAutomerge` (lands directly on `main` only after required status checks / CI are green; `ignoreTests: false`). Majors never automerge. Locked majors stay blocked via `allowedVersions`: TypeScript <7, @types/node <25 (stricter than <26).
 - In-repo pre-push hook `.githooks/pre-push` runs `npm run typecheck` + `npm test` (no lint script; no ESLint by design) plus `actionlint` (.github/workflows) and `shellcheck` (tracked `*.sh`); missing tools only warn and skip. Enable once per checkout: `git config core.hooksPath .githooks` (set on the Ubuntu VM checkout).
 - docker.yml (2026-10-16): `push` to main has a `paths` allowlist (Dockerfile, .dockerignore, docker-entrypoint.sh, package*.json, tsconfig/vite/tailwind/postcss/drizzle configs, `src/**`, `frontend/**`, docker.yml itself). Docs/.githooks/renovate.json/tests-only pushes publish no image. Tags and workflow_dispatch always build. Safe because main has no required status checks; if docker ever becomes a required check, switch to a job-level skip that reports success. Extend the list when the Dockerfile COPYs new files.
+- Node 26 live (2026-10-16, Marco approved): engines `>=26`, Dockerfile `node:26-alpine` digest-pinned, all workflows Node 26, Renovate Node hold removed. TS 7 and @types/node 26 stay locked.

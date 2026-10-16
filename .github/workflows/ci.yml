@@ -16,16 +16,11 @@ jobs:
   typecheck:
     name: typecheck (node ${{ matrix.node }})
     runs-on: ubuntu-latest
-    # Node 26 is an early-warning lane only; Node 24 stays the locked runtime.
-    continue-on-error: ${{ matrix.experimental }}
+    # Node 26 is the runtime (approved 2026-10-16).
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - node: 24
-            experimental: false
-          - node: 26
-            experimental: true
+        node: [26]
     steps:
       - name: Checkout repository
         # actions/checkout@v7.0.0
@@ -36,13 +31,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - if: ${{ !matrix.experimental }}
-        run: npm ci --ignore-scripts
       # Full install so better-sqlite3 and @napi-rs/canvas resolve/build their native bindings.
-      - if: ${{ matrix.experimental }}
-        run: npm ci
-      - if: ${{ matrix.experimental }}
-        name: Native module smoke (better-sqlite3, @napi-rs/canvas)
+      - run: npm ci
+      - name: Native module smoke (better-sqlite3, @napi-rs/canvas)
         run: |
           node -e "const D=require('better-sqlite3');const d=new D(':memory:');console.log('better-sqlite3', d.prepare('select sqlite_version() v').get().v);d.close()"
           node -e "const {createCanvas}=require('@napi-rs/canvas');const c=createCanvas(8,8);c.getContext('2d').fillRect(0,0,8,8);console.log('@napi-rs/canvas png bytes', c.toBuffer('image/png').length)"

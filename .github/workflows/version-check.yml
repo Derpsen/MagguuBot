@@ -25,7 +25,7 @@ jobs:
         # actions/setup-node@v6.4.0
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: 24
+          node-version: 26
       # Derpsen/MagguuUI is private: MAGGUUUI_READ_TOKEN (fine-grained, contents:read on
       # MagguuUI) is needed; without it the job only warns.
       - name: Check MagguuUI version mentions

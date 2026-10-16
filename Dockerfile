@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # ─── Build Stage ─────────────────────────────────
-# node:24-alpine multi-arch index digest (2026-10-06)
-ARG NODE_VERSION=24
-ARG NODE_DIGEST=sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+# node:26-alpine multi-arch index digest (2026-10-16)
+ARG NODE_VERSION=26
+ARG NODE_DIGEST=sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
 FROM node:${NODE_VERSION}-alpine@${NODE_DIGEST} AS builder
 
 WORKDIR /app
