@@ -7,6 +7,8 @@ import type { ChannelKey } from '../discord/channel-catalog.js';
 import type { CommandInfo } from '../embeds/cards.js';
 import { auditMessages, type AuditFinding } from '../utils/card-audit.js';
 import type { CommandDiff } from '../utils/command-diff.js';
+import type { EnrichedBluePost } from '../services/blue-tracker-enrich.js';
+import type { RssItem } from '../services/rss.js';
 import { ROUTES, TRANSIENT_KEYS, classifyBotEmbed, type RoutingRow } from '../utils/routing.js';
 import { LIVE_PANEL_TITLE, findDuplicateCards, isBotCard, type DuplicateCard, type LiveMessage, type TransientTable } from './cards-plan.js';
 
@@ -105,6 +107,18 @@ export interface ScanInput {
 
 const ROLE_MENTION = /<@&(\d{17,20})>/g;
 
+const normFooter = (t: string | null | undefined): string => (t ?? '').replace(/\s+·\s+/g, ' · ').trim();
+
+/** A MagguuUI addon release card (release poller or addon-repo GitHub release). */
+export function isAddonReleaseEmbed(e: { footer?: { text?: string } | null }): boolean {
+  return /^MagguuUI · (neues Release|Vorabversion|stabiles Update)$/.test(normFooter(e.footer?.text));
+}
+
+/** A Blizzard/Blue-Tracker post in any format the bot has used. */
+export function isBlizzardEmbed(e: { footer?: { text?: string } | null; author?: { name?: string } | null }): boolean {
+  return /^MagguuBot · WoW Blue-Tracker/.test(normFooter(e.footer?.text)) || /^Blizzard · /.test(e.author?.name ?? '');
+}
+
 export function scanMessages(input: ScanInput): { findings: ScanFinding[]; duplicates: DuplicateCard[] } {
   const findings: ScanFinding[] = [];
   const own = input.messages.filter((m) => m.authorId === input.botUserId);
@@ -138,6 +152,18 @@ export function scanMessages(input: ScanInput): { findings: ScanFinding[]; dupli
       continue;
     }
     const keys = classifyBotEmbed({ title: first.title, author: first.author?.name, footer: first.footer?.text });
+    // 📰・updates carries MagguuUI addon releases only; anything else the bot posted there is a finding.
+    if (input.routes.addonUpdates && msg.channelId === input.routes.addonUpdates && !isAddonReleaseEmbed(first)) {
+      const blizzard = !!keys?.includes('blizzard') || isBlizzardEmbed(first);
+      push(msg, {
+        kind: 'misrouted',
+        detail: blizzard ? 'Blizzard-Post in #updates (verschieben: --move-misrouted blizzard)' : `${keys?.join('/') ?? 'Nicht-Addon'}-Post in #updates (nur MagguuUI-Releases erlaubt)`,
+        deletable: false,
+        severity: 'error',
+      });
+      handled.add(msg.id);
+      continue;
+    }
     if (!keys) continue;
     const targets = keys.map((k) => input.routes[k]).filter((id): id is string => !!id);
     if (targets.length === 0 || targets.includes(msg.channelId)) continue;
@@ -250,4 +276,84 @@ export function planWindowCleanup(i: WindowCleanupInput): ScanMessage[] {
     if (!(t >= i.fromMs && t < i.toMs)) return false;
     return m.embeds.length > 0 && m.embeds.every((e) => DELETE_CARD_FOOTER.test((e.footer?.text ?? '').replace(/\s+·\s+/g, ' · ').trim()));
   });
+}
+
+// ─── Move misrouted Blizzard posts (📰・updates → 🟦・blizzard-updates) ───
+
+/** The raw Discord embed fields the rebuild needs. */
+export interface RawBlueEmbed {
+  title?: string;
+  url?: string;
+  description?: string;
+  timestamp?: string;
+  author?: { name?: string; icon_url?: string };
+  image?: { url?: string };
+  fields?: Array<{ name?: string; value?: string }>;
+  footer?: { text?: string };
+}
+
+const BLUE_BADGE = /^\S+\s+(Hotfix|Tuning|Balance|PTR|Patch Notes|Maintenance) · /;
+const READ_MORE_TAIL = /\n*\*\*\[→ Weiterlesen auf bluetracker\.gg\]\([^)]*\)\*\*\s*$/;
+
+/** Rebuild the blue-tracker input from a posted embed (any version); keeps the original publish date. */
+export function blueItemFromEmbed(e: RawBlueEmbed, fallbackTimestamp: string): { item: RssItem; enriched: EnrichedBluePost } {
+  const title = (e.title ?? '').replace(/^🔵\s*/u, '').replace(/\s+·\s+/g, ' · ').replace(BLUE_BADGE, '').trim();
+  const authorName = e.author?.name ?? '';
+  const author = /^Blizzard · /.test(authorName) && !/^Blizzard · Blue-Tracker$/.test(authorName) ? authorName.replace(/^Blizzard · /, '').trim() : undefined;
+  const body = (e.description ?? '').replace(READ_MORE_TAIL, '').trimEnd();
+  const cats = e.fields?.find((f) => f.name === 'Kategorien')?.value ?? '';
+  const categories = [...cats.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
+  const pub = new Date(e.timestamp ?? fallbackTimestamp);
+  const item: RssItem = {
+    guid: e.url ?? title,
+    title,
+    ...(e.url ? { link: e.url } : {}),
+    ...(body ? { description: body } : {}),
+    ...(author ? { author } : {}),
+    ...(Number.isFinite(pub.getTime()) ? { pubDate: pub } : {}),
+    ...(categories.length ? { categories } : {}),
+  };
+  const enriched: EnrichedBluePost = {
+    body,
+    ...(author ? { author } : {}),
+    ...(e.author?.icon_url ? { avatarUrl: e.author.icon_url } : {}),
+    ...(e.image?.url ? { firstImage: e.image.url } : {}),
+  };
+  return { item, enriched };
+}
+
+const blueIdentity = (e: RawBlueEmbed): string => e.url ? `url:${e.url}` : `title:${blueItemFromEmbed(e, '1970-01-01T00:00:00Z').item.title.toLowerCase()}`;
+
+export interface MoveMessage {
+  id: string;
+  channelId: string;
+  authorId: string;
+  pinned: boolean;
+  timestamp: string;
+  interaction: boolean;
+  embeds: RawBlueEmbed[];
+}
+
+export interface PlannedMove {
+  messageId: string;
+  item: RssItem;
+  enriched: EnrichedBluePost;
+  /** Already present in the target channel: no repost, only delete the original. */
+  existingId: string | null;
+}
+
+/** Bot-authored Blizzard posts in `source`, with their repost plan for `target`. Pins, interactions, humans: never. */
+export function planBlizzardMove(botUserId: string, source: readonly MoveMessage[], target: readonly MoveMessage[]): PlannedMove[] {
+  const existing = new Map<string, string>();
+  for (const m of target) {
+    const e = m.embeds[0];
+    if (m.authorId === botUserId && e && isBlizzardEmbed(e)) existing.set(blueIdentity(e), m.id);
+  }
+  return source
+    .filter((m) => m.authorId === botUserId && !m.interaction && !m.pinned && m.embeds.length === 1 && isBlizzardEmbed(m.embeds[0]!))
+    .map((m) => {
+      const e = m.embeds[0]!;
+      const { item, enriched } = blueItemFromEmbed(e, m.timestamp);
+      return { messageId: m.id, item, enriched, existingId: existing.get(blueIdentity(e)) ?? null };
+    });
 }

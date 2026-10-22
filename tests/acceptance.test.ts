@@ -257,3 +257,34 @@ test('cleanup window: only bot delete cards in status inside the window', async 
   });
   assert.deepEqual(hits.map((m) => m.id), ['del', 'bundle']);
 });
+
+test('scan: non-addon bot posts in #updates are errors, MagguuUI releases are fine', () => {
+  const UPD = '1500000000000000077';
+  const release = msg('1600000000000000071', UPD, { footer: { text: 'MagguuUI  ·  stabiles Update' } });
+  const blue = msg('1600000000000000072', UPD, { author: { name: 'Blizzard · Kaivax' }, footer: { text: 'MagguuBot  ·  WoW Blue-Tracker' } });
+  const gh = msg('1600000000000000073', UPD, { footer: { text: 'GitHub  ·  push' } });
+  const human = msg('1600000000000000074', UPD, { footer: { text: 'x' } }, { authorId: '1800000000000000001' });
+  const { findings } = scanMessages(scanInput([release, blue, gh, human], { routes: { addonUpdates: UPD, blizzard: '1500000000000000078' } }));
+  assert.deepEqual(findings.map((f) => [f.messageId.slice(-2), f.severity, f.deletable]), [['72', 'error', false], ['73', 'error', false]]);
+  assert.match(findings[0]!.detail, /--move-misrouted blizzard/);
+});
+
+test('move-misrouted blizzard: rebuild keeps title/url/date, skips humans/pins, idempotent', async () => {
+  const { planBlizzardMove, blueItemFromEmbed } = await import('../src/rollout/acceptance-plan.ts');
+  const { buildBlueTrackerEmbed } = await import('../src/embeds/blue-tracker.ts');
+  const pub = new Date('2026-09-30T17:05:00Z');
+  const orig = buildBlueTrackerEmbed({ guid: 'g', title: '[EU] Hotfixes: September 30', link: 'https://bluetracker.gg/wow/topic/eu-en/1', description: 'Fixed a bug.', author: 'Kaivax', pubDate: pub, categories: ['News'] }).toJSON();
+  const rebuilt = buildBlueTrackerEmbed(...(Object.values(blueItemFromEmbed(orig as never, '2026-10-01T00:00:00Z')) as [never, never])).toJSON();
+  assert.equal(rebuilt.title, orig.title);
+  assert.equal(rebuilt.url, orig.url);
+  assert.equal(rebuilt.timestamp, pub.toISOString());
+  assert.equal(rebuilt.description, orig.description);
+  assert.deepEqual(rebuilt.fields, orig.fields);
+  assert.equal(rebuilt.footer?.text, orig.footer?.text);
+  const m = (id: string, extra: Record<string, unknown> = {}) => ({ id, channelId: 'U', authorId: BOT, pinned: false, timestamp: '2026-10-01T00:00:00Z', interaction: false, embeds: [orig as never], ...extra });
+  const source = [m('a'), m('b', { authorId: 'human' }), m('c', { pinned: true }), m('d', { embeds: [{ footer: { text: 'MagguuUI · neues Release' } }] })];
+  const first = planBlizzardMove(BOT, source, []);
+  assert.deepEqual(first.map((p) => [p.messageId, p.existingId]), [['a', null]]);
+  const again = planBlizzardMove(BOT, source, [m('r', { channelId: 'B' })]);
+  assert.deepEqual(again.map((p) => [p.messageId, p.existingId]), [['a', 'r']]);
+});

@@ -15,6 +15,9 @@
  * --report   read-only checks + the last --apply results → /app/data/acceptance/acceptance-report.md
  * --cleanup-window FROM TO [--apply]  only: list (dry-run) or delete bot-authored Sonarr/Radarr
  *            delete cards in 🩺・status within the window (e.g. 2026-10-22T18:00Z 2026-10-22T18:30Z)
+ * --move-misrouted blizzard [--apply]  only: bot-authored Blizzard posts in 📰・updates are rebuilt
+ *            with the current blue-tracker embed (original publish date) in 🟦・blizzard-updates,
+ *            verified, then the original is deleted. Idempotent (existing repost → only delete).
  *
  * Never: guild settings (public updates channel), human messages, slash-command registration.
  * Exit: 0 green · 6 findings · 2 API errors · 1 crash.
@@ -27,6 +30,7 @@ import { getChannel } from '../discord/channel-store.js';
 import { commands as localCommands } from '../discord/commands/index.js';
 import { ARCHIVE_CATEGORY_NAME, STAFF_ROLE_NAMES, TICKET_CATEGORY_NAME } from '../discord/server-layout.js';
 import { HELP_TICKETS_PLAN_NAME, TICKET_SELECT_CUSTOM_ID } from '../embeds/cards.js';
+import { buildBlueTrackerEmbed } from '../embeds/blue-tracker.js';
 import { getAllSettings } from '../settings.js';
 import { checkRouting, describeRoutingProblem, ROUTES, type LiveChannelInfo } from '../utils/routing.js';
 import { collectStoredRefs, describeStaleRef, findStaleRefs } from '../utils/stale-ids.js';
@@ -36,6 +40,9 @@ import {
   diffCommands,
   matrixGreen,
   planWindowCleanup,
+  planBlizzardMove,
+  type MoveMessage,
+  type RawBlueEmbed,
   matrixMarkdown,
   reportMarkdown,
   routingMatrix,
@@ -65,7 +72,7 @@ import { describeAction, planRollout } from './plan.js';
 import { DiscordError, DiscordRest, takeSnapshot } from './rest.js';
 
 type Mode = 'dry-run' | 'apply' | 'report';
-interface Args { mode: Mode; days: number; perChannel: number; jsonOnly: boolean; cleanupWindow?: { from: number; to: number } }
+interface Args { mode: Mode; days: number; perChannel: number; jsonOnly: boolean; cleanupWindow?: { from: number; to: number }; moveMisrouted?: 'blizzard' }
 
 function parseArgs(argv: string[]): Args {
   const args: Args = { mode: 'dry-run', days: 90, perChannel: 3000, jsonOnly: false };
@@ -90,10 +97,17 @@ function parseArgs(argv: string[]): Args {
       if (to - from > 24 * 3_600_000) throw new Error('--cleanup-window: höchstens 24 h');
       args.cleanupWindow = { from, to };
     }
-    else throw new Error(`Unbekannte Option: ${a} (erlaubt: --dry-run, --apply, --report, --days <n>, --per-channel <n>, --cleanup-window <from> <to>, --json)`);
+    else if (a === '--move-misrouted') {
+      const what = next();
+      if (what !== 'blizzard') throw new Error('--move-misrouted kennt nur: blizzard');
+      args.moveMisrouted = what;
+    }
+    else throw new Error(`Unbekannte Option: ${a} (erlaubt: --dry-run, --apply, --report, --days <n>, --per-channel <n>, --cleanup-window <from> <to>, --move-misrouted blizzard, --json)`);
   }
   if (modes.size > 1) throw new Error('Nur einer von --dry-run, --apply, --report');
   if (args.cleanupWindow && modes.has('report')) throw new Error('--cleanup-window nur mit --dry-run oder --apply');
+  if (args.moveMisrouted && modes.has('report')) throw new Error('--move-misrouted nur mit --dry-run oder --apply');
+  if (args.moveMisrouted && args.cleanupWindow) throw new Error('--move-misrouted und --cleanup-window getrennt ausführen');
   args.mode = [...modes][0] ?? 'dry-run';
   return args;
 }
@@ -421,11 +435,67 @@ async function cleanupWindow(rest: DiscordRest, args: Args, apply: boolean): Pro
   return { code: errors.length ? 2 : 0, output: `${lines.join('\n')}\n` };
 }
 
+const toMoveMessage = (m: RawMessage): MoveMessage => ({
+  id: m.id, channelId: m.channel_id, authorId: m.author.id, pinned: m.pinned, timestamp: m.timestamp,
+  interaction: !!(m.interaction_metadata ?? m.interaction) || m.type === 20 || m.type === 23,
+  embeds: m.embeds as RawBlueEmbed[],
+});
+
+async function moveMisrouted(rest: DiscordRest, args: Args, apply: boolean): Promise<{ code: number; output: string }> {
+  const { snap } = await takeSnapshot(rest, config.DISCORD_GUILD_ID);
+  const view = viewOf(snap);
+  const routes = layoutRoutes(view);
+  const fromId = routes.addonUpdates;
+  const toId = routes.blizzard;
+  if (!fromId || !toId) return { code: 2, output: 'addonUpdates- oder blizzard-Kanal nicht gefunden\n' };
+  const [src, dst] = await Promise.all([fetchHistorySince(rest, fromId, 0, args.perChannel), fetchHistorySince(rest, toId, 0, args.perChannel)]);
+  const moves = planBlizzardMove(snap.botUserId, src.messages.map(toMoveMessage), dst.messages.map(toMoveMessage));
+  const fromName = `#${view.names.get(fromId) ?? fromId}`;
+  const toName = `#${view.names.get(toId) ?? toId}`;
+  const lines = [`${fromName} → ${toName} (${apply ? 'apply' : 'dry-run'}): ${moves.length} Blizzard-Post(s) vom Bot.`];
+  const errors: string[] = [];
+  const results: Array<{ original: string; repost: string | null; deleted: boolean; title: string }> = [];
+  for (const mv of moves) {
+    const when = mv.item.pubDate?.toISOString() ?? '?';
+    lines.push(`- \`${mv.messageId}\` „${mv.item.title}“ (${when}) → ${mv.existingId ? `schon vorhanden \`${mv.existingId}\`, nur Original löschen` : 'neu posten, prüfen, Original löschen'}`);
+    if (!apply) continue;
+    let repost = mv.existingId;
+    try {
+      if (!repost) {
+        const embed = buildBlueTrackerEmbed(mv.item, mv.enriched).toJSON();
+        const posted = await rest.request<{ id: string }>('POST', `/channels/${toId}/messages`, { embeds: [embed], allowed_mentions: { parse: [] } });
+        if (!posted?.id) throw new Error('Repost ohne ID');
+        const check = await rest.request<RawMessage>('GET', `/channels/${toId}/messages/${posted.id}`);
+        const got = (check?.embeds[0] ?? {}) as RawBlueEmbed;
+        if (got.title !== embed.title || (got.url ?? null) !== (embed.url ?? null) || (got.timestamp && embed.timestamp && Date.parse(got.timestamp) !== Date.parse(embed.timestamp))) {
+          throw new Error(`Repost ${posted.id} weicht ab, Original bleibt`);
+        }
+        repost = posted.id;
+      }
+      await rest.request('DELETE', `/channels/${fromId}/messages/${mv.messageId}`, undefined, [404]);
+      results.push({ original: mv.messageId, repost, deleted: true, title: mv.item.title });
+      lines.push(`  ✓ ${toName} \`${repost}\`, Original gelöscht`);
+    } catch (err) {
+      errors.push(`${mv.messageId}: ${errText(err)}`);
+      results.push({ original: mv.messageId, repost, deleted: false, title: mv.item.title });
+    }
+  }
+  if (!apply && moves.length) lines.push('_Nichts geändert (dry-run). Mit --apply verschieben._');
+  if (!moves.length) lines.push('Nichts zu verschieben.');
+  lines.push(...errors.map((e) => `- ⚠ ${e}`));
+  const dir = outDir();
+  await mkdir(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/\D/g, '').slice(2, 14);
+  await writeFile(join(dir, `move-misrouted-blizzard-${stamp}.json`), `${JSON.stringify({ apply, from: fromId, to: toId, planned: moves.map((m) => ({ id: m.messageId, title: m.item.title, existingId: m.existingId })), results, errors }, null, 2)}\n`, { mode: 0o600 });
+  return { code: errors.length ? 2 : 0, output: `${lines.join('\n')}\n` };
+}
+
 async function main(): Promise<{ code: number; output: string }> {
   const args = parseArgs(process.argv.slice(2));
   const apply = args.mode === 'apply';
   const rest = new DiscordRest(config.DISCORD_TOKEN, 'MagguuBot acceptance test');
   if (args.cleanupWindow) return cleanupWindow(rest, args, apply);
+  if (args.moveMisrouted) return moveMisrouted(rest, args, apply);
   const startedAt = new Date().toISOString();
   const runId = startedAt.replace(/\D/g, '').slice(2, 14);
   const errors: string[] = [];
