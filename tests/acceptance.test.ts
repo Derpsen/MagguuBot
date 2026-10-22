@@ -38,7 +38,7 @@ test('every integrated routing key has a layout channel', () => {
 test('📡・downloads only carries Sonarr, Radarr and SABnzbd keys', () => {
   const inDownloads = CHANNEL_CATALOG.map((c) => c.key).filter((k) => expectedChannelName(k) === CHANNEL.downloads);
   assert.deepEqual(new Set(inDownloads), DOWNLOADS_KEYS);
-  const allowed = new Set(['Sonarr', 'Radarr', 'SABnzbd', 'Live-Queue (Sonarr/Radarr/SABnzbd)']);
+  const allowed = new Set(['Sonarr', 'Radarr', 'SABnzbd', 'Live-Queue (Sonarr/Radarr/SABnzbd)', 'Sonarr/Radarr/SABnzbd Burst (Grabs/Imports)']);
   for (const route of ROUTES) {
     if (route.keys.some((k) => DOWNLOADS_KEYS.has(k))) assert.ok(allowed.has(route.source), `${route.source} would post in downloads`);
   }

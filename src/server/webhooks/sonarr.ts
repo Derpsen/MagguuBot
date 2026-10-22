@@ -11,6 +11,8 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
+import { submitFeed } from '../feed-bursts.js';
+import { importItemKeys, importNameKeys } from '../../utils/import-dedupe.js';
 import { deletedFilesPresent, healthLevelForEvent, is4kQuality, isUpgradeFileDelete, sonarrPayloadSchema } from './schemas.js';
 export const sonarrWebhook = new Hono().post('/', async (c) => {
   const parsed = sonarrPayloadSchema.safeParse(await c.req.json().catch(() => null));
@@ -37,46 +39,58 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       const quality = body.release?.quality;
       const pingRoles = ['ping-series'];
       if (is4kQuality(quality)) pingRoles.push('ping-extras');
-      await postEmbed({
-        channelId: getChannel('grabs'),
-        embed: buildGrabEmbed({
-          service: 'sonarr',
-          title: seriesTitle,
-          year: body.series?.year,
-          posterUrl: poster,
-          episodes,
-          quality,
-          size: body.release?.size,
-          releaseGroup: body.release?.releaseGroup,
-          releaseTitle: body.release?.releaseTitle,
-          indexer: body.release?.indexer,
-        }),
-        source: 'sonarr',
-        eventType: body.eventType,
-        payload: body,
-        pingRoles,
-      });
+      await submitFeed('grabs', {
+        service: 'Sonarr',
+        title: seriesTitle,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('grabs'),
+          embed: buildGrabEmbed({
+            service: 'sonarr',
+            title: seriesTitle,
+            year: body.series?.year,
+            posterUrl: poster,
+            episodes,
+            quality,
+            size: body.release?.size,
+            releaseGroup: body.release?.releaseGroup,
+            releaseTitle: body.release?.releaseTitle,
+            indexer: body.release?.indexer,
+          }),
+          source: 'sonarr',
+          eventType: body.eventType,
+          payload: body,
+          pingRoles,
+        });
+        },
+      }, importNameKeys({ service: 'sonarr', title: seriesTitle, mediaId: (body.series as { id?: number } | undefined)?.id, episodes: (body.episodes ?? []).map((e) => ({ season: e.seasonNumber, number: e.episodeNumber })), downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.episodeFile as { sceneName?: string; relativePath?: string } | undefined)?.sceneName, body.episodeFile?.path] }));
       break;
     }
     case 'Download':
     case 'ImportComplete': {
-      await postEmbed({
-        channelId: getChannel('imports'),
-        embed: buildImportEmbed({
-          service: 'sonarr',
-          title: seriesTitle,
-          year: body.series?.year,
-          posterUrl: poster,
-          episodes,
-          quality: body.episodeFile?.quality ?? body.release?.quality,
-          size: body.episodeFile?.size,
-          releaseGroup: body.episodeFile?.releaseGroup,
-          isUpgrade: body.isUpgrade,
-        }),
-        source: 'sonarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('imports', {
+        service: 'Sonarr',
+        title: seriesTitle,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('imports'),
+          embed: buildImportEmbed({
+            service: 'sonarr',
+            title: seriesTitle,
+            year: body.series?.year,
+            posterUrl: poster,
+            episodes,
+            quality: body.episodeFile?.quality ?? body.release?.quality,
+            size: body.episodeFile?.size,
+            releaseGroup: body.episodeFile?.releaseGroup,
+            isUpgrade: body.isUpgrade,
+          }),
+          source: 'sonarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, [...importItemKeys({ service: 'sonarr', title: seriesTitle, mediaId: (body.series as { id?: number } | undefined)?.id, episodes: (body.episodes ?? []).map((e) => ({ season: e.seasonNumber, number: e.episodeNumber })), downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.episodeFile as { sceneName?: string; relativePath?: string } | undefined)?.sceneName, body.episodeFile?.path] }), ...importNameKeys({ service: 'sonarr', title: seriesTitle, mediaId: (body.series as { id?: number } | undefined)?.id, episodes: (body.episodes ?? []).map((e) => ({ season: e.seasonNumber, number: e.episodeNumber })), downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.episodeFile as { sceneName?: string; relativePath?: string } | undefined)?.sceneName, body.episodeFile?.path] })]);
       break;
     }
     case 'ManualInteractionRequired':
@@ -100,20 +114,26 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       break;
     }
     case 'SeriesDelete': {
-      await postEmbed({
-        channelId: getChannel('health'),
-        embed: buildDeleteEmbed({
-          service: 'sonarr',
-          kind: 'series',
-          title: seriesTitle,
-          year: body.series?.year,
-          posterUrl: poster,
-          deletedFiles: deletedFilesPresent(body.deletedFiles),
-        }),
-        source: 'sonarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('deletes', {
+        service: 'Sonarr',
+        title: seriesTitle,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('health'),
+          embed: buildDeleteEmbed({
+            service: 'sonarr',
+            kind: 'series',
+            title: seriesTitle,
+            year: body.series?.year,
+            posterUrl: poster,
+            deletedFiles: deletedFilesPresent(body.deletedFiles),
+          }),
+          source: 'sonarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, []);
       break;
     }
     case 'EpisodeFileDelete': {
@@ -122,23 +142,29 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
         break;
       }
       const file = body.episodeFile ?? body.episodeFiles?.[0];
-      await postEmbed({
-        channelId: getChannel('health'),
-        embed: buildDeleteEmbed({
-          service: 'sonarr',
-          kind: 'episodeFile',
-          title: seriesTitle,
-          year: body.series?.year,
-          posterUrl: poster,
-          episodes,
-          quality: file?.quality,
-          size: file?.size,
-          reason: body.message ?? body.deleteReason,
-        }),
-        source: 'sonarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('deletes', {
+        service: 'Sonarr',
+        title: seriesTitle,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('health'),
+          embed: buildDeleteEmbed({
+            service: 'sonarr',
+            kind: 'episodeFile',
+            title: seriesTitle,
+            year: body.series?.year,
+            posterUrl: poster,
+            episodes,
+            quality: file?.quality,
+            size: file?.size,
+            reason: body.message ?? body.deleteReason,
+          }),
+          source: 'sonarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, []);
       break;
     }
     case 'ApplicationUpdate': {

@@ -22,6 +22,9 @@ export const ROUTES: readonly RouteSpec[] = [
   { source: 'Radarr', keys: ['grabs', 'imports', 'failures', 'health'], integrated: true, delivery: 'channel' },
   { source: 'SABnzbd', keys: ['imports', 'failures', 'health'], integrated: true, delivery: 'channel' },
   { source: 'Live-Queue (Sonarr/Radarr/SABnzbd)', keys: ['downloadLive'], integrated: true, delivery: 'channel' },
+  { source: 'Sonarr/Radarr Library-Löschungen', keys: ['health'], integrated: true, delivery: 'channel', note: 'gebündelt: 1 Sammelkarte pro Burst' },
+  { source: 'Sonarr/Radarr/SABnzbd Burst (Grabs/Imports)', keys: ['grabs', 'imports'], integrated: true, delivery: 'channel', note: 'je Item 1 Karte (dedupliziert, SAB+Arr = 1), ab 6 pro Burst 1 Sammelkarte' },
+  { source: 'Neu auf Plex Burst', keys: ['newOnPlex'], integrated: true, delivery: 'channel', note: 'dedupliziert, ab 6 pro Burst 1 Sammelkarte' },
   { source: 'Plex/Tautulli Aktivität', keys: ['plexActivity'], integrated: true, delivery: 'channel' },
   { source: 'Plex/Tautulli Neu auf Plex', keys: ['newOnPlex'], integrated: true, delivery: 'channel' },
   { source: 'Wochenrückblick', keys: ['weeklyDigest'], integrated: true, delivery: 'channel' },
@@ -149,6 +152,11 @@ export function classifyBotEmbed(embed: EmbedView): ChannelKey[] | null {
   if (footer.startsWith('MagguuBot · WoW Blue-Tracker')) return ['blizzard'];
   if (/^MagguuUI · (neues Release|Vorabversion|stabiles Update)$/.test(footer)) return ['addonUpdates', 'github'];
   if (footer.startsWith('GitHub · ')) return ['github', 'addonUpdates'];
+  if (footer === 'MagguuBot · Library-Löschungen gebündelt') return ['health'];
+  if (/^MagguuBot · (File aus der Library entfernt|inkl\. Files auf Disk|nur aus der Library entfernt)$/.test(footer)) return ['health'];
+  if (footer === 'MagguuBot · Imports gebündelt') return ['imports'];
+  if (footer === 'MagguuBot · Grabs gebündelt') return ['grabs'];
+  if (footer === 'MagguuBot · Neu auf Plex gebündelt') return ['newOnPlex'];
   if (footer === 'MagguuBot · Download gestartet') return ['grabs'];
   if (footer === 'MagguuBot · auf Plex verfügbar') return ['imports'];
   if (footer === 'MagguuBot · SABnzbd') return ['imports', 'failures', 'health'];

@@ -11,6 +11,8 @@ import {
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
 import { postOrEditLifecycleEmbed } from '../lifecycle-poster.js';
+import { submitFeed } from '../feed-bursts.js';
+import { importItemKeys, importNameKeys } from '../../utils/import-dedupe.js';
 import { deletedFilesPresent, healthLevelForEvent, is4kQuality, isUpgradeFileDelete, radarrPayloadSchema } from './schemas.js';
 export const radarrWebhook = new Hono().post('/', async (c) => {
   const parsed = radarrPayloadSchema.safeParse(await c.req.json().catch(() => null));
@@ -33,44 +35,56 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       const quality = body.release?.quality;
       const pingRoles = ['ping-movies'];
       if (is4kQuality(quality)) pingRoles.push('ping-extras');
-      await postEmbed({
-        channelId: getChannel('grabs'),
-        embed: buildGrabEmbed({
-          service: 'radarr',
-          title,
-          year,
-          posterUrl: poster,
-          quality,
-          size: body.release?.size,
-          releaseGroup: body.release?.releaseGroup,
-          releaseTitle: body.release?.releaseTitle,
-          indexer: body.release?.indexer,
-        }),
-        source: 'radarr',
-        eventType: body.eventType,
-        payload: body,
-        pingRoles,
-      });
+      await submitFeed('grabs', {
+        service: 'Radarr',
+        title: title,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('grabs'),
+          embed: buildGrabEmbed({
+            service: 'radarr',
+            title,
+            year,
+            posterUrl: poster,
+            quality,
+            size: body.release?.size,
+            releaseGroup: body.release?.releaseGroup,
+            releaseTitle: body.release?.releaseTitle,
+            indexer: body.release?.indexer,
+          }),
+          source: 'radarr',
+          eventType: body.eventType,
+          payload: body,
+          pingRoles,
+        });
+        },
+      }, importNameKeys({ service: 'radarr', title, mediaId: (body.movie as { id?: number } | undefined)?.id, downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.movieFile as { sceneName?: string } | undefined)?.sceneName, body.movieFile?.path] }));
       break;
     }
     case 'Download':
     case 'ImportComplete': {
-      await postEmbed({
-        channelId: getChannel('imports'),
-        embed: buildImportEmbed({
-          service: 'radarr',
-          title,
-          year,
-          posterUrl: poster,
-          quality: body.movieFile?.quality ?? body.release?.quality,
-          size: body.movieFile?.size,
-          releaseGroup: body.movieFile?.releaseGroup,
-          isUpgrade: body.isUpgrade,
-        }),
-        source: 'radarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('imports', {
+        service: 'Radarr',
+        title: title,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('imports'),
+          embed: buildImportEmbed({
+            service: 'radarr',
+            title,
+            year,
+            posterUrl: poster,
+            quality: body.movieFile?.quality ?? body.release?.quality,
+            size: body.movieFile?.size,
+            releaseGroup: body.movieFile?.releaseGroup,
+            isUpgrade: body.isUpgrade,
+          }),
+          source: 'radarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, [...importItemKeys({ service: 'radarr', title, mediaId: (body.movie as { id?: number } | undefined)?.id, downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.movieFile as { sceneName?: string } | undefined)?.sceneName, body.movieFile?.path] }), ...importNameKeys({ service: 'radarr', title, mediaId: (body.movie as { id?: number } | undefined)?.id, downloadId: (body as { downloadId?: string }).downloadId, releaseNames: [body.release?.releaseTitle, (body.movieFile as { sceneName?: string } | undefined)?.sceneName, body.movieFile?.path] })]);
       break;
     }
     case 'ManualInteractionRequired':
@@ -94,20 +108,26 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
       break;
     }
     case 'MovieDelete': {
-      await postEmbed({
-        channelId: getChannel('health'),
-        embed: buildDeleteEmbed({
-          service: 'radarr',
-          kind: 'movie',
-          title,
-          year,
-          posterUrl: poster,
-          deletedFiles: deletedFilesPresent(body.deletedFiles),
-        }),
-        source: 'radarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('deletes', {
+        service: 'Radarr',
+        title: title,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('health'),
+          embed: buildDeleteEmbed({
+            service: 'radarr',
+            kind: 'movie',
+            title,
+            year,
+            posterUrl: poster,
+            deletedFiles: deletedFilesPresent(body.deletedFiles),
+          }),
+          source: 'radarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, []);
       break;
     }
     case 'MovieFileDelete': {
@@ -115,22 +135,28 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
         logger.debug({ eventType: body.eventType, deleteReason: body.deleteReason }, 'radarr upgrade file delete skipped');
         break;
       }
-      await postEmbed({
-        channelId: getChannel('health'),
-        embed: buildDeleteEmbed({
-          service: 'radarr',
-          kind: 'movieFile',
-          title,
-          year,
-          posterUrl: poster,
-          quality: body.movieFile?.quality,
-          size: body.movieFile?.size,
-          reason: body.message ?? body.deleteReason,
-        }),
-        source: 'radarr',
-        eventType: body.eventType,
-        payload: body,
-      });
+      await submitFeed('deletes', {
+        service: 'Radarr',
+        title: title,
+        post: async () => {
+        await postEmbed({
+          channelId: getChannel('health'),
+          embed: buildDeleteEmbed({
+            service: 'radarr',
+            kind: 'movieFile',
+            title,
+            year,
+            posterUrl: poster,
+            quality: body.movieFile?.quality,
+            size: body.movieFile?.size,
+            reason: body.message ?? body.deleteReason,
+          }),
+          source: 'radarr',
+          eventType: body.eventType,
+          payload: body,
+        });
+        },
+      }, []);
       break;
     }
     case 'ApplicationUpdate': {

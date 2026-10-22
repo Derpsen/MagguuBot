@@ -4,6 +4,11 @@ import { getChannel } from '../../discord/channel-store.js';
 import { buildSabEventEmbed } from '../../embeds/sabnzbd.js';
 import { logger } from '../../utils/logger.js';
 import { postEmbed } from '../discord-poster.js';
+import { importAlreadyReported, submitFeed } from '../feed-bursts.js';
+import { normRelease } from '../../utils/import-dedupe.js';
+
+/** How long a SAB "complete" waits for the matching Sonarr/Radarr import. */
+export const SAB_COMPLETE_DEFER_MS = 3 * 60_000;
 
 const sabSchema = z.object({
   event: z.enum(['complete', 'failed', 'warning']),
@@ -28,13 +33,31 @@ export const sabnzbdWebhook = new Hono().post('/', async (c) => {
   }
   const { event, name, category, sizeBytes, failMessage, storageDir } = parsed.data;
 
-  await postEmbed({
-    channelId: channelFor[event](),
-    embed: buildSabEventEmbed({ status: event, name, category, sizeBytes, failMessage, storageDir }),
-    source: 'sabnzbd',
-    eventType: event,
-    payload: parsed.data,
-  });
+  const post = async (): Promise<void> => {
+    await postEmbed({
+      channelId: channelFor[event](),
+      embed: buildSabEventEmbed({ status: event, name, category, sizeBytes, failMessage, storageDir }),
+      source: 'sabnzbd',
+      eventType: event,
+      payload: parsed.data,
+    });
+  };
+  if (event !== 'complete') {
+    await post();
+    return c.json({ ok: true });
+  }
+  // Sonarr/Radarr report the same download with a richer card: wait for them, post SAB only if they did not.
+  const nameKey = `rel:${normRelease(name)}`;
+  const timer = setTimeout(() => {
+    if (importAlreadyReported([nameKey])) {
+      logger.debug({ name }, 'sabnzbd complete dropped (reported by Sonarr/Radarr)');
+      return;
+    }
+    void submitFeed('imports', { service: 'SABnzbd', title: name, post }, [nameKey]).catch((err) =>
+      logger.warn({ err }, 'sabnzbd complete post failed'),
+    );
+  }, SAB_COMPLETE_DEFER_MS);
+  timer.unref?.();
 
   return c.json({ ok: true });
 });

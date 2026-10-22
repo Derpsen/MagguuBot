@@ -10,6 +10,7 @@ import { logger } from '../../utils/logger.js';
 import { decidePlexActivityEvent, plexActivityCorrelationKey } from '../../utils/plex-activity.js';
 import { resolveTautulliEventName } from '../../utils/tautulli-event.js';
 import { editEmbed, postEmbed } from '../discord-poster.js';
+import { submitFeed } from '../feed-bursts.js';
 import {
   tautulliPayloadSchema,
   type TautulliPayload,
@@ -41,8 +42,12 @@ export function resolveTautulliEventMeta(event: string): EventMeta | undefined {
   return name ? EVENT_META[name] : undefined;
 }
 
-function classify(input: string): EventMeta {
+/** Library removals (mass deletes) never produce a Plex card. */
+export const PLEX_REMOVAL = /\b(removed|deleted|gelöscht|entfernt)\b/i;
+
+function classify(input: string): EventMeta | null {
   const t = input.toLowerCase();
+  if (PLEX_REMOVAL.test(t)) return null;
   if (/(recently added|new media|hinzugefügt|available|now available|\bcreated\b)/.test(t)) return EVENT_META.recently_added!;
   if (/(started playing|started watching|began playing)/.test(t)) return EVENT_META.play!;
   if (/(has paused|paused)/.test(t)) return EVENT_META.pause!;
@@ -79,7 +84,12 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
   const source = body.embeds?.[0];
   const titleHint = source?.title ?? body.content ?? '';
   const descHint = source?.description ?? '';
-  const meta = classify(`${titleHint} ${descHint}`);
+  const classified = classify(`${titleHint} ${descHint}`);
+  if (!classified) {
+    logger.debug('tautulli removal event ignored');
+    return;
+  }
+  const meta = classified;
 
   const buildEmbed = (displayMeta: EventMeta): EmbedBuilder => {
     const rebuilt = new EmbedBuilder()
@@ -104,13 +114,20 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
   };
 
   if (meta.kind === 'recently_added') {
-    await postEmbed({
-      channelId: getChannel(meta.channel),
-      embed: buildEmbed(meta),
-      source: 'tautulli',
-      eventType: meta.kind,
-      payload: body,
-    });
+    const title = source?.title ?? body.content ?? 'Neu auf Plex';
+    await submitFeed('newOnPlex', {
+      service: 'Plex',
+      title,
+      post: async () => {
+        await postEmbed({
+          channelId: getChannel(meta.channel),
+          embed: buildEmbed(meta),
+          source: 'tautulli',
+          eventType: meta.kind,
+          payload: body,
+        });
+      },
+    }, [title.toLowerCase()]);
     return;
   }
 
@@ -149,13 +166,20 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
     if (body.posterUrl) embed.setThumbnail(body.posterUrl);
     if (body.mediaType) embed.addFields({ name: 'Type', value: body.mediaType, inline: true });
 
-    await postEmbed({
-      channelId: getChannel('newOnPlex'),
-      embed,
-      source: 'tautulli',
-      eventType: 'recently_added',
-      payload: body,
-    });
+    const title = `${body.title ?? 'New media'}${body.year ? ` · ${body.year}` : ''}`;
+    await submitFeed('newOnPlex', {
+      service: 'Plex',
+      title,
+      post: async () => {
+        await postEmbed({
+          channelId: getChannel('newOnPlex'),
+          embed,
+          source: 'tautulli',
+          eventType: 'recently_added',
+          payload: body,
+        });
+      },
+    }, [title.toLowerCase()]);
     return;
   }
 

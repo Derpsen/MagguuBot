@@ -4,6 +4,7 @@ import { sqliteHandle } from './db/client.js';
 import { getClient, startDiscord } from './discord/client.js';
 import { startScheduler, stopScheduler } from './discord/scheduler.js';
 import { buildApp } from './server/app.js';
+import { flushFeedBursts } from './server/feed-bursts.js';
 import { logger } from './utils/logger.js';
 
 let server: ServerType | null = null;
@@ -42,6 +43,8 @@ async function shutdown(): Promise<void> {
   logger.info('shutting down');
   stopScheduler();
   await closeHttpServer();
+  // Held burst cards (deletes/imports) are posted as summaries before Discord goes away.
+  await Promise.race([flushFeedBursts(), new Promise((r) => setTimeout(r, 5000))]);
   try {
     getClient().destroy();
   } catch {
