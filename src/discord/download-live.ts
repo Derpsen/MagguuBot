@@ -10,6 +10,7 @@ import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
 import { getClient } from './client.js';
 import { FOOTER_ICONS } from '../embeds/colors.js';
+import { ensurePinned } from './pin.js';
 
 const VERIFY_MS = 15 * 60 * 1000;
 
@@ -24,7 +25,8 @@ export async function runDownloadLiveTick(): Promise<void> {
   const key = and(eq(livePanels.guildId, config.DISCORD_GUILD_ID), eq(livePanels.kind, 'downloads'));
   const existing = db.select().from(livePanels).where(key).get();
   if (existing && !existing.enabled) return;
-  const channelId = existing?.channelId ?? getChannel('downloadLive');
+  // The configured key wins: after a layout change the panel follows it to the new channel.
+  const channelId = getChannel('downloadLive') ?? existing?.channelId;
   if (!channelId) return;
 
   const [sonarr, radarr, sab] = await Promise.all([
@@ -57,8 +59,15 @@ export async function runDownloadLiveTick(): Promise<void> {
     if (!hashHit) {
       await message.edit({ embeds: [embed] });
     }
+    if (!message.pinned) await ensurePinned(message, 'MagguuBot live downloads').catch(() => false);
   } else {
     message = await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+    // Exactly one live card, pinned on top of 📡・downloads.
+    await ensurePinned(message, 'MagguuBot live downloads').catch(() => false);
+    const previous = existing?.messageId && existing.messageId !== 'pending' && existing.channelId
+      ? { channelId: existing.channelId, messageId: existing.messageId }
+      : null;
+    if (previous && previous.messageId !== message.id) await deleteOldPanel(previous.channelId, previous.messageId);
   }
   db.insert(livePanels)
     .values({
@@ -108,4 +117,12 @@ export function setDownloadLiveEnabled(enabled: boolean, channelId?: string): vo
     })
     .run();
   logger.info({ enabled, channelId: targetChannel }, 'download live panel setting changed');
+}
+
+/** Remove the previous bot-authored panel after a move so only one live card exists. */
+async function deleteOldPanel(channelId: string, messageId: string): Promise<void> {
+  const channel = await getClient().channels.fetch(channelId).catch(() => null);
+  if (!channel?.isTextBased()) return;
+  const old = await channel.messages.fetch(messageId).catch(() => null);
+  if (old && old.author.id === getClient().user?.id) await old.delete().catch(() => undefined);
 }

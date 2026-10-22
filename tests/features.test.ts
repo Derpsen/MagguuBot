@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildMovieNightComponents, buildMovieNightEmbed } from '../src/embeds/movie-night.ts';
-import {
-  buildAddonUpdatesChannelEmbed,
-  buildBotHelpEmbed,
-  buildFaqChannelEmbed,
-  buildPlexActivityChannelEmbed,
-} from '../src/embeds/welcome.ts';
+import { buildFaqCard, buildUpdatesCard, buildCommandsCard, type CardContext } from '../src/embeds/cards.ts';
 import { hashSlashCommandBody } from '../src/discord/slash-body-hash.ts';
 import { buildQueueEmbed, hashQueueEmbedPayload } from '../src/embeds/queue.ts';
 import { buildWeeklyDigestEmbed } from '../src/embeds/weekly-digest.ts';
@@ -176,8 +171,9 @@ test('live queue clamps invalid progress and field sizes', () => {
   assert.match(embed.fields?.[0]?.value ?? '', /██████████████/);
 });
 
-test('pinned FAQ and Plex activity posts match current addon and session cleanup', () => {
-  const faq = buildFaqChannelEmbed({}).toJSON();
+test('pinned FAQ and updates cards keep the current addon install facts', () => {
+  const ctx: CardContext = { channels: {}, commands: new Map([['help', { subcommands: new Set<string>() }]]) };
+  const faq = buildFaqCard(ctx).embeds[0]!.toJSON();
   const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
   assert.match(faqText, /EllesmereUI/);
   assert.match(faqText, /9\.0\.6\+/);
@@ -239,7 +235,7 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.equal(/Naowh/i.test(faqText), false);
   assert.equal(faq.fields?.every((field) => field.value.length <= 1_024), true);
 
-  const updates = buildAddonUpdatesChannelEmbed().toJSON();
+  const updates = buildUpdatesCard(ctx).embeds[0]!.toJSON();
   assert.match(`${updates.description ?? ''}`, /vier.*Ordner/);
   assert.match(`${updates.description ?? ''}`, /MagguuUI_Data/);
   assert.match(`${updates.description ?? ''}`, /Magguu Settings/);
@@ -251,13 +247,9 @@ test('pinned FAQ and Plex activity posts match current addon and session cleanup
   assert.equal(/einen \*\*`MagguuUI`\*\*-Ordner/.test(`${updates.description ?? ''}`), false);
   assert.equal(/Naowh/i.test(`${updates.description ?? ''}`), false);
 
-  const plex = buildPlexActivityChannelEmbed().toJSON();
-  assert.match(`${plex.description ?? ''}`, /20 Minuten/);
-  assert.match(`${plex.description ?? ''}`, /plex-now-playing/);
-
-  const help = buildBotHelpEmbed({}).toJSON();
-  assert.match(help.fields?.find((field) => field.name.includes('Downloads'))?.value ?? '', /plex-now-playing/);
-  assert.equal(help.fields?.every((field) => field.value.length <= 1_024), true);
+  const commands = buildCommandsCard(ctx).embeds[0]!.toJSON();
+  assert.match(commands.description ?? '', /\/help/);
+  assert.equal(/\/queue/.test(commands.description ?? ''), false, 'unregistered commands are not listed');
 });
 
 test('setup dry-run plans welcome embed rewrites in full mode and skips them in fast mode', () => {

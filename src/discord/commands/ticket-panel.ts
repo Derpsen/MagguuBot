@@ -1,15 +1,6 @@
-import {
-  ActionRowBuilder,
-  ChannelType,
-  EmbedBuilder,
-  MessageFlags,
-  PermissionFlagsBits,
-  SlashCommandBuilder,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
-  type TextChannel,
-} from 'discord.js';
-import { Colors, truncate } from '../../embeds/colors.js';
+import { ChannelType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type TextChannel } from 'discord.js';
+import { buildTicketPanelCard } from '../../embeds/cards.js';
+import { truncate } from '../../embeds/colors.js';
 import { listTicketCategories } from '../ticket-categories.js';
 import type { SlashCommand } from './index.js';
 
@@ -17,7 +8,7 @@ export const ticketPanelCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('ticket-panel')
-    .setDescription('Admin: Ticket-Panel mit Kategorien-SelectMenu posten')
+    .setDescription('Admin: Ticket-Panel zusätzlich posten (Standard: angeheftet in ❓・hilfe)')
     .addChannelOption((o) =>
       o
         .setName('channel')
@@ -40,48 +31,19 @@ export const ticketPanelCommand: SlashCommand = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const channel = interaction.options.getChannel('channel', true) as TextChannel;
-    const title = interaction.options.getString('title') ?? '🎫 Support-Tickets';
-    const categories = listTicketCategories().filter((category) => category.key.length <= 80).slice(0, 25);
-    if (categories.length === 0) {
+    const categories = listTicketCategories();
+    const panel = buildTicketPanelCard({ channels: {}, commands: new Map(), ticketCategories: categories });
+    if (panel.components.length === 0) {
       await interaction.editReply('Keine gültige Ticket-Kategorie konfiguriert.');
       return;
     }
-    const description =
-      interaction.options.getString('description') ??
-      [
-        'Brauchst du Hilfe? Wähl eine **Kategorie** unten — ein privater Ticket-Channel wird erstellt.',
-        '',
-        '**Kategorien:**',
-        ...categories.map((c) => `${c.emoji} **${c.label}** — ${c.description}`),
-        '',
-        '_Schließen kannst du das Ticket jederzeit über den Button im Channel._',
-      ].join('\n');
+    const embed = panel.embeds[0]!;
+    const title = interaction.options.getString('title');
+    const description = interaction.options.getString('description');
+    if (title) embed.setTitle(title);
+    if (description) embed.setDescription(truncate(description, 4000));
 
-    const embed = new EmbedBuilder()
-      .setColor(Colors.brand)
-      .setTitle(title)
-      .setDescription(truncate(description, 4000))
-      .setFooter({ text: 'Eine offene Anfrage pro User · automatisch geschlossen nach 48h Inaktivität' });
-
-    const select = new StringSelectMenuBuilder()
-      .setCustomId('ticket-category:open')
-      .setPlaceholder('🎫 Kategorie wählen → Ticket öffnen')
-      .setMinValues(1)
-      .setMaxValues(1);
-
-    const options = categories.map((c) => {
-      const opt = new StringSelectMenuOptionBuilder()
-        .setLabel(c.label.slice(0, 100))
-        .setValue(c.key)
-        .setEmoji(c.emoji);
-      if (c.description) opt.setDescription(c.description.slice(0, 100));
-      return opt;
-    });
-    select.addOptions(...options);
-
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
-
-    await channel.send({ embeds: [embed], components: [row] });
+    await channel.send({ embeds: [embed], components: panel.components, allowedMentions: { parse: [] } });
     await interaction.editReply({
       content: `✅ Ticket-Panel gepostet in ${channel.toString()}.`,
     });

@@ -1,17 +1,21 @@
-import { CHANNEL, ROLES_PANEL_CHANNEL_NAME } from '../discord/server-layout.js';
-
-/** Second pinned message in the welcome channel (bot help). */
-export const WELCOME_HELP_PLAN_NAME = `${CHANNEL.welcome}#hilfe`;
+import { CHANNEL } from '../discord/server-layout.js';
+import { HELP_FAQ_PLAN_NAME, WELCOME_COMMANDS_PLAN_NAME, WELCOME_ROLES_PLAN_NAME } from '../embeds/cards.js';
 
 /** Pinned message in the welcome channel that carries the single role-button set. */
-export const ROLE_PICKER_PLAN_NAME = `${ROLES_PANEL_CHANNEL_NAME}#rollen`;
+export const ROLE_PICKER_PLAN_NAME = WELCOME_ROLES_PLAN_NAME;
 
-/** Welcome embeds that mention other channels and must refresh when refs move. */
+/** Cards that mention other channels and must refresh when refs move. */
 export const REF_AWARE_WELCOME_NAMES: ReadonlySet<string> = new Set([
   CHANNEL.welcome,
-  WELCOME_HELP_PLAN_NAME,
-  CHANNEL.requests,
+  WELCOME_COMMANDS_PLAN_NAME,
+  CHANNEL.updates,
+  CHANNEL.blizzard,
   CHANNEL.help,
+  CHANNEL.chat,
+  CHANNEL.botCommands,
+  CHANNEL.requests,
+  CHANNEL.plexActivity,
+  HELP_FAQ_PLAN_NAME,
 ]);
 
 export interface SetupWelcomeChannel {

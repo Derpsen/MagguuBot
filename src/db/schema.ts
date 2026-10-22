@@ -58,6 +58,8 @@ export const welcomeMessages = sqliteTable(
     planName: text('plan_name').notNull(),
     channelId: text('channel_id').notNull(),
     messageId: text('message_id').notNull(),
+    /** Hash of the rendered card (cards CLI skips unchanged cards). */
+    contentHash: text('content_hash'),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
       .notNull()
       .$defaultFn(() => new Date()),

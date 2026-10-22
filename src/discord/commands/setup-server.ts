@@ -8,43 +8,29 @@ import {
   DiscordAPIError,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
-  type EmbedBuilder,
   type Guild,
+  type MessageCreateOptions,
+  type MessageEditOptions,
   type TextChannel,
 } from 'discord.js';
 import {
-  buildAddonUpdatesChannelEmbed,
-  buildAnnouncementsEmbed,
-  buildApprovalsChannelEmbed,
-  buildBotCommandsChannelEmbed,
-  buildBotHelpEmbed,
-  buildDownloadLiveChannelEmbed,
-  buildFaqChannelEmbed,
-  buildGeneralChatEmbed,
-  buildHealthChannelEmbed,
-  buildModLogChannelEmbed,
-  buildMovieNightChannelEmbed,
-  buildNewOnPlexChannelEmbed,
-  buildRequestsChannelEmbed,
-  buildRolePickerButtons,
-  buildRolePickerEmbed,
-  buildRulesEmbed,
-  buildSuggestionsChannelEmbed,
-  buildWelcomeHeroEmbed,
-  type ChannelRefs,
-} from '../../embeds/welcome.js';
+  CARDS,
+  RETIRED_CARD_PLAN_NAMES,
+  renderCard,
+  type RenderedCard,
+} from '../../embeds/cards.js';
 import { and, eq } from 'drizzle-orm';
 import { config } from '../../config.js';
 import { db, sqliteHandle } from '../../db/client.js';
 import { welcomeMessages } from '../../db/schema.js';
+import { cardContextForGuild } from '../card-context.js';
+import { ensurePinned } from '../pin.js';
 import { logger } from '../../utils/logger.js';
 import { isChannelKey, type ChannelKey } from '../channel-store.js';
 import { getClient } from '../client.js';
 import {
-  CHANNEL,
   LAYOUT_CHANNEL_NAMES,
   STRUCTURE,
-  allChannelPlans,
 } from '../server-layout.js';
 import { executeActions, type RestLike } from '../../rollout/execute.js';
 import {
@@ -56,8 +42,6 @@ import {
   type Ref,
 } from '../../rollout/plan.js';
 import {
-  ROLE_PICKER_PLAN_NAME,
-  WELCOME_HELP_PLAN_NAME,
   planWelcomeEmbedSync,
   type SetupWelcomeChannel,
 } from '../../utils/setup-plan.js';
@@ -71,40 +55,17 @@ import type { SlashCommand } from './index.js';
  * done by `dist/rollout/discord-rollout.js`.
  */
 
-const RETIRED_WELCOME_PLAN_NAMES = ['🎭・rollen-colors'];
+const RETIRED_WELCOME_PLAN_NAMES = RETIRED_CARD_PLAN_NAMES;
 
 /** Actions that belong to the one-shot rollout only. */
 const ROLLOUT_ONLY_KINDS: ReadonlySet<Action['kind']> = new Set(['enableCommunity', 'putOnboarding', 'putWelcomeScreen', 'migrateMembers']);
 
-interface WelcomePost {
-  planName: string;
-  channel: string;
-  build: (r: ChannelRefs) => EmbedBuilder[];
-  buttons?: boolean;
-}
+export const WELCOME_POST_PLAN_NAMES: readonly string[] = CARDS.map((p) => p.planName);
 
-/** Pinned panels per layout channel. The welcome channel carries three messages. */
-const WELCOME_POSTS: WelcomePost[] = [
-  { planName: CHANNEL.welcome, channel: CHANNEL.welcome, build: (r) => [buildWelcomeHeroEmbed(r), buildRulesEmbed()] },
-  { planName: WELCOME_HELP_PLAN_NAME, channel: CHANNEL.welcome, build: (r) => [buildBotHelpEmbed(r)] },
-  { planName: ROLE_PICKER_PLAN_NAME, channel: CHANNEL.welcome, build: () => [buildRolePickerEmbed()], buttons: true },
-  { planName: CHANNEL.announcements, channel: CHANNEL.announcements, build: () => [buildAnnouncementsEmbed()] },
-  { planName: CHANNEL.updates, channel: CHANNEL.updates, build: () => [buildAddonUpdatesChannelEmbed()] },
-  { planName: CHANNEL.help, channel: CHANNEL.help, build: (r) => [buildFaqChannelEmbed(r)] },
-  { planName: CHANNEL.suggestions, channel: CHANNEL.suggestions, build: () => [buildSuggestionsChannelEmbed()] },
-  { planName: CHANNEL.chat, channel: CHANNEL.chat, build: () => [buildGeneralChatEmbed()] },
-  { planName: CHANNEL.botCommands, channel: CHANNEL.botCommands, build: () => [buildBotCommandsChannelEmbed()] },
-  { planName: CHANNEL.movieNight, channel: CHANNEL.movieNight, build: () => [buildMovieNightChannelEmbed()] },
-  { planName: CHANNEL.requests, channel: CHANNEL.requests, build: (r) => [buildRequestsChannelEmbed(r)] },
-  { planName: CHANNEL.newOnPlex, channel: CHANNEL.newOnPlex, build: () => [buildNewOnPlexChannelEmbed()] },
-  { planName: CHANNEL.downloads, channel: CHANNEL.downloads, build: () => [buildDownloadLiveChannelEmbed()] },
-  { planName: CHANNEL.approvals, channel: CHANNEL.approvals, build: () => [buildApprovalsChannelEmbed()] },
-  { planName: CHANNEL.status, channel: CHANNEL.status, build: () => [buildHealthChannelEmbed()] },
-  { planName: CHANNEL.logs, channel: CHANNEL.logs, build: () => [buildModLogChannelEmbed()] },
-];
-
-export const WELCOME_POST_PLAN_NAMES: readonly string[] = WELCOME_POSTS.map((p) => p.planName);
-
+/**
+ * Mention targets + registered commands at post time. Channels inside
+ * 🗄️ ARCHIV or not in the guild never become `<#id>` mentions.
+ */
 export const setupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
@@ -236,7 +197,7 @@ export function clientRestFor(guild: Guild): RestLike {
 }
 
 function welcomeStatuses(actions: Action[], channelRefs: Record<string, Ref>): SetupWelcomeChannel[] {
-  return WELCOME_POSTS.map((post) => {
+  return CARDS.map((post) => {
     const ref = channelRefs[post.channel];
     if (!ref || isNewRef(ref)) return { planName: post.planName, status: 'create' as const };
     const renamed = actions.some((a) => a.kind === 'updateChannel' && a.id === ref && a.changes.name);
@@ -311,12 +272,10 @@ async function applySetupServer(interaction: SetupInteraction, fullSync = false)
     removed.push(`welcome embed: ${planName}`);
   }
 
-  const refs: ChannelRefs = {};
-  for (const { channel } of allChannelPlans()) {
-    const id = resolve(plan.channelRefs[channel.name]);
-    if (!id) continue;
-    for (const key of channel.refs ?? []) refs[key] = id;
-  }
+  await guild.channels.fetch();
+  const layoutIds: Record<string, string | undefined> = {};
+  for (const [name, ref] of Object.entries(plan.channelRefs)) layoutIds[name] = resolve(ref);
+  const ctx = await cardContextForGuild(guild, layoutIds);
 
   const planned = planWelcomeEmbedSync({
     fullSync,
@@ -331,21 +290,20 @@ async function applySetupServer(interaction: SetupInteraction, fullSync = false)
   let embedsUpdated = 0;
   let pinsOk = 0;
   let pinsFailed = 0;
-  for (const post of WELCOME_POSTS) {
-    if (!toSync.has(post.planName)) continue;
-    const channelId = resolve(plan.channelRefs[post.channel]);
+  for (const spec of CARDS) {
+    if (!toSync.has(spec.planName)) continue;
+    const channelId = layoutIds[spec.channel];
     if (!channelId) continue;
     try {
       const channel = await guild.channels.fetch(channelId).catch(() => null);
       if (!channel?.isTextBased() || channel.isThread()) continue;
-      const components = post.buttons ? buildRolePickerButtons() : undefined;
-      const result = await upsertWelcomeEmbed(channel as TextChannel, post.planName, post.build(refs), components);
+      const result = await upsertWelcomeEmbed(channel as TextChannel, renderCard(spec, ctx), spec.pin);
       if (result.status === 'created') embedsPosted++;
       else if (result.status === 'updated') embedsUpdated++;
       if (result.pinned) pinsOk++;
       else pinsFailed++;
     } catch (err) {
-      logger.warn({ err, channel: post.planName }, 'welcome embed upsert failed');
+      logger.warn({ err, channel: spec.planName }, 'welcome embed upsert failed');
     }
   }
 
@@ -441,56 +399,42 @@ interface UpsertResult {
   pinned: boolean;
 }
 
-async function upsertWelcomeEmbed(
-  channel: TextChannel,
-  planName: string,
-  embeds: EmbedBuilder[],
-  components: ActionRowBuilder<ButtonBuilder>[] | undefined,
-): Promise<UpsertResult> {
+async function upsertWelcomeEmbed(channel: TextChannel, card: RenderedCard, pin: boolean): Promise<UpsertResult> {
+  const planName = card.spec.planName;
+  const body = { ...card.body, allowedMentions: { parse: [] } } as unknown as MessageCreateOptions & MessageEditOptions;
   const existing = db
     .select()
     .from(welcomeMessages)
     .where(and(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID), eq(welcomeMessages.planName, planName)))
     .get();
 
-  if (existing) {
+  if (existing && existing.channelId === channel.id) {
     try {
       const message = await channel.messages.fetch(existing.messageId);
-      await message.edit({ embeds, components: components ?? [] });
-      const pinned = await ensurePinned(message);
+      if (message.author.id !== channel.client.user.id) throw new Error('not a bot message');
+      if (existing.contentHash !== card.hash) await message.edit(body);
+      const pinned = pin ? await ensurePinned(message) : true;
       db.update(welcomeMessages)
-        .set({ channelId: channel.id, updatedAt: new Date() })
-        .where(
-          and(
-            eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID),
-            eq(welcomeMessages.planName, planName),
-          ),
-        )
+        .set({ channelId: channel.id, contentHash: card.hash, updatedAt: new Date() })
+        .where(and(eq(welcomeMessages.guildId, config.DISCORD_GUILD_ID), eq(welcomeMessages.planName, planName)))
         .run();
-      return { status: 'updated', pinned };
+      return { status: existing.contentHash === card.hash ? 'noop' : 'updated', pinned };
     } catch {
       logger.debug({ planName, messageId: existing.messageId }, 'stored welcome message gone, re-posting');
     }
   }
 
-  const message = await channel.send({ embeds, components });
-  const pinned = await ensurePinned(message);
+  const message = await channel.send(body);
+  const pinned = pin ? await ensurePinned(message) : true;
   db.insert(welcomeMessages)
-    .values({
-      guildId: config.DISCORD_GUILD_ID,
-      planName,
-      channelId: channel.id,
-      messageId: message.id,
-    })
+    .values({ guildId: config.DISCORD_GUILD_ID, planName, channelId: channel.id, messageId: message.id, contentHash: card.hash })
     .onConflictDoUpdate({
       target: [welcomeMessages.guildId, welcomeMessages.planName],
-      set: { channelId: channel.id, messageId: message.id, updatedAt: new Date() },
+      set: { channelId: channel.id, messageId: message.id, contentHash: card.hash, updatedAt: new Date() },
     })
     .run();
   return { status: 'created', pinned };
 }
-
-const MAX_PINS_REACHED_CODE = 30003;
 
 export interface BotPermCheckResult {
   ok: boolean;
@@ -565,68 +509,4 @@ export async function backfillWelcomePins(): Promise<{
   return { checked: rows.length, pinned, failed, abortedReason };
 }
 
-function describeDiscordError(err: unknown): { code?: number; message: string } {
-  if (err && typeof err === 'object') {
-    const e = err as { code?: number; message?: string; rawError?: { message?: string } };
-    return {
-      code: e.code,
-      message: e.rawError?.message ?? e.message ?? String(err),
-    };
-  }
-  return { message: String(err) };
-}
 
-async function ensurePinned(message: import('discord.js').Message): Promise<boolean> {
-  if (message.pinned) return true;
-  try {
-    await message.pin('auto-pin welcome embed');
-    await deletePinNotification(message);
-    return true;
-  } catch (err) {
-    const { code, message: errMsg } = describeDiscordError(err);
-    const isMaxPins = code === MAX_PINS_REACHED_CODE;
-    if (!isMaxPins) {
-      logger.warn(
-        { code, error: errMsg, messageId: message.id, channelId: message.channelId, channelName: 'name' in message.channel ? message.channel.name : '?' },
-        'pin failed — bot likely lacks ManageMessages globally; grant it on the bot role in Server Settings -> Roles',
-      );
-      return false;
-    }
-
-    // 50-pin limit reached — try to make room by unpinning the oldest pin in this channel
-    try {
-      const channel = message.channel;
-      if (!('messages' in channel)) {
-        logger.warn({ messageId: message.id }, 'pin failed — 50-pin limit, channel does not expose messages');
-        return false;
-      }
-      const pins = await channel.messages.fetchPinned();
-      const oldestPin = pins.sort((a, b) => a.createdTimestamp - b.createdTimestamp).first();
-      if (!oldestPin) {
-        logger.warn({ messageId: message.id }, 'pin failed — 50-pin limit, no pins to evict');
-        return false;
-      }
-      await oldestPin.unpin('evicting oldest pin to make room for fresh welcome embed');
-      logger.info({ evicted: oldestPin.id, channelId: message.channelId }, 'pin: evicted oldest to free 50-pin slot');
-      await message.pin('auto-pin welcome embed (after eviction)');
-      await deletePinNotification(message);
-      return true;
-    } catch (evictErr) {
-      logger.warn({ err: evictErr, messageId: message.id }, 'pin retry failed after eviction attempt');
-      return false;
-    }
-  }
-}
-
-async function deletePinNotification(pinnedMessage: import('discord.js').Message): Promise<void> {
-  try {
-    const { MessageType } = await import('discord.js');
-    const recent = await pinnedMessage.channel.messages.fetch({ limit: 5, after: pinnedMessage.id });
-    const notification = recent.find(
-      (m) => m.type === MessageType.ChannelPinnedMessage && m.reference?.messageId === pinnedMessage.id,
-    );
-    if (notification) await notification.delete();
-  } catch {
-    /* notification cleanup is best-effort */
-  }
-}

@@ -61,6 +61,7 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
 
 function runMigrations(): void {
   addColumnIfMissing('autoresponders', 'auto_delete_seconds', 'INTEGER');
+  addColumnIfMissing('welcome_messages', 'content_hash', 'TEXT');
   addColumnIfMissing('autoresponders', 'as_embed', 'INTEGER NOT NULL DEFAULT 0');
   addColumnIfMissing('rss_feeds', 'last_error', 'TEXT');
   addColumnIfMissing('rss_feeds', 'last_error_at', 'INTEGER');
