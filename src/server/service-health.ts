@@ -50,7 +50,6 @@ export async function getServiceHealth(force = false): Promise<ServiceHealthResu
       if (streams === null) throw new Error('keine Statusantwort');
       return `${streams} aktive Streams`;
     }),
-    maintainerrHealth(),
     webhookOnlyHealth('prowlarr', 'Prowlarr'),
   ]);
   cache = { at: Date.now(), value: results };
@@ -78,10 +77,6 @@ async function probe(
       lastEventAt: null,
     };
   }
-}
-
-function maintainerrHealth(): ServiceHealthResult {
-  return webhookOnlyHealth('maintainerr', 'Maintainerr');
 }
 
 function webhookOnlyHealth(key: string, label: string): ServiceHealthResult {

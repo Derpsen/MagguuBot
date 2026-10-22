@@ -263,16 +263,3 @@ export type TautulliDiscordPayload = z.infer<typeof tautulliDiscordPayloadSchema
 export type TautulliCustomPayload = z.infer<typeof tautulliCustomPayloadSchema>;
 export type TautulliPayload = z.infer<typeof tautulliPayloadSchema>;
 
-// ─── Maintainerr (Discord-shape webhook) ────────────
-
-export const maintainerrPayloadSchema = z
-  .object({
-    content: z.string().optional(),
-    username: z.string().optional(),
-    avatar_url: z.string().optional(),
-    embeds: z.array(tautulliDiscordEmbed).optional(),
-  })
-  .passthrough();
-
-export type MaintainerrPayload = z.infer<typeof maintainerrPayloadSchema>;
-export type MaintainerrEmbed = z.infer<typeof tautulliDiscordEmbed>;

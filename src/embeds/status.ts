@@ -8,7 +8,6 @@ export const STATUS_WEBHOOK_SOURCES = [
   'tautulli',
   'sabnzbd',
   'prowlarr',
-  'maintainerr',
   'github',
 ] as const;
 
@@ -19,7 +18,6 @@ const SOURCE_LABELS: Record<(typeof STATUS_WEBHOOK_SOURCES)[number], string> = {
   tautulli: 'Tautulli',
   sabnzbd: 'SABnzbd',
   prowlarr: 'Prowlarr',
-  maintainerr: 'Maintainerr',
   github: 'GitHub',
 };
 

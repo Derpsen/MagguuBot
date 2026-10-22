@@ -13,7 +13,6 @@ export const CHANNEL_CATALOG = [
   { key: 'github', label: 'GitHub', description: 'GitHub Webhook Feed' },
   { key: 'starboard', label: 'Starboard', description: '⭐ Highlights' },
   { key: 'plexActivity', label: 'Plex Activity', description: 'Tautulli Playback Events' },
-  { key: 'maintainerr', label: 'Maintainerr', description: 'Maintainerr Cleanup Events' },
   { key: 'blueTracker', label: 'Blue Tracker', description: 'WoW Blue-Tracker RSS' },
   { key: 'addonUpdates', label: 'Addon Updates', description: 'GitHub Addon-Repo Feed' },
   { key: 'faq', label: 'FAQ', description: 'FAQ Channel' },

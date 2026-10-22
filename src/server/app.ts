@@ -12,7 +12,6 @@ import { adminRouter } from './admin/index.js';
 import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canonical-dashboard.js';
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
-import { maintainerrWebhook } from './webhooks/maintainerr.js';
 import { prowlarrWebhook } from './webhooks/prowlarr.js';
 import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
@@ -108,7 +107,7 @@ export function buildApp(): Hono {
       return;
     }
 
-    if (c.req.path.startsWith('/webhook/maintainerr') || c.req.path.startsWith('/webhook/prowlarr')) {
+    if (c.req.path.startsWith('/webhook/prowlarr')) {
       const queryToken = c.req.query('token');
       const authorization = c.req.header('authorization');
       const headerToken = authorization?.replace(/^Bearer\s+/i, '').trim();
@@ -139,7 +138,6 @@ export function buildApp(): Hono {
   app.route('/webhook/tautulli', tautulliWebhook);
   app.route('/webhook/sabnzbd', sabnzbdWebhook);
   app.route('/webhook/github', githubWebhook);
-  app.route('/webhook/maintainerr', maintainerrWebhook);
   app.route('/webhook/prowlarr', prowlarrWebhook);
 
   app.use('/auth/*', async (c, next) => {

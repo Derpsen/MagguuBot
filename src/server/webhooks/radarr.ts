@@ -95,7 +95,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
     }
     case 'MovieDelete': {
       await postEmbed({
-        channelId: getChannel('maintainerr'),
+        channelId: getChannel('health'),
         embed: buildDeleteEmbed({
           service: 'radarr',
           kind: 'movie',
@@ -116,7 +116,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
         break;
       }
       await postEmbed({
-        channelId: getChannel('maintainerr'),
+        channelId: getChannel('health'),
         embed: buildDeleteEmbed({
           service: 'radarr',
           kind: 'movieFile',

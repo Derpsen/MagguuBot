@@ -285,10 +285,10 @@ export const STRUCTURE: CategoryPlan[] = [
       {
         name: CHANNEL.status,
         oldNames: ['🩺・health'],
-        topic: 'Fehler, Health, Maintainerr und GitHub.',
+        topic: 'Fehler, Health, Library-Löschungen und GitHub.',
         readOnly: true,
         adminOnly: true,
-        refs: ['health', 'failures', 'maintainerr', 'github'],
+        refs: ['health', 'failures', 'github'],
       },
       {
         name: CHANNEL.logs,

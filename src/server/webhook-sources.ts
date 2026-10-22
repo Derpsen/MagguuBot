@@ -4,7 +4,6 @@ export const REPLAYABLE_WEBHOOK_SOURCES = [
   'seerr',
   'tautulli',
   'sabnzbd',
-  'maintainerr',
   'github',
   'prowlarr',
 ] as const;

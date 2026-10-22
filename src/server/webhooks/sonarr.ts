@@ -101,7 +101,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
     }
     case 'SeriesDelete': {
       await postEmbed({
-        channelId: getChannel('maintainerr'),
+        channelId: getChannel('health'),
         embed: buildDeleteEmbed({
           service: 'sonarr',
           kind: 'series',
@@ -123,7 +123,7 @@ export const sonarrWebhook = new Hono().post('/', async (c) => {
       }
       const file = body.episodeFile ?? body.episodeFiles?.[0];
       await postEmbed({
-        channelId: getChannel('maintainerr'),
+        channelId: getChannel('health'),
         embed: buildDeleteEmbed({
           service: 'sonarr',
           kind: 'episodeFile',

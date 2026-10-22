@@ -14,7 +14,7 @@ the hub standing order (no force-push; tags need an explicit release ask).
 
 See also [CHANGELOG.md](./CHANGELOG.md).
 
-- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,maintainerr,github}` with shared-secret / HMAC auth
+- **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,github}` with shared-secret / HMAC auth
 - **Styled embeds** — one consistent look across services, posters, progress bars, lifecycle cards
 - **Slash commands** — 52 guild commands via `/help` (downloads, moderation, utility, admin)
   - `/queue` — live Sonarr + Radarr download queue with progress bars
@@ -150,7 +150,7 @@ For a runnable dev loop use Docker — `better-sqlite3` needs Python + MSVC on W
 ## Architecture
 
 ```
-Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr / Maintainerr / GitHub
+Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr / GitHub
    └─POST──► Hono webhook routes ──► embed builder ──► discord.js ──► Discord channel
                      │
                      └──► SQLite activity log (+ webhook retries)
@@ -177,7 +177,7 @@ src/
 ├── server/
 │   ├── app.ts                   # Hono + webhook auth + static dashboard
 │   ├── admin/                   # dashboard API
-│   └── webhooks/                # sonarr, radarr, seerr, tautulli, sabnzbd, prowlarr, maintainerr, github
+│   └── webhooks/                # sonarr, radarr, seerr, tautulli, sabnzbd, prowlarr, github
 ├── services/                    # *arr / SAB / Seerr / Tautulli / RSS clients
 └── utils/
 frontend/                        # Vue 3 admin dashboard (Vite → dist-frontend/)
@@ -191,7 +191,7 @@ Agent rules, channel keys, and command inventory live in `AGENTS.md`.
 ## Security
 
 - Sonarr, Radarr, Seerr, Tautulli, and SABnzbd require `X-Magguu-Token: <WEBHOOK_SECRET>` (constant-time compare)
-- GitHub uses an HMAC signature with `GITHUB_WEBHOOK_SECRET`; Maintainerr requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or the shared secret as `?token=` and should remain internal/LAN-only
+- GitHub uses an HMAC signature with `GITHUB_WEBHOOK_SECRET`; Prowlarr requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or the shared secret as `?token=` and should remain internal/LAN-only
 - Seerr approve / decline buttons require Administrator in Discord
 - Bot token never logged; config validation fails loud on missing required vars
 - `.env` / `.env.*` / `data/` / `dist/` are gitignored — **never commit secrets**

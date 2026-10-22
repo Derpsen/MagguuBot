@@ -51,7 +51,7 @@ const GROUPS: Array<{ title: string; keys: string[] }> = [
   { title: 'Start & Community', keys: ['welcome', 'movieNight', 'starboard'] },
   { title: 'MagguuUI', keys: ['addonUpdates', 'blueTracker', 'faq', 'suggestions'] },
   { title: 'Plex', keys: ['requests', 'newOnPlex', 'weeklyDigest', 'downloadLive', 'grabs', 'imports', 'plexActivity'] },
-  { title: 'Admin', keys: ['approvals', 'failures', 'health', 'maintainerr', 'github', 'modLog', 'auditLog', 'ticketLogs'] },
+  { title: 'Admin', keys: ['approvals', 'failures', 'health', 'github', 'modLog', 'auditLog', 'ticketLogs'] },
 ];
 
 const grouped = computed(() => {

@@ -34,7 +34,6 @@ import { createRecentKeyCache } from '../src/utils/recent-key-cache.ts';
 import { isPrivateIp } from '../src/utils/safe-fetch.ts';
 import { webhookRetryDelayMs } from '../src/utils/retry.ts';
 import { applyWebhookRetryMigration } from '../src/db/webhook-retry-migration.ts';
-import { isMaintainerrEventCode } from '../src/utils/maintainerr.ts';
 import {
   decidePlexActivityEvent,
   decideStaleSession,
@@ -130,7 +129,6 @@ test('automatic webhook retries are limited to replay-supported inbound sources'
     'seerr',
     'tautulli',
     'sabnzbd',
-    'maintainerr',
     'github',
     'prowlarr',
   ]);
@@ -267,12 +265,6 @@ test('recording a revocation preserves the existing persisted revocation snapsho
   assert.equal(cache.isRevoked('existing-user', 7_000, () => []), true);
   assert.equal(cache.isRevoked('new-user', 8_500, () => []), true);
   assert.equal(cache.isRevoked('existing-user', 8_001, () => []), false);
-});
-
-test('Maintainerr machine event codes are hidden while readable titles remain', () => {
-  assert.equal(isMaintainerrEventCode('COLLECTION_HANDLING_FAILED'), true);
-  assert.equal(isMaintainerrEventCode('MEDIA_ADDED_TO_COLLECTION'), true);
-  assert.equal(isMaintainerrEventCode('Collection Handling Failed'), false);
 });
 
 test('Plex activity cards correlate sessions and keep watched as final state', () => {

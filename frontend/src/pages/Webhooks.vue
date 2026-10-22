@@ -57,7 +57,6 @@ const SOURCE_META: Record<string, { emoji: string; color: string; label: string 
   sabnzbd: { emoji: '📦', color: 'text-yellow-400', label: 'SABnzbd' },
   prowlarr: { emoji: '📡', color: 'text-orange-400', label: 'Prowlarr' },
   github: { emoji: '🔨', color: 'text-sky-300', label: 'GitHub' },
-  maintainerr: { emoji: '🗑️', color: 'text-slate-400', label: 'Maintainerr' },
   'rss-feed': { emoji: '📰', color: 'text-orange-300', label: 'RSS-Feed' },
   'blue-tracker': { emoji: '🔵', color: 'text-blue-400', label: 'Blue-Tracker' },
 };

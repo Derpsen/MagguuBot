@@ -15,7 +15,6 @@ export const Colors = {
   prowlarr: BRAND_COLOR,
   tautulli: BRAND_COLOR,
   github: BRAND_COLOR,
-  maintainerr: BRAND_COLOR,
   blueTracker: BRAND_COLOR,
   suggestion: BRAND_COLOR,
   muted: BRAND_COLOR,
@@ -32,7 +31,6 @@ export const FOOTER_ICONS: Record<string, string> = {
   sabnzbd: 'https://raw.githubusercontent.com/sabnzbd/sabnzbd/master/icons/logo-arrow.svg',
   tautulli: 'https://raw.githubusercontent.com/Tautulli/Tautulli/master/data/interfaces/default/images/logo-circle.png',
   github: 'https://github.githubassets.com/favicons/favicon-dark.png',
-  maintainerr: 'https://raw.githubusercontent.com/jorenn92/Maintainerr/main/docs/assets/logo.png',
   bot: WEBSITE_LOGO_URL,
 };
 

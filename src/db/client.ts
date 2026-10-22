@@ -81,7 +81,22 @@ function runMigrations(): void {
   addColumnIfMissing('plex_activity_messages', 'paused_at', 'INTEGER');
   addColumnIfMissing('live_panels', 'payload_hash', 'TEXT');
   applyWebhookRetryMigration(sqlite);
+  retireMaintainerr();
   sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
+}
+
+/**
+ * Maintainerr was removed (container gone since 2026-08-01). Drop only its
+ * channel_config row (the channel itself is shared and stays) and stop any
+ * pending retries for it; historical webhook_events rows stay untouched.
+ */
+function retireMaintainerr(): void {
+  sqlite.prepare("DELETE FROM channel_config WHERE key = 'maintainerr'").run();
+  sqlite
+    .prepare(
+      "UPDATE webhook_events SET retry_state = 'exhausted', next_retry_at = NULL WHERE source = 'maintainerr' AND retry_state = 'pending'",
+    )
+    .run();
 }
 
 function ensureSchema(): void {

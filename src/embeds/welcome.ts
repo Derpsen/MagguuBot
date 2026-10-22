@@ -22,7 +22,6 @@ export interface ChannelRefs {
   github?: string;
   starboard?: string;
   plexActivity?: string;
-  maintainerr?: string;
   blueTracker?: string;
   addonUpdates?: string;
   faq?: string;
@@ -512,32 +511,6 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
       },
     )
     .setFooter({ text: 'MagguuBot · Plex activity + live stream count', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildMaintainerrChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.muted)
-    .setTitle('🗑️ Gelöscht — Library Cleanup')
-    .setDescription('Alles was aus der Library entfernt wurde — durch Maintainerr-Regel oder manuell in Sonarr/Radarr.')
-    .addFields(
-      { name: '🧹 Maintainerr Handled', value: 'Regel hat Medien gelöscht', inline: true },
-      { name: '🗓️ Maintainerr Pending', value: 'kommt bald in die Delete-Queue', inline: true },
-      { name: '↩️ Rule gone', value: 'Check greift nicht mehr', inline: true },
-      { name: '🎬 Radarr MovieDelete', value: 'Film aus Radarr entfernt', inline: true },
-      { name: '📺 Sonarr SeriesDelete', value: 'Serie komplett entfernt', inline: true },
-      { name: '🗂️ File-Deletes', value: 'Einzelne Episode/Movie-Files weg', inline: true },
-      {
-        name: 'Setup in Maintainerr',
-        value:
-          'Maintainerr → **Settings → Notifications → Add Agent** · Agent `Webhook` · URL `http://magguu-bot:3000/webhook/maintainerr` · Auth Header `Bearer <WEBHOOK_SECRET>` · Types: alle sechs ✅ · Regel mit Agent verbinden · Test',
-      },
-      {
-        name: 'Setup in Sonarr/Radarr',
-        value:
-          '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅ · *For Upgrade* aus (Upgrade kommt als Import-Karte)',
-      },
-    )
-    .setFooter({ text: 'MagguuBot · library cleanup feed', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildStarboardChannelEmbed(): EmbedBuilder {
