@@ -1,16 +1,12 @@
+import { ChannelType, type Guild, type Role, type TextChannel, type User } from 'discord.js';
 import {
-  ChannelType,
-  PermissionFlagsBits,
-  type Guild,
-  type Role,
-  type TextChannel,
-  type User,
-} from 'discord.js';
+  TICKET_MODERATOR_ROLE_NAMES,
+  ticketCategoryOverwrites,
+  ticketChannelOverwrites,
+} from '../utils/ticket-perms.js';
 import { TICKET_CATEGORY_NAME } from './server-layout.js';
 
 export { TICKET_CATEGORY_NAME };
-
-const MODERATOR_ROLE_NAMES = new Set(['Admin', 'Moderator']);
 
 interface CreatePrivateTicketChannelOptions {
   guild: Guild;
@@ -37,54 +33,32 @@ export async function createPrivateTicketChannel(
   options: CreatePrivateTicketChannelOptions,
 ): Promise<CreatedPrivateTicketChannel> {
   const { guild, opener, botUserId } = options;
-  const category = await ensureTicketCategory(guild);
   const moderatorRoles = [...guild.roles.cache.values()].filter((role) =>
-    MODERATOR_ROLE_NAMES.has(role.name),
+    TICKET_MODERATOR_ROLE_NAMES.has(role.name),
   );
+  const category = await ensureTicketCategory(guild, moderatorRoles, botUserId);
   const channel = await guild.channels.create({
     name: options.name.slice(0, 90),
     type: ChannelType.GuildText,
     parent: category.id,
     topic: options.topic,
-    permissionOverwrites: [
-      { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-      {
-        id: opener.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-        ],
-      },
-      ...moderatorRoles.map((role) => ({
-        id: role.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.ManageMessages,
-        ],
-      })),
-    ],
+    permissionOverwrites: ticketChannelOverwrites({
+      everyoneId: guild.roles.everyone.id,
+      openerId: opener.id,
+      moderatorRoleIds: moderatorRoles.map((r) => r.id),
+      botUserId,
+    }),
   });
-
-  if (botUserId) {
-    await channel.permissionOverwrites.create(botUserId, {
-      ViewChannel: true,
-      SendMessages: true,
-      EmbedLinks: true,
-      ReadMessageHistory: true,
-      ManageMessages: true,
-      ManageChannels: true,
-    });
-  }
 
   return { channel, moderatorRoles };
 }
 
-async function ensureTicketCategory(guild: Guild): Promise<import('discord.js').CategoryChannel> {
+/** Find 🎫 TICKETS by name; create it (hidden from everyone) if missing. */
+async function ensureTicketCategory(
+  guild: Guild,
+  moderatorRoles: Role[],
+  botUserId?: string,
+): Promise<import('discord.js').CategoryChannel> {
   const existing = guild.channels.cache.find(
     (channel) =>
       channel.name === TICKET_CATEGORY_NAME && channel.type === ChannelType.GuildCategory,
@@ -94,5 +68,10 @@ async function ensureTicketCategory(guild: Guild): Promise<import('discord.js').
   return guild.channels.create({
     name: TICKET_CATEGORY_NAME,
     type: ChannelType.GuildCategory,
+    permissionOverwrites: ticketCategoryOverwrites({
+      everyoneId: guild.roles.everyone.id,
+      moderatorRoleIds: moderatorRoles.map((r) => r.id),
+      botUserId,
+    }),
   });
 }
