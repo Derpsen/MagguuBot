@@ -114,9 +114,9 @@ function liveSnapshot(): GuildSnapshot {
 
 const kinds = (actions: Action[]): string[] => actions.map((a) => a.kind);
 
-test('layout: 5 categories, 16 channels, 11 roles, every bot key has exactly one home', () => {
+test('layout: 5 categories, 17 channels, 11 roles, every bot key has exactly one home', () => {
   assert.equal(STRUCTURE.length, 5);
-  assert.equal(allChannelPlans().length, 16);
+  assert.equal(allChannelPlans().length, 17);
   assert.equal(ROLES.length, 11);
   for (const entry of CHANNEL_CATALOG) {
     const homes = allChannelPlans().filter(({ channel }) => channel.refs?.includes(entry.key));
@@ -130,6 +130,10 @@ test('layout: 5 categories, 16 channels, 11 roles, every bot key has exactly one
   assert.equal(channelPlanForRef('ticketLogs')?.name, CHANNEL.logs);
   assert.equal(channelPlanForRef('blizzard')?.name, CHANNEL.blizzard);
   assert.equal(channelPlanForRef('addonUpdates')?.name, CHANNEL.updates);
+  assert.equal(channelPlanForRef('plexActivity')?.name, CHANNEL.plexActivity);
+  assert.equal(channelPlanForRef('starboard')?.name, CHANNEL.chat);
+  // 📡・downloads carries only the Sonarr/Radarr/SABnzbd feeds
+  assert.deepEqual(channelPlanForRef('downloadLive')?.refs, ['downloadLive', 'grabs', 'imports']);
 });
 
 test('legacy role names resolve to their layout role', () => {
@@ -153,6 +157,7 @@ test('rollout plan on the live server renames/reuses and archives, never deletes
   assert.equal(plan.channelRefs[CHANNEL.blizzard], '1496130817129447456');
   assert.equal(plan.channelRefs[CHANNEL.help], '1496166312341143667');
   assert.equal(plan.channelRefs[CHANNEL.downloads], '1522173079055372308');
+  assert.equal(plan.channelRefs[CHANNEL.plexActivity], '1522315377428791527', 'old 🎬・aktivität keeps its history');
   assert.equal(plan.channelRefs[CHANNEL.status], '1495831164848443413');
   assert.equal(plan.channelRefs[CHANNEL.logs], '1495836009638924448');
   assert.equal(plan.channelRefs[CHANNEL.voice], '1495831173308485683');
@@ -173,7 +178,7 @@ test('rollout plan on the live server renames/reuses and archives, never deletes
   assert.equal(BigInt(everyone.changes.permissions ?? '0') & PERM.MENTION_EVERYONE, 0n);
   // 22 legacy channels archived, incl. stats counters and ticket-logs
   const archived = all.flatMap((a) => (a.kind === 'archiveChannel' ? [a.name] : []));
-  assert.equal(archived.length, 21);
+  assert.equal(archived.length, 20);
   for (const name of ['👥 Mitglieder: 2', '📜・regeln', '🎭・rollen', 'ticket-logs', '💤 AFK', '⭐・starboard']) {
     assert.ok(archived.includes(name), name);
   }
@@ -181,6 +186,8 @@ test('rollout plan on the live server renames/reuses and archives, never deletes
   const keys = Object.fromEntries(all.flatMap((a) => (a.kind === 'setChannelKey' ? [[a.key, a.target]] : [])));
   assert.equal(keys.blizzard, undefined, 'old 📰・blue-tracker is reused as 🟦・blizzard-updates');
   assert.equal(keys.grabs, '1522173079055372308');
+  assert.equal(keys.plexActivity, undefined, 'Plex activity stays in its own channel');
+  assert.equal(keys.starboard, '1495831168745213972');
   assert.equal(keys.ticketLogs, '1495836009638924448');
   assert.equal(keys.welcome, undefined, 'unchanged keys are not rewritten');
   const auto = all.find((a) => a.kind === 'setAutoRole');
@@ -205,10 +212,10 @@ test('rollout is idempotent: a second run only repeats the blocked staff-role ed
 test('deletion only touches the archive, skips open cards and keeps roles with members', () => {
   const after = simulate(liveSnapshot(), planRollout(liveSnapshot()).actions);
   after.members = { ...after.members, '1000000000000000002': ['1495819585595642017'] }; // someone still has VIP
-  const blockers = { '1522315377428791527': ['Plex-Aktivitätskarte < 7 T.'] };
+  const blockers = { '1495919611525468320': ['offene Karte < 7 T.'] };
   const del = planDeletion(after, blockers);
-  assert.equal(del.channels.length, 20);
-  assert.deepEqual(del.skippedChannels.map((c) => c.name), ['🎬・aktivität']);
+  assert.equal(del.channels.length, 19);
+  assert.deepEqual(del.skippedChannels.map((c) => c.name), ['🗑️・gelöscht']);
   const archiveId = after.channels.find((c) => c.name === ARCHIVE_CATEGORY_NAME)?.id;
   for (const c of del.channels) assert.equal(after.channels.find((x) => x.id === c.id)?.parent_id, archiveId);
   // Empty legacy categories go, layout/protected categories and the still-used archive stay.
@@ -224,4 +231,14 @@ test('deletion before --apply refuses to touch roles that are only renamed', () 
   const del = planDeletion(liveSnapshot(), {});
   assert.equal(del.channels.length, 0, 'no archive yet → nothing to delete');
   assert.ok(del.skippedRoles.some((r) => r.name === 'ping-4k' && r.reason.includes('umbenannt')));
+});
+
+test('rollout never changes the public-updates channel the owner picked', () => {
+  const picked = '1495831154849349803'; // 📢・ankündigungen
+  const plan = planRollout({ ...liveSnapshot(), features: ['COMMUNITY'], publicUpdatesChannelId: picked });
+  const community = plan.actions.find((a) => a.kind === 'enableCommunity');
+  if (community && community.kind === 'enableCommunity') assert.equal(community.updates, picked);
+  const unset = planRollout(liveSnapshot()).actions.find((a) => a.kind === 'enableCommunity');
+  assert.ok(unset && unset.kind === 'enableCommunity');
+  assert.equal(unset.updates, picked, 'unset → 📢・ankündigungen');
 });

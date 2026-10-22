@@ -11,7 +11,7 @@ import type { ChannelKey } from './channel-catalog.js';
 
 export type ChannelKind = 'text' | 'voice';
 
-/** Keys of `ChannelRefs` in `src/embeds/welcome.ts` (mention targets in embeds). */
+/** Channel keys that cards in `src/embeds/cards.ts` mention (resolved at post time). */
 export type ChannelRefKey =
   | ChannelKey
   | 'rules'
@@ -112,13 +112,12 @@ export const CHANNEL = {
   requests: '📝・anfragen',
   newOnPlex: '✨・neu-auf-plex',
   downloads: '📡・downloads',
+  plexActivity: '🎬・plex-aktivität',
   approvals: '⏳・freigaben',
   status: '🩺・status',
   logs: '📋・logs',
 } as const;
 
-/** Role buttons live in the welcome channel now (the old 🎭・rollen channel is archived). */
-export const ROLES_PANEL_CHANNEL_NAME = CHANNEL.welcome;
 /** Fallback lookup for ticket transcripts when the `ticketLogs` key is missing. */
 export const TICKET_LOG_CHANNEL_NAME = CHANNEL.logs;
 export const TICKET_CATEGORY_NAME = '🎫 TICKETS';
@@ -163,7 +162,7 @@ export const ROLES: RolePlan[] = [
   },
 ];
 
-// ─── Channels: 13 → 5 categories, 37 → 15 channels ────────────────────────
+// ─── Channels: 13 → 5 categories, 37 → 17 channels ────────────────────────
 export const STRUCTURE: CategoryPlan[] = [
   {
     name: '🏠 START',
@@ -219,7 +218,12 @@ export const STRUCTURE: CategoryPlan[] = [
     name: '💬 COMMUNITY',
     oldNames: ['💬 CHAT'],
     channels: [
-      { name: CHANNEL.chat, oldNames: ['general'], topic: 'Allgemeiner Chat. Spoiler bitte in Threads.', refs: ['general'] },
+      {
+        name: CHANNEL.chat,
+        oldNames: ['general'],
+        topic: 'Allgemeiner Chat und ⭐-Highlights. Spoiler bitte in Threads.',
+        refs: ['general', 'starboard'],
+      },
       {
         name: CHANNEL.botCommands,
         oldNames: ['bot-commands'],
@@ -229,9 +233,9 @@ export const STRUCTURE: CategoryPlan[] = [
       },
       {
         name: CHANNEL.movieNight,
-        topic: 'Filmabend planen, nominieren, abstimmen. Dazu ⭐-Highlights.',
+        topic: 'Filmabend planen, nominieren, abstimmen.',
         allowedRoles: [...TRUSTED_ROLES],
-        refs: ['movieNight', 'starboard'],
+        refs: ['movieNight'],
       },
       { name: CHANNEL.voice, oldNames: ['🔊 General'], kind: 'voice' },
     ],
@@ -251,10 +255,18 @@ export const STRUCTURE: CategoryPlan[] = [
       {
         name: CHANNEL.downloads,
         oldNames: ['📡・live-downloads'],
-        topic: 'Live-Karte, Grabs, Imports und Plex-Aktivität.',
+        topic: 'Live-Queue, Grabs und Imports von Sonarr, Radarr und SABnzbd. Automatisch.',
         readOnly: true,
         allowedRoles: [...PLEX_ACCESS],
-        refs: ['downloadLive', 'grabs', 'imports', 'plexActivity'],
+        refs: ['downloadLive', 'grabs', 'imports'],
+      },
+      {
+        name: CHANNEL.plexActivity,
+        oldNames: ['🎬・aktivität'],
+        topic: 'Wer gerade was auf Plex schaut (Tautulli). Automatisch.',
+        readOnly: true,
+        allowedRoles: [...PLEX_ACCESS],
+        refs: ['plexActivity'],
       },
     ],
   },

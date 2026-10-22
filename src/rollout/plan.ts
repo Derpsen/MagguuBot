@@ -467,7 +467,9 @@ export function planRollout(snap: GuildSnapshot): RolloutPlan {
 
   // ─── 7. Community, onboarding, welcome screen ──────────────────────────
   const rules = channelRefs[CHANNEL.welcome] as Ref;
-  const updates = channelRefs[CHANNEL.status] as Ref;
+  // The Community "public updates" channel is the owner's choice (📢・ankündigungen).
+  // Never change a channel that is set; only fill it in when unset (doctor flags a dead one).
+  const updates = snap.publicUpdatesChannelId ?? (channelRefs[CHANNEL.announcements] as Ref);
   const verificationLevel = Math.max(1, snap.verificationLevel);
   if (
     !snap.features.includes('COMMUNITY')

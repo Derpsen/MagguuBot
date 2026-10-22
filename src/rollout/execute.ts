@@ -113,7 +113,8 @@ export async function executeActions(
           await rest.request('PATCH', `/guilds/${guildId}`, {
             features,
             rules_channel_id: resolve(a.rules),
-            public_updates_channel_id: resolve(a.updates),
+            // Never overwrite a public-updates channel the owner picked.
+            ...(snap.publicUpdatesChannelId ? {} : { public_updates_channel_id: resolve(a.updates) }),
             verification_level: a.verificationLevel,
             explicit_content_filter: a.explicitContentFilter,
           });
