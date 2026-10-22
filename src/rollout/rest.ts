@@ -10,6 +10,8 @@ import type { GuildSnapshot, SnapChannel, SnapRole } from './plan.js';
 
 const API = 'https://discord.com/api/v10';
 const MIN_GAP_MS = 300;
+/** 429s with a longer retry_after fail the step instead of blocking the CLI. */
+const MAX_INLINE_RETRY_S = 30;
 
 // ─── Minimal REST v10 client with rate-limit handling ─────────────────────
 export class DiscordRest implements RestLike {
@@ -34,8 +36,13 @@ export class DiscordRest implements RestLike {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
       if (res.status === 429) {
-        const data = (await res.json().catch(() => ({}))) as { retry_after?: number };
-        await sleep(Math.ceil((data.retry_after ?? 1) * 1000) + 100);
+        const data = (await res.json().catch(() => ({}))) as { retry_after?: number; global?: boolean };
+        const retryAfter = data.retry_after ?? Number(res.headers.get('retry-after') ?? '1');
+        // Long waits (e.g. channel name/topic: 2 edits per 10 min) are reported, not slept through.
+        if (retryAfter > MAX_INLINE_RETRY_S) {
+          throw new DiscordError(method, path, 429, `Rate-Limit, erneut versuchen in ${Math.ceil(retryAfter)} s`);
+        }
+        await sleep(Math.ceil(retryAfter * 1000) + 100);
         continue;
       }
       if (res.status >= 500) {

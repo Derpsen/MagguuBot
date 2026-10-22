@@ -22,6 +22,26 @@ export interface StepResult {
   detail?: string;
 }
 
+/** Fields of a channel that a PATCH may set and Discord echoes back. */
+export interface ChannelState {
+  name?: string;
+  parent_id?: string | null;
+  topic?: string | null;
+}
+
+/**
+ * Which requested channel fields Discord did not store (names in German for the report).
+ * Overwrites are not compared: Discord reorders them and drops empty entries.
+ */
+export function channelPatchMismatch(sent: Record<string, unknown>, stored: ChannelState | null): string[] {
+  if (!stored) return ['Antwort'];
+  const out: string[] = [];
+  if (typeof sent.name === 'string' && stored.name !== sent.name) out.push('Name');
+  if (typeof sent.parent_id === 'string' && (stored.parent_id ?? null) !== sent.parent_id) out.push('Kategorie');
+  if ('topic' in sent && ((stored.topic ?? '') !== ((sent.topic as string | null) ?? ''))) out.push('Thema');
+  return out;
+}
+
 function snowflake(seq: number): string {
   return (((BigInt(Date.now()) - 1420070400000n) << 22n) + BigInt(seq)).toString();
 }
@@ -36,6 +56,7 @@ export async function executeActions(
   snap: GuildSnapshot,
   actions: Action[],
   manual: string[],
+  verifyDelayMs = 1500,
 ): Promise<{ results: StepResult[]; ids: Map<Ref, string> }> {
   const guildId = snap.guildId;
   const ids = new Map<Ref, string>();
@@ -85,7 +106,22 @@ export async function executeActions(
           if (a.changes.parent) body.parent_id = resolve(a.changes.parent);
           if (a.changes.topic !== undefined) body.topic = a.changes.topic;
           if (a.changes.overwrites) body.permission_overwrites = toApi(a.changes.overwrites);
-          await rest.request('PATCH', `/channels/${a.id}`, body);
+          // Discord limits name/topic edits to 2 per channel per 10 min; verify what it really stored.
+          let stored = await rest.request<ChannelState>('PATCH', `/channels/${a.id}`, body);
+          let missing = channelPatchMismatch(body, stored);
+          if (missing.length) {
+            await new Promise((r) => setTimeout(r, verifyDelayMs));
+            stored = await rest.request<ChannelState>('GET', `/channels/${a.id}`);
+            missing = channelPatchMismatch(body, stored);
+          }
+          if (missing.length) {
+            results.push({
+              action: label,
+              status: 'error',
+              detail: `Discord hat ${missing.join(', ')} nicht übernommen (Limit: 2 Namens-/Themenänderungen pro Kanal in 10 min). In ~10 min erneut --apply.`,
+            });
+            continue;
+          }
           break;
         }
         case 'archiveChannel':
