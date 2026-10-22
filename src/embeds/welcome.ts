@@ -318,58 +318,6 @@ export function buildNewOnPlexChannelEmbed(): EmbedBuilder {
     .setFooter({ text: 'MagguuBot  ·  Tautulli recently-added', iconURL: FOOTER_ICONS.bot });
 }
 
-export function buildGrabsChannelEmbed(r: ChannelRefs): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.info)
-    .setTitle('📥 Grabs')
-    .setDescription(
-      'Sonarr / Radarr haben eine Release gefunden und an SABnzbd geschickt. Noch nicht auf Plex — erst nach dem Import.',
-    )
-    .addFields(
-      { name: 'Was siehst du?', value: 'Titel · Jahr · Episode · Quality · Größe · Release-Group · Indexer' },
-      { name: 'Was kommt danach?', value: `SABnzbd lädt → ${m(r.imports, 'imports')} → Plex` },
-      { name: 'Dauert zu lang?', value: '`/queue` zeigt live den Fortschritt mit Progress-Bar' },
-    )
-    .setFooter({ text: 'MagguuBot  ·  release grabbed', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildImportsChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.success)
-    .setTitle('✅ Imports')
-    .setDescription(
-      [
-        'Datei ist geschrieben, umbenannt, und in der Library — Plex sieht sie innerhalb von ~1 Minute.',
-        '',
-        '**🎬 Upgrade**: wenn Sonarr/Radarr ein besseres Release gefunden hat, steht hier _Upgraded_ im Titel.',
-      ].join('\n'),
-    )
-    .setFooter({ text: 'MagguuBot  ·  ready to stream', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildFailuresChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.danger)
-    .setTitle('⚠️ Failures & Issues')
-    .setDescription('Alles, was **Admin-Aufmerksamkeit** braucht — Download-Probleme und von Nutzern gemeldete Plex-Issues.')
-    .addFields(
-      { name: '`DownloadFailure`', value: 'SABnzbd hat abgebrochen', inline: true },
-      { name: '`ImportFailure`', value: 'Download ok, aber Import in die Library gescheitert', inline: true },
-      { name: '`ManualInteractionRequired`', value: 'Sonarr/Radarr brauchen manuellen Import-Entscheid', inline: true },
-      { name: '🐛 Seerr Issues', value: 'User meldet Playback-Problem (Video/Audio/Subs) — inkl. Comments', inline: true },
-      {
-        name: 'Troubleshoot-Schritte',
-        value: [
-          '1. `/queue` — was hängt gerade?',
-          '2. `/arr-status` — Service-Health auf einen Blick',
-          '3. Logs: `docker logs sabnzbd --tail 100` / Sonarr Activity',
-          '4. Re-queue in Sonarr/Radarr via Activity → failed → Search again',
-        ].join('\n'),
-      },
-    )
-    .setFooter({ text: 'MagguuBot  ·  needs attention', iconURL: FOOTER_ICONS.bot });
-}
-
 export function buildHealthChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.muted)
@@ -452,43 +400,6 @@ export function buildModLogChannelEmbed(): EmbedBuilder {
     .setFooter({ text: 'MagguuBot  ·  moderation audit', iconURL: FOOTER_ICONS.bot });
 }
 
-export function buildAuditLogChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.muted)
-    .setTitle('📋 Audit-Log')
-    .setDescription('Wer beigetreten oder gegangen ist und welche Rollen sich geändert haben.')
-    .addFields(
-      { name: '🟢 Joined', value: 'Mit Account-Alter und Member-Nummer', inline: true },
-      { name: '⚪ Left', value: 'Mit Join-Datum', inline: true },
-      { name: '🟣 Role-Changes', value: 'Hinzugefügt + entfernt', inline: true },
-      {
-        name: 'Nachrichten',
-        value: 'Deletes/Edits holst du mit `/snipe` und `/editsnipe`. Der `MessageContent`-Intent ist an (Autoresponder).',
-      },
-    )
-    .setFooter({ text: 'MagguuBot  ·  server audit', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildGithubChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.info)
-    .setTitle('🔨 GitHub-Feed')
-    .setDescription('Live-Activity aus den verbundenen Repos — der Bot postet Push-, Workflow-, Release- und Issue-Events hier.')
-    .addFields(
-      { name: '📦 Push', value: 'Commits mit Autor + SHA + Message', inline: true },
-      { name: '❌ Workflow-Run', value: 'Nur Failures, Cancels, Timeouts — Success/Skipped bleiben draußen', inline: true },
-      { name: '🏷️ Release', value: 'Neue Tags + Release-Notes', inline: true },
-      { name: '🟢🔴🟣 Pull-Request', value: 'opened / closed / merged', inline: true },
-      { name: '🐛 Issues', value: 'opened / closed / reopened (inkl. Body + Labels)', inline: true },
-      {
-        name: 'Setup per Repo',
-        value:
-          'GitHub → Repo → Settings → Webhooks → Add → URL `<bot-url>/webhook/github` · Content-Type `application/json` · Secret = `GITHUB_WEBHOOK_SECRET` · Events: Push, Workflow runs, Releases, Pull requests, **Issues**',
-      },
-    )
-    .setFooter({ text: 'MagguuBot  ·  GitHub activity', iconURL: FOOTER_ICONS.bot });
-}
-
 export function buildPlexActivityChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.plex)
@@ -511,26 +422,6 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
       },
     )
     .setFooter({ text: 'MagguuBot · Plex activity + live stream count', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildStarboardChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.warn)
-    .setTitle('⭐ Starboard — Highlights')
-    .setDescription(
-      [
-        '**So funktioniert\'s:**',
-        'Reagier mit ⭐ auf eine Nachricht — sobald **3 Leute** gesternt haben, landet eine Kopie hier.',
-        '',
-        'Bot-Messages zählen nicht. Self-Stars zählen nicht. Entfernst du deinen Stern, sinkt der Counter wieder.',
-      ].join('\n'),
-    )
-    .addFields(
-      { name: '⭐ Threshold', value: '3 Sterne', inline: true },
-      { name: '✨ Update', value: 'Live — Count wird nachgezogen', inline: true },
-      { name: '🧹 Aufräumen', value: 'Bei 0 Sternen wird der Eintrag gelöscht', inline: true },
-    )
-    .setFooter({ text: 'MagguuBot  ·  highlights curated by you', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
@@ -619,20 +510,6 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
     .setFooter({ text: 'MagguuUI  ·  Addon & Homelab FAQ', iconURL: FOOTER_ICONS.bot });
 }
 
-export function buildWeeklyDigestChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.plex)
-    .setTitle('📊 Wochenrückblick')
-    .setDescription(
-      [
-        'Automatischer Sonntags-Digest: neue Plex-Titel, Imports, Requests und Community-Highlights.',
-        '',
-        '_Read-only. Läuft von selbst — kein Command nötig._',
-      ].join('\n'),
-    )
-    .setFooter({ text: 'MagguuBot  ·  weekly digest', iconURL: FOOTER_ICONS.bot });
-}
-
 export function buildDownloadLiveChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.info)
@@ -665,27 +542,6 @@ export function buildMovieNightChannelEmbed(): EmbedBuilder {
     .setFooter({ text: 'MagguuBot  ·  movie night', iconURL: FOOTER_ICONS.bot });
 }
 
-export function buildBlueTrackerChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.brand)
-    .setTitle('📰 WoW Blue-Tracker')
-    .setDescription(
-      [
-        'Automatischer Feed der aktuellen **Blizzard Blue-Posts** — nur Retail + PTR.',
-        '',
-        'Class Tunings, Hotfixes, Balance-Changes, offizielle Ankündigungen der Community-Manager.',
-        '',
-        '_Classic / SoD / Wrath / Cataclysm werden gefiltert — nur die Live-Version interessiert uns._',
-      ].join('\n'),
-    )
-    .addFields(
-      { name: '⏱ Poll-Intervall', value: '15 Minuten', inline: true },
-      { name: '🔵 Quelle', value: 'WoW-Forum Blue-Tracker (RSS)', inline: true },
-      { name: '🎯 Scope', value: 'Retail + PTR only', inline: true },
-    )
-    .setFooter({ text: 'MagguuBot  ·  Blue-Tracker', iconURL: FOOTER_ICONS.bot });
-}
-
 export function buildSuggestionsChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.suggestion)
@@ -703,18 +559,4 @@ export function buildSuggestionsChannelEmbed(): EmbedBuilder {
       ].join('\n'),
     )
     .setFooter({ text: 'MagguuBot  ·  community feedback', iconURL: FOOTER_ICONS.bot });
-}
-
-export function buildSpoilerChannelEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(Colors.danger)
-    .setTitle('🔇 Spoiler-Zone')
-    .setDescription(
-      [
-        '**Hier sind Spoiler erlaubt** — Staffelfinales, Plot-Twists und ähnliche Inhalte.',
-        '',
-        '_Kein ||Tag|| nötig. Wenn du nicht verspoilert werden willst: einfach diesen Channel muten._',
-      ].join('\n'),
-    )
-    .setFooter({ text: 'MagguuBot  ·  Spoiler-Zone ohne Tags', iconURL: FOOTER_ICONS.bot });
 }

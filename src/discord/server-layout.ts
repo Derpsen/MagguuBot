@@ -162,26 +162,6 @@ export const ROLES: RolePlan[] = [
   },
 ];
 
-/** Former roles that are no longer part of the layout (only deleted by the gated rollout step). */
-export const RETIRED_ROLE_NAMES: readonly string[] = [
-  'VIP',
-  'Plex-Fan',
-  'WoW-Fan',
-  'MagguuUI',
-  'ping-anime',
-  'ping-wow-ptr',
-  'color-red',
-  'color-orange',
-  'color-amber',
-  'color-green',
-  'color-teal',
-  'color-blue',
-  'color-indigo',
-  'color-purple',
-  'color-pink',
-  'color-slate',
-];
-
 // ─── Channels: 13 → 5 categories, 37 → 15 channels ────────────────────────
 export const STRUCTURE: CategoryPlan[] = [
   {

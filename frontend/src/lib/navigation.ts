@@ -98,7 +98,3 @@ export const LEGACY_REDIRECTS: ReadonlyArray<{ from: string; hub: HubName; tab: 
   { from: '/reminders', hub: 'members', tab: 'reminders' },
   { from: '/rss', hub: 'channels', tab: 'rss' },
 ];
-
-export function hubPath(hub: HubName, tab?: string): string {
-  return tab ? `/${hub}?tab=${encodeURIComponent(tab)}` : `/${hub}`;
-}
