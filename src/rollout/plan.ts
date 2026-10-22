@@ -20,6 +20,7 @@ import {
   type RolePlan,
 } from '../discord/server-layout.js';
 import { NEWCOMER_ROLE_SENTINEL } from '../discord/auto-role-setting.js';
+import { topicMatches } from '../utils/channel-topic.js';
 
 export const CHANNEL_TYPE = { text: 0, voice: 2, category: 4, announcement: 5, stage: 13, forum: 15 } as const;
 
@@ -346,7 +347,7 @@ export function planRollout(snap: GuildSnapshot): RolloutPlan {
         changes.parent = parentRef;
         why.push(`verschieben nach ${cat.name}`);
       }
-      if (type === CHANNEL_TYPE.text && plan.topic && (live.topic ?? '') !== plan.topic) {
+      if (type === CHANNEL_TYPE.text && plan.topic && !topicMatches(live.topic, plan.topic, plan.liveCounter)) {
         changes.topic = plan.topic;
         why.push('Thema');
       }

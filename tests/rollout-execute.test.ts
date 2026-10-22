@@ -59,12 +59,15 @@ test('late-applied topic passes after the re-check', async () => {
   assert.equal(results[0]?.status, 'ok');
 });
 
-test('no runtime code rewrites layout channel topics (rollout owns them)', () => {
+test('topics are written only by the rollout executor and the live-counter updater', () => {
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((f) => {
       const p = join(dir, f);
       return statSync(p).isDirectory() ? walk(p) : p.endsWith('.ts') ? [p] : [];
     });
-  const offenders = walk('src').filter((f) => /\.setTopic\(/.test(readFileSync(f, 'utf8')));
-  assert.deepEqual(offenders, []);
+  const files = walk('src');
+  assert.deepEqual(files.filter((f) => /\.setTopic\(/.test(readFileSync(f, 'utf8'))), []);
+  // Old English counter topics are gone for good (legacy card titles in cards-plan.ts are only matched, not written).
+  const english = /requesten ·|Admin-only Approvals|SAB grabs|\bpending`|in queue`|Service-Health ·/;
+  assert.deepEqual(files.filter((f) => english.test(readFileSync(f, 'utf8'))), []);
 });

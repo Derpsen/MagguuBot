@@ -25,7 +25,10 @@ export interface ChannelPlan {
   name: string;
   /** Live names that are renamed to `name` (searched guild-wide, then moved under the category). */
   oldNames?: string[];
+  /** Purpose text; the single source for rollout, acceptance and the live-counter updater. */
   topic?: string;
+  /** Topic is `topic · <counter>` kept current by src/discord/channel-topics.ts. */
+  liveCounter?: boolean;
   kind?: ChannelKind;
   readOnly?: boolean;
   adminOnly?: boolean;
@@ -244,7 +247,7 @@ export const STRUCTURE: CategoryPlan[] = [
     name: '🎬 PLEX',
     oldNames: ['🎬 MEDIA'],
     channels: [
-      { name: CHANNEL.requests, oldNames: ['requests'], topic: 'Film oder Serie anfragen.', refs: ['requests'] },
+      { name: CHANNEL.requests, oldNames: ['requests'], topic: 'Film oder Serie anfragen.', liveCounter: true, refs: ['requests'] },
       {
         name: CHANNEL.newOnPlex,
         oldNames: ['new-on-plex'],
@@ -256,6 +259,7 @@ export const STRUCTURE: CategoryPlan[] = [
         name: CHANNEL.downloads,
         oldNames: ['📡・live-downloads'],
         topic: 'Live-Queue, Grabs und Imports von Sonarr, Radarr und SABnzbd. Automatisch.',
+        liveCounter: true,
         readOnly: true,
         allowedRoles: [...PLEX_ACCESS],
         refs: ['downloadLive', 'grabs', 'imports'],
@@ -278,6 +282,7 @@ export const STRUCTURE: CategoryPlan[] = [
         name: CHANNEL.approvals,
         oldNames: ['approvals'],
         topic: 'Freigaben für Anfragen.',
+        liveCounter: true,
         readOnly: true,
         adminOnly: true,
         refs: ['approvals'],
@@ -286,6 +291,7 @@ export const STRUCTURE: CategoryPlan[] = [
         name: CHANNEL.status,
         oldNames: ['🩺・health'],
         topic: 'Fehler, Health, Library-Löschungen und GitHub.',
+        liveCounter: true,
         readOnly: true,
         adminOnly: true,
         refs: ['health', 'failures', 'github'],

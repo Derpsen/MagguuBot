@@ -242,3 +242,37 @@ test('rollout never changes the public-updates channel the owner picked', () => 
   assert.ok(unset && unset.kind === 'enableCommunity');
   assert.equal(unset.updates, picked, 'unset → 📢・ankündigungen');
 });
+
+test('live-counter topics: purpose + counter is accepted, old English counters are rewritten', () => {
+  const first = planRollout(liveSnapshot());
+  const after = simulate(liveSnapshot(), first.actions);
+  const byName = (n: string) => after.channels.find((c) => c.name === n)!;
+  const withTopics = (topics: Record<string, string>): GuildSnapshot => ({
+    ...after,
+    botHighestRolePosition: 19,
+    channels: after.channels.map((c) => (c.name in topics ? { ...c, topic: topics[c.name]! } : c)),
+  });
+  const topicActions = (snap: GuildSnapshot) =>
+    planRollout(snap).actions.filter((a) => a.kind === 'updateChannel' && a.changes.topic !== undefined).map((a) => (a as { current: string }).current).sort();
+  assert.ok(byName(CHANNEL.requests));
+  assert.deepEqual(
+    topicActions(withTopics({
+      [CHANNEL.requests]: 'Film oder Serie anfragen. · 3 offen',
+      [CHANNEL.approvals]: 'Freigaben für Anfragen. · 0 in der Queue',
+      [CHANNEL.status]: 'Fehler, Health, Library-Löschungen und GitHub. · 🟡 2 Warnungen',
+      [CHANNEL.downloads]: 'Live-Queue, Grabs und Imports von Sonarr, Radarr und SABnzbd. Automatisch. · 1 in der Queue',
+    })),
+    [],
+  );
+  assert.deepEqual(
+    topicActions(withTopics({
+      [CHANNEL.requests]: '📝 Film / Serie requesten · 0 pending',
+      [CHANNEL.approvals]: '⏳ Admin-only Approvals · 0 in queue',
+      [CHANNEL.status]: '🩺 Service-Health · 🟡 2 warnings',
+      [CHANNEL.downloads]: '📥 Sonarr / Radarr / SAB grabs · 0 in queue',
+      // a static channel never accepts a suffix
+      [CHANNEL.newOnPlex]: 'Neu auf Plex und der Wochenrückblick. · 5',
+    })),
+    [CHANNEL.approvals, CHANNEL.downloads, CHANNEL.newOnPlex, CHANNEL.requests, CHANNEL.status].sort(),
+  );
+});

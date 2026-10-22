@@ -11,6 +11,7 @@ import { recoverAntiRaidProtection } from './anti-raid.js';
 import { runAddonReleasePollTick } from './addon-release-poller.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
 import { faqAutoanswerEnabled, refreshWebsiteFaqCache } from './faq-autoanswer.js';
+import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
 import { tickGiveaways } from './giveaway.js';
@@ -30,6 +31,8 @@ const REMINDER_TICK_MS = 30_000;
 const ANNOUNCE_TICK_MS = 30_000;
 const BLUE_TRACKER_TICK_MS = 15 * 60_000;
 const WEBSITE_FAQ_TICK_MS = 60 * 60_000;
+// Checks often; channel-topics.ts itself limits PATCHes per channel (Discord: 2 topic edits / 10 min).
+const TOPICS_TICK_MS = 2 * 60_000;
 const COUNTDOWN_TICK_MS = 60_000;
 const RSS_TICK_MS = 15 * 60_000;
 const GIVEAWAY_TICK_MS = 30_000;
@@ -50,6 +53,7 @@ let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
 let addonReleaseTimer: NodeJS.Timeout | null = null;
 let websiteFaqTimer: NodeJS.Timeout | null = null;
+let topicsTimer: NodeJS.Timeout | null = null;
 let countdownTimer: NodeJS.Timeout | null = null;
 let rssTimer: NodeJS.Timeout | null = null;
 let giveawayTimer: NodeJS.Timeout | null = null;
@@ -97,6 +101,10 @@ export function startScheduler(): void {
       runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ refresh failed');
     }, WEBSITE_FAQ_TICK_MS);
   }
+
+  topicsTimer = setInterval(() => {
+    runTick('topics', updateChannelTopics, 'topics tick failed');
+  }, TOPICS_TICK_MS);
 
   countdownTimer = setInterval(() => {
     runTick('countdowns', tickCountdowns, 'countdown tick failed');
@@ -157,6 +165,7 @@ export function startScheduler(): void {
   setImmediate(() => {
     runTick('reminders', processDueReminders, 'reminder boot tick failed');
     runTick('announcements', processDueAnnouncements, 'announce boot tick failed');
+    runTick('topics', updateChannelTopics, 'topics boot tick failed');
     runTick('countdowns', tickCountdowns, 'countdown boot tick failed');
     runTick('rss', runRssFeedTick, 'rss boot tick failed');
     runTick('giveaways', tickGiveaways, 'giveaway boot tick failed');
@@ -185,6 +194,7 @@ export function startScheduler(): void {
     {
       reminderMs: REMINDER_TICK_MS,
       announceMs: ANNOUNCE_TICK_MS,
+      topicsMs: TOPICS_TICK_MS,
       countdownMs: COUNTDOWN_TICK_MS,
       rssMs: RSS_TICK_MS,
       giveawayMs: GIVEAWAY_TICK_MS,
@@ -222,6 +232,7 @@ export function stopScheduler(): void {
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
   if (addonReleaseTimer) clearInterval(addonReleaseTimer);
   if (websiteFaqTimer) clearInterval(websiteFaqTimer);
+  if (topicsTimer) clearInterval(topicsTimer);
   if (countdownTimer) clearInterval(countdownTimer);
   if (rssTimer) clearInterval(rssTimer);
   if (giveawayTimer) clearInterval(giveawayTimer);
@@ -241,6 +252,7 @@ export function stopScheduler(): void {
   blueTrackerTimer = null;
   addonReleaseTimer = null;
   websiteFaqTimer = null;
+  topicsTimer = null;
   countdownTimer = null;
   rssTimer = null;
   giveawayTimer = null;
