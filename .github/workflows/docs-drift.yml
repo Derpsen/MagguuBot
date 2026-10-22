@@ -1,0 +1,75 @@
+name: Docs drift
+
+# Weekly docs drift check (tools/docs-drift.sh + .github/docs-drift-rules.txt).
+# Hits: create or update the single open issue "Docs-Drift" (assigned to Derpsen).
+# Clean: stay silent and close an open "Docs-Drift" issue.
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: docs-drift
+  cancel-in-progress: false
+
+jobs:
+  docs-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        # actions/checkout@v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Run docs-drift
+        id: drift
+        run: |
+          set +e
+          bash tools/docs-drift.sh > drift.txt 2> drift.err
+          rc=$?
+          set -e
+          cat drift.txt drift.err
+          if [ "$rc" -ge 2 ]; then echo "::error::docs-drift config/fetch error"; exit "$rc"; fi
+          echo "hits=$([ "$rc" -eq 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update Docs-Drift issue
+        if: steps.drift.outputs.hits == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "Docs drift found by \`tools/docs-drift.sh\` (rules: \`.github/docs-drift-rules.txt\`)."
+            echo
+            echo '```'
+            cat drift.txt
+            echo '```'
+            echo
+            echo "Fix the docs, or tune the rules for a false positive. Run: $RUN_URL"
+          } > body.md
+          num=$(gh issue list --repo "$REPO" --state open --search 'in:title "Docs-Drift"' --json number,title \
+            --jq '[.[] | select(.title == "Docs-Drift")][0].number // empty')
+          if [ -n "$num" ]; then
+            gh issue edit "$num" --repo "$REPO" --body-file body.md --add-assignee Derpsen
+          else
+            gh issue create --repo "$REPO" --title "Docs-Drift" --body-file body.md --assignee Derpsen
+          fi
+
+      - name: Close Docs-Drift issue when clean
+        if: steps.drift.outputs.hits == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue list --repo "$REPO" --state open --search 'in:title "Docs-Drift"' --json number,title \
+            --jq '.[] | select(.title == "Docs-Drift") | .number' | while read -r num; do
+            gh issue close "$num" --repo "$REPO" --comment "Docs drift check is clean again (${GITHUB_SHA::7})."
+          done

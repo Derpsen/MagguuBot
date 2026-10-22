@@ -48,7 +48,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-06 Ops sync (Buddy Inventur)
 
-- #97+#98 merged; Container-Baseline digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) - already live, kein Re-Pull (Stand 2026-10-06; superseded, see `AGENTS.md` Live ops baseline: last recorded `sha-69f8d95` / `sha256:a5827ffe…`, 2026-10-14).
+- #97+#98 merged; Container-Baseline digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) - already live, kein Re-Pull (Stand 2026-10-06; superseded, see "2026-10-22 Docs drift check" below: last recorded `sha-69f8d95` / `sha256:a5827ffe…`, 2026-10-14).
 - Discord `/setup-server full` Done - embeds **Whisper Messenger**, nicht WIM / Ellesmere WIM Skin.
 - Pack-/Author-HARD unveraendert; Optional = Whisper Messenger (WhisperMessenger).
 - Prefer Done-Wave Capture after App-Image waves; keine neuen Specialist-Bots.
@@ -95,3 +95,12 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - 2026-10-16: Node 26 live: engines >=26, Dockerfile node:26-alpine@sha256:6f08a523…, CI/docker/version-check Node 26, Renovate Node hold removed.
 - Security (2026-10-16): `scorecard.yml` (ossf/scorecard-action v2.5.0, SHA-pinned; push main + weekly; SARIF → code scanning, upload-sarif SHA = codeql.yml SHA, bump together) and `dependency-review.yml` (actions/dependency-review-action v5.0.0, PRs, fails on >= moderate). Secret scanning + push protection enabled via `gh api` (verified enabled).
 - Quality (2026-10-16): `.github/workflows/quality.yml` runs `tools/drift-check.sh` (banned addon names outside AGENTS/MEMORY/CHANGELOG/tests, EllesmereUI min 9.0.6 in TOCs, Docker uid 99, engines.node = `${NODE_ENGINE:->=26}`), actionlint 1.7.12 + zizmor 1.31.1 (medium+) + shellcheck + osv-scanner 2.7.0 (downloads sha256-verified). All workflows hardened for zizmor: checkout `persist-credentials: false`, docker.yml packages:write only on build job and no npm cache (package-manager-cache: false).
+
+## 2026-10-22 Docs drift check
+
+- Adopted `tools/docs-drift.sh` (1:1 from MagguuUI-Website) + `.github/docs-drift-rules.txt` + `docs-drift.yml` (Mon 05:17 UTC + dispatch; issue "Docs-Drift" → Derpsen on hits, closed when clean). No `@health-url` (`/api/status` is Bearer-gated, no public health URL).
+- Baseline fix: AGENTS.md no longer names live sha/digests (rule scoped to AGENTS.md). Removed AGENTS lines, kept here as history:
+
+  > - (updated 2026-10-15) Container `MagguuBot` / `ghcr.io/derpsen/magguu-bot`: digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) is the **2026-10-06 baseline (superseded)**. Last recorded Bot image (Notion Tag-Gate note 2026-10-14 ~23:39 Berlin, next to the live Website digest): OCI `sha-69f8d95` / digest `sha256:a5827ffe879da787aa6ff3e3f9012a96815eb7fef7a7e0cbd2d186dbee3ae82f` (includes the 2026-10-14 waves: `/status`, release poller, FAQ auto-answer, `/api/status`). GHCR `:latest` is now `sha-cb706c3` (`sha256:53f13eb5…`, green docker publish of a MEMORY-only commit → no "Unraid & Server" pull needed).
+  >
+  > - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, v12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).

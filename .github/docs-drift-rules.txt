@@ -1,0 +1,25 @@
+# docs-drift rules for MagguuBot (read by tools/docs-drift.sh, copied 1:1 from
+# MagguuUI-Website). Format: regex<TAB>reason[<TAB>allow-regex[<TAB>file-regex]].
+# ERE, case-sensitive. Banned addon names are written as [W]IM etc. so this file
+# never contains the literal names (tools/drift-check.sh would flag it).
+# No @health-url: the only status endpoint (GET /api/status) is Bearer-gated and
+# off without STATUS_API_TOKEN, and no public health URL is documented.
+
+@files AGENTS.md MEMORY.md README*.md CLAUDE.md .github/copilot-instructions.md .cursor/rules/** .grok/**
+
+# Lines that are explicitly history are fine everywhere.
+@allow \(20[0-9]{2}-[0-9]{2}-[0-9]{2}: |[Ff]ormer(ly)? names?|[Ff]ormerly|[Oo]ld names?|\bex-|[Rr]enamed|[Ss]uperseded|[Hh]istor(y|ical)|\(was 
+
+# --- rules ---
+\b(Webcraft|Botsmith|Bot Fixer|Luaforge|Launchpad|Homebase)\b	old helper name; current: Website, Bot & Dashboard, Addon (Lua), Release, Unraid & Server
+\bSentinel\b	old helper name Sentinel; current: Code-Review	sentinel \(e\.g\.
+\bCaptain\b	Captain was deleted 2026-10-16; Buddy contacts helpers directly	deleted|removed|gelöscht|entfernt
+\b[W]IM\b	banned addon described as active; Whisper Messenger replaced it	[Rr]emoved|[Rr]etired|replac(ed|es)|no longer|[Nn]ever|ban(ned)?|blocks?|instead of|not [W]IM|nicht [W]IM|no [W]IM|[W]IM is$|[W]IM vs|[W]IM/[W]indTools|drift
+[Oo]pen a PR|[Oo]pen a pull request|Reviewer pre-review|[Pp]re-review|squash-merge (is )?required|via PR only|PR (is )?required|[Mm]erge via PR	old PR/pre-review flow; push directly to main through the pre-push gate	Dependabot|Renovate|[Nn]o PRs?|[Nn]o pre-review
+[Dd]ependabot	Dependabot described as active updater; Renovate is the only dependency bot	Renovate|replac(ed|es)|[Rr]emoved|no longer|[Rr]etired|instead of
+Node 26 (is )?(locked|held|blocked|on hold|needs)|Node 24 locked|Node 26 only after|needs Marco's yes.*Node 26|Node 26.*needs Marco's yes	Node 26 is live; it is no longer locked
+(TypeScript|TS) 7(\.[0-9]+)*`? (is |now |are )*(live|done|landed|shipped|installed|merged|in use|active|approved|upgraded)|([Uu]pgraded|[Bb]umped|[Mm]oved|[Mm]igrated|[Ss]witched|[Uu]pdated) (to|onto) `?(TypeScript|TS) 7|(now on|running|runs on) `?(TypeScript|TS) 7|· (TypeScript|TS) 7\b	TypeScript 7 is locked (needs Marco's yes); docs must not present it as done
+h3`? 2(\.[0-9]+)*`? (is |now |are )*(live|done|landed|shipped|installed|merged|in use|active|approved|upgraded)|([Uu]pgraded|[Bb]umped|[Mm]oved|[Mm]igrated|[Ss]witched|[Uu]pdated) (to|onto) `?h3`? 2|(now on|running|runs on) `?h3`? 2|· h3 2\b	h3 2 is locked (needs Marco's yes); docs must not present it as done
+js-yaml`? 5(\.[0-9]+)*`? (is |now |are )*(live|done|landed|shipped|installed|merged|in use|active|approved|upgraded)|([Uu]pgraded|[Bb]umped|[Mm]oved|[Mm]igrated|[Ss]witched|[Uu]pdated) (to|onto) `?js-yaml`? 5|(now on|running|runs on) `?js-yaml`? 5|· js-yaml 5\b	js-yaml 5 is locked (needs Marco's yes); docs must not present it as done
+[@]types/node`? 26(\.[0-9]+)*`? (is |now |are )*(live|done|landed|shipped|installed|merged|in use|active|approved|upgraded)|([Uu]pgraded|[Bb]umped|[Mm]oved|[Mm]igrated|[Ss]witched|[Uu]pdated) (to|onto) `?@types/node`? 26|(now on|running|runs on) `?@types/node`? 26	@types/node 26 is locked (needs Marco's yes); docs must not present it as done
+sha-[0-9a-f]{7,40}|sha256:[0-9a-f]{6,}	AGENTS.md names a concrete image sha/digest; live builds are auto-deployed, deploy history belongs in MEMORY.md	!	^AGENTS\.md$
