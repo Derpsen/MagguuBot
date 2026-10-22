@@ -224,3 +224,30 @@ export function reportMarkdown(meta: { mode: string; startedAt: string; guildId:
     ...sections.flatMap((s) => [`## ${s.ok ? '✅' : '⚠️'} ${s.title}`, '', ...s.lines, '']),
   ].join('\n');
 }
+
+// ─── Window cleanup (flood removal) ─────────────────────────────────────
+
+/** Footers of Sonarr/Radarr library-delete cards (single and bundled). GitHub etc. never match. */
+export const DELETE_CARD_FOOTER = /^MagguuBot · (File aus der Library entfernt|inkl\. Files auf Disk|nur aus der Library entfernt|Library-Löschungen gebündelt)$/;
+
+export interface WindowCleanupInput {
+  botUserId: string;
+  messages: readonly ScanMessage[];
+  fromMs: number;
+  toMs: number;
+  /** Only these channels (default: the status channel). */
+  channelIds: ReadonlySet<string>;
+  /** Pinned cards, panels and other feature-referenced ids. */
+  protectedIds: ReadonlySet<string>;
+}
+
+/** Bot-authored delete cards in [from, to): never human messages, pins, interactions or other cards. */
+export function planWindowCleanup(i: WindowCleanupInput): ScanMessage[] {
+  return i.messages.filter((m) => {
+    if (m.authorId !== i.botUserId || m.interaction || m.pinned || i.protectedIds.has(m.id)) return false;
+    if (!i.channelIds.has(m.channelId)) return false;
+    const t = Date.parse(m.timestamp);
+    if (!(t >= i.fromMs && t < i.toMs)) return false;
+    return m.embeds.length > 0 && m.embeds.every((e) => DELETE_CARD_FOOTER.test((e.footer?.text ?? '').replace(/\s+·\s+/g, ' · ').trim()));
+  });
+}

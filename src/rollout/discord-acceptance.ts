@@ -13,6 +13,8 @@
  *            (transient misroutes, duplicate live panels, untracked old cards, leftover test posts).
  *            Results → /app/data/acceptance/last-apply.json
  * --report   read-only checks + the last --apply results → /app/data/acceptance/acceptance-report.md
+ * --cleanup-window FROM TO [--apply]  only: list (dry-run) or delete bot-authored Sonarr/Radarr
+ *            delete cards in 🩺・status within the window (e.g. 2026-10-22T18:00Z 2026-10-22T18:30Z)
  *
  * Never: guild settings (public updates channel), human messages, slash-command registration.
  * Exit: 0 green · 6 findings · 2 API errors · 1 crash.
@@ -33,6 +35,7 @@ import {
   commandsGreen,
   diffCommands,
   matrixGreen,
+  planWindowCleanup,
   matrixMarkdown,
   reportMarkdown,
   routingMatrix,
@@ -62,7 +65,7 @@ import { describeAction, planRollout } from './plan.js';
 import { DiscordError, DiscordRest, takeSnapshot } from './rest.js';
 
 type Mode = 'dry-run' | 'apply' | 'report';
-interface Args { mode: Mode; days: number; perChannel: number; jsonOnly: boolean }
+interface Args { mode: Mode; days: number; perChannel: number; jsonOnly: boolean; cleanupWindow?: { from: number; to: number } }
 
 function parseArgs(argv: string[]): Args {
   const args: Args = { mode: 'dry-run', days: 90, perChannel: 3000, jsonOnly: false };
@@ -80,9 +83,17 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--json') args.jsonOnly = true;
     else if (a === '--days') args.days = Math.max(1, Number(next()) || 90);
     else if (a === '--per-channel') args.perChannel = Math.max(100, Number(next()) || 3000);
-    else throw new Error(`Unbekannte Option: ${a} (erlaubt: --dry-run, --apply, --report, --days <n>, --per-channel <n>, --json)`);
+    else if (a === '--cleanup-window') {
+      const from = Date.parse(next());
+      const to = Date.parse(next());
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) throw new Error('--cleanup-window braucht FROM TO (ISO, z. B. 2026-10-22T18:00Z 2026-10-22T18:30Z)');
+      if (to - from > 24 * 3_600_000) throw new Error('--cleanup-window: höchstens 24 h');
+      args.cleanupWindow = { from, to };
+    }
+    else throw new Error(`Unbekannte Option: ${a} (erlaubt: --dry-run, --apply, --report, --days <n>, --per-channel <n>, --cleanup-window <from> <to>, --json)`);
   }
   if (modes.size > 1) throw new Error('Nur einer von --dry-run, --apply, --report');
+  if (args.cleanupWindow && modes.has('report')) throw new Error('--cleanup-window nur mit --dry-run oder --apply');
   args.mode = [...modes][0] ?? 'dry-run';
   return args;
 }
@@ -351,10 +362,70 @@ function storedIdSection(view: GuildView): SectionResult {
 // ─── Main ────────────────────────────────────────────────────────────────
 interface ApplyResult { runId: string; finishedAt: string; tests: Record<string, TestResult>; sections: SectionResult[]; errors: string[] }
 
+/**
+ * --cleanup-window FROM TO: bot-authored Sonarr/Radarr delete cards in 🩺・status within the
+ * window (dry-run lists, --apply deletes via bulk delete). Nothing else runs in this mode.
+ */
+async function cleanupWindow(rest: DiscordRest, args: Args, apply: boolean): Promise<{ code: number; output: string }> {
+  const win = args.cleanupWindow!;
+  const { snap } = await takeSnapshot(rest, config.DISCORD_GUILD_ID);
+  const view = viewOf(snap);
+  const statusId = getChannel('health');
+  if (!statusId) return { code: 2, output: 'health/status-Kanal nicht gesetzt\n' };
+  const raw = await fetchHistorySince(rest, statusId, win.from, args.perChannel);
+  const messages: ScanMessage[] = raw.messages.map((m) => ({
+    id: m.id, channelId: m.channel_id, authorId: m.author.id, pinned: m.pinned, type: m.type,
+    embeds: m.embeds as ScanMessage['embeds'], timestamp: m.timestamp, content: m.content ?? '',
+    interaction: !!(m.interaction_metadata ?? m.interaction) || m.type === 20 || m.type === 23,
+  }));
+  const tracked = new Set([...trackedCards(snap.guildId).map((c) => c.messageId), ...protectedMessageIds(['webhook_events'])]);
+  const hits = planWindowCleanup({ botUserId: snap.botUserId, messages, fromMs: win.from, toMs: win.to, channelIds: new Set([statusId]), protectedIds: tracked });
+  const inWindow = messages.filter((m) => { const t = Date.parse(m.timestamp); return t >= win.from && t < win.to; });
+  const name = `#${view.names.get(statusId) ?? statusId}`;
+  const lines = [
+    `Fenster ${new Date(win.from).toISOString()} – ${new Date(win.to).toISOString()} (${apply ? 'apply' : 'dry-run'})`,
+    `${name}: ${inWindow.length} Nachrichten im Fenster, davon ${inWindow.filter((m) => m.authorId === snap.botUserId).length} vom Bot; ${hits.length} Lösch-Karten passen.`,
+    ...(raw.truncated ? [`Hinweis: nach ${args.perChannel} Nachrichten abgeschnitten (--per-channel erhöhen)`] : []),
+  ];
+  let deleted = 0;
+  const errors: string[] = [];
+  if (apply && hits.length) {
+    const fourteenDays = Date.now() - 13.5 * 86_400_000;
+    const bulk = hits.filter((m) => Date.parse(m.timestamp) > fourteenDays).map((m) => m.id);
+    const single = hits.filter((m) => Date.parse(m.timestamp) <= fourteenDays).map((m) => m.id);
+    for (let i = 0; i < bulk.length; i += 100) {
+      const chunk = bulk.slice(i, i + 100);
+      try {
+        if (chunk.length === 1) await rest.request('DELETE', `/channels/${statusId}/messages/${chunk[0]}`, undefined, [404]);
+        else await rest.request('POST', `/channels/${statusId}/messages/bulk-delete`, { messages: chunk });
+        deleted += chunk.length;
+      } catch (err) {
+        errors.push(`Bulk-Delete: ${errText(err)}`);
+      }
+    }
+    for (const id of single) {
+      try {
+        await rest.request('DELETE', `/channels/${statusId}/messages/${id}`, undefined, [404]);
+        deleted++;
+      } catch (err) {
+        errors.push(`Delete ${id}: ${errText(err)}`);
+      }
+    }
+    lines.push(`${name}: ${deleted} gelöscht.`);
+  } else if (!apply) lines.push('_Nichts gelöscht (dry-run). Mit --apply löschen._');
+  lines.push(...errors.map((e) => `- ⚠ ${e}`));
+  const dir = outDir();
+  await mkdir(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/\D/g, '').slice(2, 14);
+  await writeFile(join(dir, `cleanup-window-${stamp}.json`), `${JSON.stringify({ apply, from: win.from, to: win.to, channel: name, matched: hits.length, deleted, errors, ids: hits.map((m) => m.id) }, null, 2)}\n`, { mode: 0o600 });
+  return { code: errors.length ? 2 : 0, output: `${lines.join('\n')}\n` };
+}
+
 async function main(): Promise<{ code: number; output: string }> {
   const args = parseArgs(process.argv.slice(2));
   const apply = args.mode === 'apply';
   const rest = new DiscordRest(config.DISCORD_TOKEN, 'MagguuBot acceptance test');
+  if (args.cleanupWindow) return cleanupWindow(rest, args, apply);
   const startedAt = new Date().toISOString();
   const runId = startedAt.replace(/\D/g, '').slice(2, 14);
   const errors: string[] = [];

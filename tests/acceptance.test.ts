@@ -231,3 +231,29 @@ test('command diff compares descriptions the way Discord stores them', async () 
   const d = diff([{ name: 'x', description: 'Alt' }], local);
   assert.deepEqual(d.changed, [{ name: 'x', what: 'Beschreibung', expected: 'Nach 🗄️ ARCHIV verschieben', actual: 'Alt' }]);
 });
+
+test('cleanup window: only bot delete cards in status inside the window', async () => {
+  const { planWindowCleanup: plan } = await import('../src/rollout/acceptance-plan.ts');
+  const bot = 'B';
+  const msg = (id: string, over: Record<string, unknown>) => ({
+    id, channelId: 'S', authorId: bot, pinned: false, type: 0, content: '', interaction: false,
+    timestamp: '2026-10-22T18:10:00.000Z', embeds: [{ footer: { text: 'MagguuBot  ·  File aus der Library entfernt' } }], ...over,
+  });
+  const messages = [
+    msg('del', {}),
+    msg('bundle', { embeds: [{ footer: { text: 'MagguuBot · Library-Löschungen gebündelt' } }] }),
+    msg('github', { embeds: [{ footer: { text: 'GitHub · push' } }] }),
+    msg('human', { authorId: 'U' }),
+    msg('pinned', { pinned: true }),
+    msg('before', { timestamp: '2026-10-22T17:59:59.000Z' }),
+    msg('after', { timestamp: '2026-10-22T18:30:00.000Z' }),
+    msg('other-channel', { channelId: 'X' }),
+    msg('protected', {}),
+    msg('reply', { interaction: true }),
+  ];
+  const hits = plan({
+    botUserId: bot, messages, fromMs: Date.parse('2026-10-22T18:00Z'), toMs: Date.parse('2026-10-22T18:30Z'),
+    channelIds: new Set(['S']), protectedIds: new Set(['protected']),
+  });
+  assert.deepEqual(hits.map((m) => m.id), ['del', 'bundle']);
+});

@@ -100,11 +100,11 @@ export function forgetCard(guildId: string, planName: string): void {
 }
 
 /** Every message id referenced by another bot feature (any *message_id column outside welcome_messages). */
-export function protectedMessageIds(): Set<string> {
+export function protectedMessageIds(skipTables: readonly string[] = []): Set<string> {
   const ids = new Set<string>();
   const tables = sqliteHandle.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as Array<{ name: string }>;
   for (const { name } of tables) {
-    if (name === 'welcome_messages') continue;
+    if (name === 'welcome_messages' || skipTables.includes(name)) continue;
     const cols = (sqliteHandle.prepare(`PRAGMA table_info("${name.replace(/"/g, '""')}")`).all() as Array<{ name: string }>)
       .map((c) => c.name).filter((c) => /message_id$/.test(c));
     for (const col of cols) {
