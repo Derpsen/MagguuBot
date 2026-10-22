@@ -4,7 +4,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-22
 
-- Discord overhaul code is in `main`: lean layout in `src/discord/server-layout.ts` (5 categories / 15 channels / 11 roles), shared planner `src/rollout/plan.ts`, CLI `dist/rollout/discord-rollout.js`. Live server is **not** rolled out yet; runbook in AGENTS.md "Server layout & rollout".
+- Discord overhaul code is in `main`: lean layout in `src/discord/server-layout.ts` (5 categories / 16 channels / 11 roles), shared planner `src/rollout/plan.ts`, CLI `dist/rollout/discord-rollout.js`. Live server is **not** rolled out yet; runbook in AGENTS.md "Server layout & rollout".
 - Live facts (read-only audit): bot role (pos 16) is below Admin (18) / Moderator (17) → their permission edits stay manual until the bot role is dragged above. All 17 own roles + @everyone had MENTION_EVERYONE. `autoRoleId` was the `__magguu_newcomer__` sentinel. Community/onboarding/welcome screen were off.
 - `FAQ_AUTOANSWER_CHANNEL_IDS` is env-only (Unraid template); after rollout set it to the `❓・hilfe` id (same id as old `❓・faq`).
 - Maintainerr removed from the bot (container gone on Unraid since 2026-08-01): no route, source, channel key, env var or embed any more. Library-delete cards from Sonarr/Radarr post to `health` (`🩺・status`). Startup migration drops only the `maintainerr` `channel_config` row and marks pending retries for it exhausted; old `webhook_events` rows stay. The Unraid env `DISCORD_CHANNEL_MAINTAINERR` is now ignored and can be deleted from the template.

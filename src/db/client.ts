@@ -82,6 +82,7 @@ function runMigrations(): void {
   addColumnIfMissing('live_panels', 'payload_hash', 'TEXT');
   applyWebhookRetryMigration(sqlite);
   retireMaintainerr();
+  renameBlueTrackerKey();
   sqlite.exec('UPDATE seerr_requests SET updated_at = created_at WHERE updated_at IS NULL');
 }
 
@@ -90,6 +91,15 @@ function runMigrations(): void {
  * channel_config row (the channel itself is shared and stays) and stop any
  * pending retries for it; historical webhook_events rows stay untouched.
  */
+/** 2026-10-22: channel key `blueTracker` became `blizzard` (own channel 🟦・blizzard-updates).
+ * The feed keeps posting to the old target until the cards rollout re-points the key. */
+function renameBlueTrackerKey(): void {
+  sqlite.prepare(
+    "UPDATE channel_config SET key = 'blizzard' WHERE key = 'blueTracker' AND NOT EXISTS (SELECT 1 FROM channel_config WHERE key = 'blizzard')",
+  ).run();
+  sqlite.prepare("DELETE FROM channel_config WHERE key = 'blueTracker'").run();
+}
+
 function retireMaintainerr(): void {
   sqlite.prepare("DELETE FROM channel_config WHERE key = 'maintainerr'").run();
   sqlite

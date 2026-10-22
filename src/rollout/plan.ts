@@ -515,7 +515,7 @@ export function desiredOnboarding(ch: Record<string, Ref>, roles: Record<string,
         options: [
           { title: 'MagguuUI', description: 'Releases, Hilfe und Update-Pings', emoji: '🎨', channels: [c(CHANNEL.updates), c(CHANNEL.help)], roles: [r(ROLE.pingMagguuui)] },
           { title: 'Plex', description: 'Anfragen und neue Filme/Serien', emoji: '🎬', channels: [c(CHANNEL.requests), c(CHANNEL.newOnPlex)], roles: [r(ROLE.pingMovies), r(ROLE.pingSeries)] },
-          { title: 'WoW', description: 'Blue-Posts, Hotfixes, PTR', emoji: '🎮', channels: [c(CHANNEL.updates)], roles: [r(ROLE.pingWow)] },
+          { title: 'WoW', description: 'Blue-Posts, Hotfixes, PTR', emoji: '🎮', channels: [c(CHANNEL.blizzard)], roles: [r(ROLE.pingWow)] },
         ],
       },
       {
@@ -540,7 +540,7 @@ export function desiredWelcomeScreen(ch: Record<string, Ref>): WelcomeScreenSpec
     channels: [
       { channel: c(CHANNEL.welcome), description: 'Regeln und Ping-Rollen', emoji: '👋' },
       { channel: c(CHANNEL.help), description: 'Fragen zu MagguuUI', emoji: '❓' },
-      { channel: c(CHANNEL.updates), description: 'Releases und Blue-Posts', emoji: '📰' },
+      { channel: c(CHANNEL.updates), description: 'MagguuUI-Releases', emoji: '📰' },
       { channel: c(CHANNEL.requests), description: 'Film oder Serie anfragen', emoji: '📝' },
       { channel: c(CHANNEL.chat), description: 'Einfach quatschen', emoji: '💬' },
     ],

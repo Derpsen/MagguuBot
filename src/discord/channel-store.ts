@@ -22,7 +22,7 @@ const FALLBACK_ENV: Record<ChannelKey, string | undefined> = {
   modLog: config.DISCORD_CHANNEL_MOD_LOG,
   github: config.DISCORD_CHANNEL_GITHUB,
   starboard: config.DISCORD_CHANNEL_STARBOARD,
-  blueTracker: config.DISCORD_CHANNEL_BLUE_TRACKER,
+  blizzard: config.DISCORD_CHANNEL_BLIZZARD ?? config.DISCORD_CHANNEL_BLUE_TRACKER,
   addonUpdates: config.DISCORD_CHANNEL_ADDON_UPDATES,
   faq: config.DISCORD_CHANNEL_FAQ,
   suggestions: config.DISCORD_CHANNEL_SUGGESTIONS,

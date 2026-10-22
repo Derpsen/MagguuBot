@@ -49,7 +49,7 @@ async function update(key: string, channelId: string): Promise<void> {
 
 const GROUPS: Array<{ title: string; keys: string[] }> = [
   { title: 'Start & Community', keys: ['welcome', 'movieNight', 'starboard'] },
-  { title: 'MagguuUI', keys: ['addonUpdates', 'blueTracker', 'faq', 'suggestions'] },
+  { title: 'MagguuUI', keys: ['addonUpdates', 'blizzard', 'faq', 'suggestions'] },
   { title: 'Plex', keys: ['requests', 'newOnPlex', 'weeklyDigest', 'downloadLive', 'grabs', 'imports', 'plexActivity'] },
   { title: 'Admin', keys: ['approvals', 'failures', 'health', 'github', 'modLog', 'auditLog', 'ticketLogs'] },
 ];

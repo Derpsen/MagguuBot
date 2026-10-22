@@ -102,6 +102,7 @@ export const CHANNEL = {
   welcome: '👋・willkommen',
   announcements: '📢・ankündigungen',
   updates: '📰・updates',
+  blizzard: '🟦・blizzard-updates',
   help: '❓・hilfe',
   suggestions: '💡・vorschläge',
   chat: '💬・chat',
@@ -190,9 +191,16 @@ export const STRUCTURE: CategoryPlan[] = [
       {
         name: CHANNEL.updates,
         oldNames: ['🎨・addon-updates'],
-        topic: 'MagguuUI-Releases und WoW Blue-Posts. Automatisch.',
+        topic: 'MagguuUI-Releases. Automatisch.',
         readOnly: true,
-        refs: ['addonUpdates', 'blueTracker'],
+        refs: ['addonUpdates'],
+      },
+      {
+        name: CHANNEL.blizzard,
+        oldNames: ['📰・blue-tracker'],
+        topic: 'WoW Blue-Posts, Hotfixes und PTR von Blizzard. Automatisch.',
+        readOnly: true,
+        refs: ['blizzard'],
       },
       {
         name: CHANNEL.help,

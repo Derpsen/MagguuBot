@@ -42,6 +42,8 @@ const schema = z.object({
   DISCORD_CHANNEL_GITHUB: z.string().optional(),
   DISCORD_CHANNEL_STARBOARD: z.string().optional(),
   DISCORD_CHANNEL_PLEX_ACTIVITY: z.string().optional(),
+  DISCORD_CHANNEL_BLIZZARD: z.string().optional(),
+  /** Legacy alias for DISCORD_CHANNEL_BLIZZARD (pre-2026-10-22 key `blueTracker`). */
   DISCORD_CHANNEL_BLUE_TRACKER: z.string().optional(),
   DISCORD_CHANNEL_ADDON_UPDATES: z.string().optional(),
   DISCORD_CHANNEL_FAQ: z.string().optional(),

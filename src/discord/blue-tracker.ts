@@ -55,7 +55,7 @@ export async function runBlueTrackerTick(): Promise<void> {
   const url = config.WOW_BLUE_TRACKER_URL;
   if (!url) return;
 
-  const channelId = getChannel('blueTracker');
+  const channelId = getChannel('blizzard');
   if (!channelId) {
     logger.debug('blue-tracker channel not configured, skipping');
     return;

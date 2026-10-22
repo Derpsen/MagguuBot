@@ -22,7 +22,7 @@ export interface ChannelRefs {
   github?: string;
   starboard?: string;
   plexActivity?: string;
-  blueTracker?: string;
+  blizzard?: string;
   addonUpdates?: string;
   faq?: string;
   suggestions?: string;

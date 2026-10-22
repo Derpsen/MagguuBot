@@ -83,7 +83,7 @@ function liveSnapshot(): GuildSnapshot {
   }
   const keyIds: Record<string, string> = {
     addonUpdates: '1496166301302001685', approvals: '1495819598329548970', auditLog: '1495836009638924448',
-    blueTracker: '1496130817129447456', downloadLive: '1522173079055372308', failures: '1495819613995274271',
+    blizzard: '1496130817129447456', downloadLive: '1522173079055372308', failures: '1495819613995274271',
     faq: '1496166312341143667', github: '1495836012536922203', grabs: '1495819606777008219', health: '1495831164848443413',
     imports: '1495819609776066673', modLog: '1495835999652282388',
     movieNight: '1522173111796109372', newOnPlex: '1495819601840443624', plexActivity: '1522315377428791527',
@@ -114,9 +114,9 @@ function liveSnapshot(): GuildSnapshot {
 
 const kinds = (actions: Action[]): string[] => actions.map((a) => a.kind);
 
-test('layout: 5 categories, 15 channels, 11 roles, every bot key has exactly one home', () => {
+test('layout: 5 categories, 16 channels, 11 roles, every bot key has exactly one home', () => {
   assert.equal(STRUCTURE.length, 5);
-  assert.equal(allChannelPlans().length, 15);
+  assert.equal(allChannelPlans().length, 16);
   assert.equal(ROLES.length, 11);
   for (const entry of CHANNEL_CATALOG) {
     const homes = allChannelPlans().filter(({ channel }) => channel.refs?.includes(entry.key));
@@ -128,7 +128,8 @@ test('layout: 5 categories, 15 channels, 11 roles, every bot key has exactly one
   assert.equal(new Set(oldNames).size, oldNames.length);
   for (const old of oldNames) assert.ok(!names.includes(old), `${old} is both old and new`);
   assert.equal(channelPlanForRef('ticketLogs')?.name, CHANNEL.logs);
-  assert.equal(channelPlanForRef('blueTracker')?.name, CHANNEL.updates);
+  assert.equal(channelPlanForRef('blizzard')?.name, CHANNEL.blizzard);
+  assert.equal(channelPlanForRef('addonUpdates')?.name, CHANNEL.updates);
 });
 
 test('legacy role names resolve to their layout role', () => {
@@ -149,6 +150,7 @@ test('rollout plan on the live server renames/reuses and archives, never deletes
   assert.ok(!kinds(all).some((k) => /delete/i.test(k)));
   // IDs survive: reused channels keep their id
   assert.equal(plan.channelRefs[CHANNEL.updates], '1496166301302001685');
+  assert.equal(plan.channelRefs[CHANNEL.blizzard], '1496130817129447456');
   assert.equal(plan.channelRefs[CHANNEL.help], '1496166312341143667');
   assert.equal(plan.channelRefs[CHANNEL.downloads], '1522173079055372308');
   assert.equal(plan.channelRefs[CHANNEL.status], '1495831164848443413');
@@ -171,13 +173,13 @@ test('rollout plan on the live server renames/reuses and archives, never deletes
   assert.equal(BigInt(everyone.changes.permissions ?? '0') & PERM.MENTION_EVERYONE, 0n);
   // 22 legacy channels archived, incl. stats counters and ticket-logs
   const archived = all.flatMap((a) => (a.kind === 'archiveChannel' ? [a.name] : []));
-  assert.equal(archived.length, 22);
-  for (const name of ['👥 Mitglieder: 2', '📜・regeln', '🎭・rollen', '📰・blue-tracker', 'ticket-logs', '💤 AFK', '⭐・starboard']) {
+  assert.equal(archived.length, 21);
+  for (const name of ['👥 Mitglieder: 2', '📜・regeln', '🎭・rollen', 'ticket-logs', '💤 AFK', '⭐・starboard']) {
     assert.ok(archived.includes(name), name);
   }
   // Bot keys re-pointed, autoRoleId becomes the real Newcomer id
   const keys = Object.fromEntries(all.flatMap((a) => (a.kind === 'setChannelKey' ? [[a.key, a.target]] : [])));
-  assert.equal(keys.blueTracker, '1496166301302001685');
+  assert.equal(keys.blizzard, undefined, 'old 📰・blue-tracker is reused as 🟦・blizzard-updates');
   assert.equal(keys.grabs, '1522173079055372308');
   assert.equal(keys.ticketLogs, '1495836009638924448');
   assert.equal(keys.welcome, undefined, 'unchanged keys are not rewritten');
@@ -205,7 +207,7 @@ test('deletion only touches the archive, skips open cards and keeps roles with m
   after.members = { ...after.members, '1000000000000000002': ['1495819585595642017'] }; // someone still has VIP
   const blockers = { '1522315377428791527': ['Plex-Aktivitätskarte < 7 T.'] };
   const del = planDeletion(after, blockers);
-  assert.equal(del.channels.length, 21);
+  assert.equal(del.channels.length, 20);
   assert.deepEqual(del.skippedChannels.map((c) => c.name), ['🎬・aktivität']);
   const archiveId = after.channels.find((c) => c.name === ARCHIVE_CATEGORY_NAME)?.id;
   for (const c of del.channels) assert.equal(after.channels.find((x) => x.id === c.id)?.parent_id, archiveId);

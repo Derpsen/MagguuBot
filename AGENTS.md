@@ -140,7 +140,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | MagguuUI FAQ channel (tag answers) | `faq` → `❓・hilfe` |
 | Community suggestions (`/suggest`) | `suggestions` → `💡・vorschläge` |
 | Ticket close + transcripts | `ticketLogs` → `📋・logs` (name fallback `TICKET_LOG_CHANNEL_NAME`) |
-| WoW Blue-Tracker RSS | `blueTracker` → `📰・updates` |
+| WoW Blue-Tracker RSS | `blizzard` → `🟦・blizzard-updates` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
 | Starboard (⭐ threshold) | `starboard` → `🎬・movie-night` |
 | Automatic weekly digest | `weeklyDigest` → `✨・neu-auf-plex` |
@@ -149,7 +149,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 
 ## Server layout & rollout
 
-- Layout (5 categories, 15 channels, 11 roles) lives in `src/discord/server-layout.ts`: `STRUCTURE`, `ROLES` (with `oldNames` = rename/reuse, `mergeFrom` = member migration), name constants (`CHANNEL`, `ROLE`, `TICKET_LOG_CHANNEL_NAME`, `TICKET_CATEGORY_NAME`, `JTC_*`, `ARCHIVE_CATEGORY_NAME` = `🗄️ ARCHIV`) and the single role-button set `PING_ROLE_BUTTONS`.
+- Layout (5 categories, 16 channels, 11 roles) lives in `src/discord/server-layout.ts`: `STRUCTURE`, `ROLES` (with `oldNames` = rename/reuse, `mergeFrom` = member migration), name constants (`CHANNEL`, `ROLE`, `TICKET_LOG_CHANNEL_NAME`, `TICKET_CATEGORY_NAME`, `JTC_*`, `ARCHIVE_CATEGORY_NAME` = `🗄️ ARCHIV`) and the single role-button set `PING_ROLE_BUTTONS`.
 - Planning is pure (`src/rollout/plan.ts`, tests in `tests/discord-rollout.test.ts`); `/setup-server`, `/cleanup-server` and the CLI share it. Ping/role lookups go through `findLayoutRole` so legacy names (`ping-4k`, `ping-github`, …) keep working until the rename.
 - `/setup-server` renames/reuses, moves foreign channels to `🗄️ ARCHIV`, hides empty legacy categories, re-points bot keys and sets `autoRoleId` to the real Newcomer id. It **never deletes** channels or roles. `/cleanup-server` only archives. Nothing deletes layout channels/roles on startup (only JTC personal rooms and closed tickets are deleted by their features).
 - One-shot CLI inside the container: `node dist/rollout/discord-rollout.js` (`--dry-run` default, `--apply`; also enables Community, onboarding and welcome screen, migrates members of merged roles). Deletion is separate: `--delete-archived` plus env `DELETE_APPROVED=yes`, only channels in `🗄️ ARCHIV` without open bot cards/DB references, empty legacy categories and empty non-layout roles. `--apply` takes a DB snapshot first and aborts on pending webhook retries. After `--apply` restart the container (channel cache is per process).
