@@ -222,3 +222,12 @@ test('markdown matrix escapes backslashes and pipes in cells', async () => {
   const [, , row] = matrixMarkdown([{ source: 'a|b\\', key: 'k', channel: 'c\nd', routing: 'ok', test: 'ok' }]);
   assert.equal(row, '| a\\|b\\\\ | k | c d | ok | ok |');
 });
+
+test('command diff compares descriptions the way Discord stores them', async () => {
+  const { diffCommands: diff, normText } = await import('../src/utils/command-diff.ts');
+  assert.equal(normText(' Kanäle nach 🗄️ ARCHIV  '), 'Kanäle nach 🗄 ARCHIV');
+  const local = [{ name: 'x', description: 'Nach 🗄️ ARCHIV verschieben' }];
+  assert.deepEqual(diff([{ name: 'x', description: 'Nach 🗄 ARCHIV verschieben' }], local).changed, []);
+  const d = diff([{ name: 'x', description: 'Alt' }], local);
+  assert.deepEqual(d.changed, [{ name: 'x', what: 'Beschreibung', expected: 'Nach 🗄️ ARCHIV verschieben', actual: 'Alt' }]);
+});

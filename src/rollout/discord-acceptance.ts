@@ -209,7 +209,10 @@ async function commandsSection(rest: DiscordRest): Promise<SectionResult> {
   const lines = [`Registriert: ${guild.length} (Guild) + ${global.length} (global) · im Code: ${local.length}`];
   if (d.missing.length) lines.push(`- ⚠ Nicht registriert: ${d.missing.map((n) => `/${n}`).join(', ')} → Bot neu starten (registriert beim Start)`);
   if (d.extra.length) lines.push(`- ⚠ Registriert, aber nicht im Code: ${d.extra.map((n) => `/${n}`).join(', ')} → Bot neu starten`);
-  for (const c of d.changed) lines.push(`- ⚠ /${c.name}: ${c.what} weicht ab → Bot neu starten`);
+  for (const c of d.changed) {
+    const texts = c.expected !== undefined ? ` (registriert „${c.actual}“, Code „${c.expected}“)` : '';
+    lines.push(`- ⚠ /${c.name}: ${c.what} weicht ab${texts} → Bot neu starten`);
+  }
   if (d.removedService.length) lines.push(`- ⚠ Erwähnt entfernten Dienst: ${d.removedService.map((n) => `/${n}`).join(', ')}`);
   if (d.global.length) lines.push(`- ⚠ Globale Befehle (doppelt sichtbar): ${d.global.map((n) => `/${n}`).join(', ')}`);
   if (commandsGreen(d)) lines.push('Registrierte Befehle = Code. Keine Befehle für entfernte Dienste.');

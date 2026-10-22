@@ -11,6 +11,7 @@ import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { commands } from './commands/index.js';
 import { getFeatureState, setFeatureState } from './feature-state.js';
+import { commandsInSync, diffCommands, type CommandShape } from '../utils/command-diff.js';
 import { hashSlashCommandBody } from './slash-body-hash.js';
 import { backfillWelcomePins, handleSetupServerButton } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
@@ -194,15 +195,37 @@ export async function startDiscord(): Promise<void> {
 
 const SLASH_HASH_KEY = 'slash_commands_hash';
 
+/**
+ * Register guild slash commands. The body hash alone is not trusted: the registered
+ * commands are read back and compared (normalised like Discord stores them), so drift
+ * on Discord's side — or a hash stored after a partial PUT — re-registers on restart.
+ */
 async function registerCommands(): Promise<void> {
   const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
+  const route = Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID);
   const body = Array.from(commands.values()).map((cmd) => cmd.data.toJSON());
+  const local = body as unknown as CommandShape[];
   const hash = hashSlashCommandBody(body);
-  if (getFeatureState(SLASH_HASH_KEY) === hash) {
+  const registered = (await rest.get(route).catch((err: unknown) => {
+    logger.warn({ err }, 'reading registered slash commands failed; registering');
+    return null;
+  })) as CommandShape[] | null;
+  const drift = registered ? diffCommands(registered, local) : null;
+  if (drift && commandsInSync(drift) && getFeatureState(SLASH_HASH_KEY) === hash) {
     logger.info({ count: body.length }, 'slash commands unchanged');
     return;
   }
-  await rest.put(Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID), { body });
+  if (drift && !commandsInSync(drift)) {
+    logger.info(
+      { missing: drift.missing, extra: drift.extra, changed: drift.changed.map((c) => `${c.name}:${c.what}`) },
+      'registered slash commands differ from code',
+    );
+  }
+  const stored = (await rest.put(route, { body })) as CommandShape[] | null;
+  const after = Array.isArray(stored) ? diffCommands(stored, local) : null;
+  if (after && !commandsInSync(after)) {
+    logger.warn({ changed: after.changed }, 'Discord stored slash commands differently than sent');
+  }
   setFeatureState(SLASH_HASH_KEY, hash);
   logger.info({ count: body.length }, 'slash commands registered');
 }

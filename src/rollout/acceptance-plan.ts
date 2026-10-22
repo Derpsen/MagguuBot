@@ -6,6 +6,7 @@
 import type { ChannelKey } from '../discord/channel-catalog.js';
 import type { CommandInfo } from '../embeds/cards.js';
 import { auditMessages, type AuditFinding } from '../utils/card-audit.js';
+import type { CommandDiff } from '../utils/command-diff.js';
 import { ROUTES, TRANSIENT_KEYS, classifyBotEmbed, type RoutingRow } from '../utils/routing.js';
 import { LIVE_PANEL_TITLE, findDuplicateCards, isBotCard, type DuplicateCard, type LiveMessage, type TransientTable } from './cards-plan.js';
 
@@ -189,49 +190,7 @@ export function scanMessages(input: ScanInput): { findings: ScanFinding[]; dupli
 
 // ─── 3. Slash commands ───────────────────────────────────────────────────
 
-export interface CommandShape {
-  name: string;
-  description?: string;
-  default_member_permissions?: string | null;
-  options?: Array<{ type: number; name: string; description?: string; options?: CommandShape['options'] }>;
-}
-
-/** Services that were removed from the stack; no command may still mention them. */
-export const REMOVED_SERVICES = /\b(maintainerr|overseerr|jellyseerr|ombi|tdarr|lidarr|readarr|bazarr|uptime[ -]?kuma|kuma|twitch|notifiarr)\b/i;
-
-export interface CommandDiff {
-  missing: string[];
-  extra: string[];
-  changed: Array<{ name: string; what: string }>;
-  removedService: string[];
-  global: string[];
-}
-
-function optionTree(options: CommandShape['options']): string {
-  return JSON.stringify((options ?? []).map((o) => [o.type, o.name, o.description ?? '', optionTree(o.options)]));
-}
-
-export function diffCommands(registered: readonly CommandShape[], local: readonly CommandShape[], global: readonly CommandShape[] = []): CommandDiff {
-  const reg = new Map(registered.map((c) => [c.name, c]));
-  const loc = new Map(local.map((c) => [c.name, c]));
-  const changed: CommandDiff['changed'] = [];
-  for (const [name, l] of loc) {
-    const r = reg.get(name);
-    if (!r) continue;
-    if ((r.description ?? '') !== (l.description ?? '')) changed.push({ name, what: 'Beschreibung' });
-    else if ((r.default_member_permissions ?? null) !== (l.default_member_permissions ?? null)) changed.push({ name, what: 'Rechte' });
-    else if (optionTree(r.options) !== optionTree(l.options)) changed.push({ name, what: 'Optionen' });
-  }
-  const mentionsRemoved = (c: CommandShape): boolean =>
-    REMOVED_SERVICES.test(c.name) || REMOVED_SERVICES.test(c.description ?? '') || REMOVED_SERVICES.test(optionTree(c.options));
-  return {
-    missing: [...loc.keys()].filter((n) => !reg.has(n)).sort(),
-    extra: [...reg.keys()].filter((n) => !loc.has(n)).sort(),
-    changed,
-    removedService: [...new Set([...registered, ...local, ...global].filter(mentionsRemoved).map((c) => c.name))].sort(),
-    global: global.map((c) => c.name).sort(),
-  };
-}
+export { REMOVED_SERVICES, diffCommands, normText, type CommandDiff, type CommandShape } from '../utils/command-diff.js';
 
 export function commandsGreen(d: CommandDiff): boolean {
   return !d.missing.length && !d.extra.length && !d.changed.length && !d.removedService.length && !d.global.length;

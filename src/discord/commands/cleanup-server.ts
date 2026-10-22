@@ -35,7 +35,7 @@ export const cleanupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('cleanup-server')
-    .setDescription(`Fremde Kanäle nach ${ARCHIVE_CATEGORY_NAME} verschieben (löscht nichts)`)
+    .setDescription('Fremde Kanäle ins Archiv verschieben (löscht nichts)')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });

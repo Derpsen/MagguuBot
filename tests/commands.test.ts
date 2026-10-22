@@ -90,3 +90,12 @@ test('every command has an execute handler keyed by its name', () => {
     assert.equal(typeof cmd.execute, 'function', `/${name}`);
   }
 });
+
+test('descriptions survive Discord normalisation unchanged (no variation selectors / ZWJ)', () => {
+  // Discord drops U+FE0F etc. on store; a description containing one never matches the code.
+  const bad = /[\uFE0E\uFE0F\u200D]/;
+  for (const { json } of all) {
+    assert.ok(!bad.test(json.description), `/${json.name} description contains a variation selector`);
+    walk(json.options, `/${json.name}`, (o, path) => assert.ok(!bad.test(o.description), `${path} description contains a variation selector`));
+  }
+});
