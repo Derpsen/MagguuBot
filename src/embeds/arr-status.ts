@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { ArrDiskSpace, ArrHealthIssue, ArrSystemStatus } from '../services/arr-client.js';
 import type { SabQueueResponse, SabVersion } from '../services/sabnzbd.js';
 import type { SeerrRequestCount, SeerrStatus } from '../services/seerr.js';
-import { Colors, formatBytes, truncate } from './colors.js';
+import { Colors, formatBytes, truncate, FOOTER_ICONS } from './colors.js';
 
 interface ArrBlock {
   status: ArrSystemStatus | null;
@@ -57,7 +57,7 @@ export function buildArrStatusEmbed(i: ArrStatusEmbedInput): EmbedBuilder {
     e.addFields({ name: '🩺 Health Issues', value: truncate(healthLines.join('\n'), 1000) });
   }
 
-  e.setFooter({ text: 'MagguuBot  ·  live snapshot' });
+  e.setFooter({ text: 'MagguuBot  ·  live snapshot', iconURL: FOOTER_ICONS.bot });
   return e;
 }
 

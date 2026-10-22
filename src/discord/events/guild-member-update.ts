@@ -67,7 +67,7 @@ async function postBoostNotification(
   const total = guild.premiumSubscriptionCount ?? 0;
 
   const embed = new EmbedBuilder()
-    .setColor(0xff73fa)
+    .setColor(Colors.brand)
     .setAuthor({ name: 'Server boosted! 🚀', iconURL: member.user.displayAvatarURL() })
     .setTitle(`💜 Danke ${member.user.displayName}!`)
     .setDescription(

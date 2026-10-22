@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-22
+
+- Discord overhaul code is in `main`: lean layout in `src/discord/server-layout.ts` (5 categories / 15 channels / 11 roles), shared planner `src/rollout/plan.ts`, CLI `dist/rollout/discord-rollout.js`. Live server is **not** rolled out yet; runbook in AGENTS.md "Server layout & rollout".
+- Live facts (read-only audit): bot role (pos 16) is below Admin (18) / Moderator (17) → their permission edits stay manual until the bot role is dragged above. All 17 own roles + @everyone had MENTION_EVERYONE. `autoRoleId` was the `__magguu_newcomer__` sentinel. Community/onboarding/welcome screen were off.
+- `FAQ_AUTOANSWER_CHANNEL_IDS` is env-only (Unraid template); after rollout set it to the `❓・hilfe` id (same id as old `❓・faq`).
+- Admin panel: 8 sidebar entries in 4 sections, homepage style (#0B1118 / #0CD29D / #45E0BB, Plus Jakarta Sans + JetBrains Mono).
+
 ## 2026-09-10
 
 - Live Unraid container `MagguuBot` / `ghcr.io/derpsen/magguu-bot:latest` after `d095062`.

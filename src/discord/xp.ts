@@ -23,7 +23,6 @@ export interface XpRankRule {
 
 export const RANK_RULES: XpRankRule[] = [
   { atLevel: 2, roleName: 'Regular', removeRoles: ['Newcomer'] },
-  { atLevel: 10, roleName: 'VIP', removeRoles: ['Newcomer', 'Regular'] },
 ];
 
 interface XpRow {

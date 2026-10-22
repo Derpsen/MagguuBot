@@ -1,5 +1,6 @@
 import { type ActionRowBuilder, type ButtonBuilder, type EmbedBuilder, type Message } from 'discord.js';
 import { config } from '../config.js';
+import { findLayoutRole } from '../discord/role-lookup.js';
 import { getClient } from '../discord/client.js';
 import { db } from '../db/client.js';
 import { webhookEvents, type NewWebhookEvent } from '../db/schema.js';
@@ -143,7 +144,7 @@ function buildPing(roleNames: string[] | undefined, guildId: string): ResolvedPi
     const guild = getClient().guilds.cache.get(guildId);
     if (!guild) return { content: undefined, roleIds: [] };
     const roles = roleNames
-      .map((name) => guild.roles.cache.find((r) => r.name === name))
+      .map((name) => findLayoutRole(guild.roles.cache, name))
       .filter((r): r is NonNullable<typeof r> => Boolean(r));
     if (roles.length === 0) return { content: undefined, roleIds: [] };
     return {

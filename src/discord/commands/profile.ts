@@ -1,5 +1,5 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { Colors, truncate } from '../../embeds/colors.js';
+import { Colors, truncate, FOOTER_ICONS } from '../../embeds/colors.js';
 import { getUserInsights } from '../user-insights.js';
 import type { SlashCommand } from './index.js';
 
@@ -35,7 +35,7 @@ export const profileCommand: SlashCommand = {
         { name: '🎂 Geburtstag', value: birthday, inline: true },
         { name: `🏅 Achievements · ${stats.achievements.length}`, value: truncate(badges, 1024) },
       )
-      .setFooter({ text: 'MagguuBot · profile' })
+      .setFooter({ text: 'MagguuBot · profile', iconURL: FOOTER_ICONS.bot })
       .setTimestamp(new Date());
     await interaction.editReply({ embeds: [embed] });
   },

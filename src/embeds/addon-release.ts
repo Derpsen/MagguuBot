@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, truncate } from './colors.js';
+import { Colors, truncate, FOOTER_ICONS } from './colors.js';
 
 export const SUMMARY_HEADINGS = ['Große Neuerungen', 'Weitere Features', 'Bugfixes'] as const;
 const MAX_BULLETS = 3;
@@ -106,7 +106,7 @@ export function buildAddonReleaseAnnouncementEmbed(i: AddonReleaseInput): EmbedB
     .setTitle(`🎨  MagguuUI ${i.tag} ist verfügbar`)
     .setURL(i.url)
     .setDescription(truncate(description, 4096))
-    .setFooter({ text: 'MagguuUI  ·  neues Release' })
+    .setFooter({ text: 'MagguuUI  ·  neues Release', iconURL: FOOTER_ICONS.bot })
     .setTimestamp(new Date());
 
   for (const s of summary.sections) {

@@ -11,6 +11,7 @@ import { db } from '../db/client.js';
 import { jtcRooms } from '../db/schema.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
+import { JTC_CATEGORY_NAME, JTC_TRIGGER_CHANNEL_NAME } from './server-layout.js';
 
 export async function handleJtcVoiceUpdate(
   oldState: VoiceState,
@@ -103,7 +104,7 @@ export async function ensureJtcChannel(guild: Guild): Promise<{
   triggerChannelId: string;
   categoryId: string;
 }> {
-  const categoryName = '🎙️ VOICE-CREATE';
+  const categoryName = JTC_CATEGORY_NAME;
   let category = guild.channels.cache.find(
     (c) => c.name === categoryName && c.type === ChannelType.GuildCategory,
   ) as CategoryChannel | undefined;
@@ -114,7 +115,7 @@ export async function ensureJtcChannel(guild: Guild): Promise<{
     })) as CategoryChannel;
   }
 
-  const triggerName = '➕ Voice erstellen';
+  const triggerName = JTC_TRIGGER_CHANNEL_NAME;
   let trigger = guild.channels.cache.find(
     (c) => c.name === triggerName && c.type === ChannelType.GuildVoice,
   ) as VoiceChannel | undefined;

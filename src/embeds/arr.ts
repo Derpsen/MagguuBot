@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, formatBytes, truncate } from './colors.js';
+import { Colors, formatBytes, truncate, FOOTER_ICONS } from './colors.js';
 
 interface ArrCommon {
   service: 'sonarr' | 'radarr';
@@ -91,7 +91,7 @@ export function buildGrabEmbed(i: GrabEmbedInput): EmbedBuilder {
   if (i.releaseTitle) fields.push({ name: 'Release', value: `\`${truncate(i.releaseTitle, 1000)}\``, inline: false });
   if (fields.length) e.addFields(fields);
 
-  e.setFooter({ text: 'MagguuBot  ·  Download gestartet' });
+  e.setFooter({ text: 'MagguuBot  ·  Download gestartet', iconURL: FOOTER_ICONS.bot });
   return e;
 }
 

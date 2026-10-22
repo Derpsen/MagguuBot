@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { renderWelcomeCard } from '../cards/welcome-card.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import {
   buildWelcomeChannelEmbed,
   buildWelcomeDmEmbed,
@@ -210,7 +210,7 @@ async function sendWelcomeDM(member: GuildMember, isReturning: boolean): Promise
         .setColor(Colors.brand)
         .setTitle(`Willkommen auf ${member.guild.name}! 🎉`)
         .setDescription(description)
-        .setFooter({ text: 'MagguuBot · automatische Begrüßung' })
+        .setFooter({ text: 'MagguuBot · automatische Begrüßung', iconURL: FOOTER_ICONS.bot })
         .setTimestamp(new Date());
       await member.send({ embeds: [embed] });
       logger.info({ userId: member.id }, 'welcome DM sent (custom template)');

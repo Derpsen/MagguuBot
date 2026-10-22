@@ -16,7 +16,6 @@ import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
 import { tickGiveaways } from './giveaway.js';
 import { runRssFeedTick } from './rss-manager.js';
-import { updateStatsChannels } from './stats-channels.js';
 import { tickTicketAutoClose } from './ticket-autoclose.js';
 import { runWeeklyDigestTick } from './weekly-digest.js';
 import { tickMovieNights } from './movie-night.js';
@@ -28,7 +27,6 @@ import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
 import { runWebhookRetryTick } from '../server/webhook-retry.js';
 
 const REMINDER_TICK_MS = 30_000;
-const STATS_TICK_MS = 5 * 60_000;
 const ANNOUNCE_TICK_MS = 30_000;
 const BLUE_TRACKER_TICK_MS = 15 * 60_000;
 const WEBSITE_FAQ_TICK_MS = 60 * 60_000;
@@ -48,7 +46,6 @@ const PLEX_PAUSE_FLUSH_TICK_MS = 30_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
-let statsTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
 let addonReleaseTimer: NodeJS.Timeout | null = null;
@@ -77,10 +74,6 @@ export function startScheduler(): void {
   remindersTimer = setInterval(() => {
     runTick('reminders', processDueReminders, 'reminder tick failed');
   }, REMINDER_TICK_MS);
-
-  statsTimer = setInterval(() => {
-    runTick('stats', updateStatsChannels, 'stats tick failed');
-  }, STATS_TICK_MS);
 
   announceTimer = setInterval(() => {
     runTick('announcements', processDueAnnouncements, 'announce tick failed');
@@ -163,7 +156,6 @@ export function startScheduler(): void {
 
   setImmediate(() => {
     runTick('reminders', processDueReminders, 'reminder boot tick failed');
-    runTick('stats', updateStatsChannels, 'stats boot tick failed');
     runTick('announcements', processDueAnnouncements, 'announce boot tick failed');
     runTick('topics', updateChannelTopics, 'topics boot tick failed');
     runTick('countdowns', tickCountdowns, 'countdown boot tick failed');
@@ -193,7 +185,6 @@ export function startScheduler(): void {
   logger.info(
     {
       reminderMs: REMINDER_TICK_MS,
-      statsMs: STATS_TICK_MS,
       announceMs: ANNOUNCE_TICK_MS,
       topicsMs: TOPICS_TICK_MS,
       countdownMs: COUNTDOWN_TICK_MS,
@@ -229,7 +220,6 @@ function runTick(key: string, task: () => Promise<void>, failureMessage: string)
 
 export function stopScheduler(): void {
   if (remindersTimer) clearInterval(remindersTimer);
-  if (statsTimer) clearInterval(statsTimer);
   if (announceTimer) clearInterval(announceTimer);
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
   if (addonReleaseTimer) clearInterval(addonReleaseTimer);
@@ -249,7 +239,6 @@ export function stopScheduler(): void {
   if (plexPauseFlushTimer) clearInterval(plexPauseFlushTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   remindersTimer = null;
-  statsTimer = null;
   announceTimer = null;
   blueTrackerTimer = null;
   addonReleaseTimer = null;

@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, truncate } from './colors.js';
+import { Colors, truncate, FOOTER_ICONS } from './colors.js';
 
 export interface CountdownState {
   title: string;
@@ -27,14 +27,14 @@ export function buildCountdownEmbed(s: CountdownState): EmbedBuilder {
       { name: 'Status', value: '🎉 **Jetzt!**', inline: true },
       { name: 'Wann', value: `<t:${unix}:F>`, inline: true },
     );
-    e.setFooter({ text: 'MagguuBot  ·  Event gestartet' });
+    e.setFooter({ text: 'MagguuBot  ·  Event gestartet', iconURL: FOOTER_ICONS.bot });
   } else {
     const label = renderTimeLeft(msLeft);
     e.addFields(
       { name: 'Verbleibend', value: `\`${label}\``, inline: true },
       { name: 'Datum', value: `<t:${unix}:F>\n<t:${unix}:R>`, inline: true },
     );
-    e.setFooter({ text: 'MagguuBot  ·  auto-update alle ~5 Min' });
+    e.setFooter({ text: 'MagguuBot  ·  auto-update alle ~5 Min', iconURL: FOOTER_ICONS.bot });
   }
 
   return e;

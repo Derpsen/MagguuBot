@@ -1,11 +1,11 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   EmbedBuilder,
+  type ActionRowBuilder,
+  type ButtonBuilder,
   type GuildMember,
 } from 'discord.js';
 import { Colors } from './colors.js';
+import { buildRolePickerButtons } from './welcome.js';
 import { getChannel } from '../discord/channel-store.js';
 
 interface BuildArgs {
@@ -27,7 +27,7 @@ export function buildWelcomeChannelEmbed(args: BuildArgs): EmbedBuilder {
     : `**Willkommen, ${member.toString()}!** Schön, dass du da bist.`;
 
   const e = new EmbedBuilder()
-    .setColor(isReturning ? Colors.brand : 0x5865f2)
+    .setColor(Colors.brand)
     .setTitle(`🎉 Member #${memberCount}`)
     .setDescription(
       [
@@ -76,50 +76,15 @@ export function buildWelcomeChannelEmbed(args: BuildArgs): EmbedBuilder {
   return e;
 }
 
+/** Same single role-button set as the welcome channel panel. */
 export function buildWelcomeOnboardingButtons(): ActionRowBuilder<ButtonBuilder>[] {
-  const interestRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('role:toggle:Plex-Fan')
-      .setEmoji('🎬')
-      .setLabel('Plex-Fan')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:WoW-Fan')
-      .setEmoji('🎮')
-      .setLabel('WoW-Fan')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:MagguuUI')
-      .setEmoji('🎨')
-      .setLabel('MagguuUI')
-      .setStyle(ButtonStyle.Primary),
-  );
-
-  const pingRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-movies')
-      .setEmoji('🎬')
-      .setLabel('Film-Pings')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-series')
-      .setEmoji('📺')
-      .setLabel('Serien-Pings')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('role:toggle:ping-announcements')
-      .setEmoji('📢')
-      .setLabel('Announcements')
-      .setStyle(ButtonStyle.Secondary),
-  );
-
-  return [interestRow, pingRow];
+  return buildRolePickerButtons();
 }
 
 export function buildWelcomeDmEmbed(member: GuildMember, isReturning: boolean): EmbedBuilder {
   const guild = member.guild;
   return new EmbedBuilder()
-    .setColor(0x5865f2)
+    .setColor(Colors.brand)
     .setAuthor({
       name: guild.name,
       iconURL: guild.iconURL({ extension: 'png', size: 128 }) ?? undefined,
@@ -131,20 +96,15 @@ export function buildWelcomeDmEmbed(member: GuildMember, isReturning: boolean): 
           ? `Schön, dass du zurück bist, ${member.user.displayName}.`
           : `Hallo ${member.user.displayName}, schön, dass du da bist.`,
         '',
-        '**🎯 Direkt von hier aus starten:**',
-        'Klicke die Buttons unten — sie schalten Channels für dich frei. Die Auswahl kannst du jederzeit ändern.',
+        '**Ping-Rollen:** Die Buttons unten schalten Benachrichtigungen an oder aus. Du kannst das jederzeit ändern.',
         '',
-        '**🎬 Plex-Fan** → MEDIA + DOWNLOADS Channels sichtbar',
-        '**🎮 WoW-Fan** → blue-tracker, WoW-News',
-        '**🎨 MagguuUI** → addon-updates, FAQ',
-        '',
-        '_Nicht alles auf einmal? Du kannst sie auch im Server unter **🎭・rollen** holen._',
+        '_Die gleichen Buttons findest du im Server unter **👋・willkommen**._',
       ].join('\n'),
     )
     .addFields(
       {
         name: '📌 Erste Schritte',
-        value: '• Lies die Regeln in **#📜・regeln**\n• Melde dich kurz in **#💬・chat**\n• `/help` zeigt alle Commands',
+        value: '• Lies die Regeln in **#👋・willkommen**\n• Melde dich kurz in **#💬・chat**\n• `/help` zeigt alle Commands',
         inline: false,
       },
       {

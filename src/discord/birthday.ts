@@ -3,6 +3,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { birthdays } from '../db/schema.js';
+import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getClient } from './client.js';
@@ -47,7 +48,7 @@ export async function tickBirthdays(): Promise<void> {
       if (!member) continue;
       const age = b.year ? today.year - b.year : null;
       const embed = new EmbedBuilder()
-        .setColor(0xff73fa)
+        .setColor(Colors.brand)
         .setTitle('🎂 Happy Birthday!')
         .setDescription(
           age

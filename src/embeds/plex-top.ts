@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import type { TautulliStatRow, TautulliStatSection } from '../services/tautulli.js';
-import { Colors, truncate } from './colors.js';
+import { Colors, truncate, FOOTER_ICONS } from './colors.js';
 
 type StatType = 'movies' | 'shows' | 'users';
 
@@ -35,7 +35,7 @@ export function buildPlexTopEmbed(i: Input): EmbedBuilder {
     .setAuthor({ name: `Plex · letzte ${i.days} Tage` })
     .setTitle(`${meta.emoji}  ${meta.label}`)
     .setTimestamp(new Date())
-    .setFooter({ text: 'MagguuBot  ·  Tautulli home-stats' });
+    .setFooter({ text: 'MagguuBot  ·  Tautulli home-stats', iconURL: FOOTER_ICONS.bot });
 
   if (!i.section || i.section.rows.length === 0) {
     e.setDescription(`_${meta.empty}_`);

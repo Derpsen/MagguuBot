@@ -19,9 +19,8 @@ import { tickets } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel, saveChannel } from '../channel-store.js';
+import { TICKET_LOG_CHANNEL_NAME } from '../server-layout.js';
 import { createPrivateTicketChannel, TICKET_CATEGORY_NAME } from '../ticket-channel.js';
-
-const TICKET_LOG_CHANNEL_NAME = 'ticket-logs';
 
 export async function handleTicketButton(interaction: ButtonInteraction): Promise<void> {
   const [, action, ...rest] = interaction.customId.split(':');

@@ -1,5 +1,5 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, buildFooter } from '../../embeds/colors.js';
 import { commands, type SlashCommand, type CommandCategory } from './index.js';
 
 const CATEGORY_META: Record<CommandCategory, { emoji: string; label: string; order: number }> = {
@@ -26,7 +26,7 @@ export const helpCommand: SlashCommand = {
       .setColor(Colors.brand)
       .setTitle('🤖 Alle Bot-Befehle')
       .setDescription('Tipp `/` in einem Channel und wähl einen Command. Viele sind admin-only.')
-      .setFooter({ text: 'MagguuBot' });
+      .setFooter(buildFooter());
 
     const entries = Array.from(byCategory.entries()).sort(
       (a, b) => CATEGORY_META[a[0]].order - CATEGORY_META[b[0]].order,

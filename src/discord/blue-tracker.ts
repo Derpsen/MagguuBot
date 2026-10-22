@@ -151,8 +151,7 @@ async function postOne(
 function classifyPings(item: RssItem, enriched: EnrichedBluePost | null): string[] {
   const hay = `${item.title} ${enriched?.body ?? item.description ?? ''}`.toLowerCase();
   const pings: string[] = [];
-  if (/\b(tuning|hotfix|balance|class changes?)\b/.test(hay)) pings.push('ping-wow-tuning');
-  if (/\b(ptr|public test realm|public test)\b/.test(hay)) pings.push('ping-wow-ptr');
+  if (/\b(tuning|hotfix|balance|class changes?|ptr|public test realm|public test)\b/.test(hay)) pings.push('ping-wow');
   return pings;
 }
 

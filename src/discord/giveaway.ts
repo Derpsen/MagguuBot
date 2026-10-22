@@ -15,7 +15,7 @@ import { getClient } from './client.js';
 
 export function buildGiveawayEmbed(g: Giveaway, ended: boolean): EmbedBuilder {
   const e = new EmbedBuilder()
-    .setColor(ended ? Colors.muted : 0xff73fa)
+    .setColor(ended ? Colors.muted : Colors.brand)
     .setTitle(`🎉 ${g.prize}`)
     .setDescription(
       ended

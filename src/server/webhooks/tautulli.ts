@@ -5,7 +5,7 @@ import { config } from '../../config.js';
 import { db } from '../../db/client.js';
 import { plexActivityMessages, type PlexActivityMessage } from '../../db/schema.js';
 import { getChannel, type ChannelKey } from '../../discord/channel-store.js';
-import { Colors, truncate } from '../../embeds/colors.js';
+import { Colors, truncate, FOOTER_ICONS } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { decidePlexActivityEvent, plexActivityCorrelationKey } from '../../utils/plex-activity.js';
 import { resolveTautulliEventName } from '../../utils/tautulli-event.js';
@@ -143,7 +143,7 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
       .setAuthor({ name: `Plex · ${body.serverName ?? 'Server'}` })
       .setTitle(`✨ ${body.title ?? 'New media'}${body.year ? ` · ${body.year}` : ''}`)
       .setTimestamp(new Date())
-      .setFooter({ text: 'MagguuBot · now available' });
+      .setFooter({ text: 'MagguuBot · now available', iconURL: FOOTER_ICONS.bot });
 
     if (body.summary) embed.setDescription(truncate(body.summary, 600));
     if (body.posterUrl) embed.setThumbnail(body.posterUrl);
@@ -176,7 +176,7 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
         .setTitle(`${displayMeta.emoji} ${displayMeta.label}`)
         .setDescription(truncate(fullTitle, 500))
         .setTimestamp(new Date())
-        .setFooter({ text: 'MagguuBot · Plex-Aktivität' });
+        .setFooter({ text: 'MagguuBot · Plex-Aktivität', iconURL: FOOTER_ICONS.bot });
 
       if (body.user) embed.addFields({ name: 'Nutzer', value: body.user, inline: true });
       if (body.player) embed.addFields({ name: 'Player', value: body.player, inline: true });

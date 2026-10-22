@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { EmbedBuilder } from 'discord.js';
 import { getChannel } from '../../discord/channel-store.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { isMaintainerrEventCode } from '../../utils/maintainerr.js';
 import { postEmbed } from '../discord-poster.js';
@@ -46,7 +46,7 @@ export const maintainerrWebhook = new Hono().post('/', async (c) => {
   const rebuilt = new EmbedBuilder()
     .setColor(typeof source?.color === 'number' ? source.color : COLOR_FOR[kind] ?? Colors.info)
     .setTimestamp(new Date())
-    .setFooter({ text: 'MagguuBot · Maintainerr' });
+    .setFooter({ text: 'MagguuBot · Maintainerr', iconURL: FOOTER_ICONS.bot });
 
   if (source?.author?.name) {
     rebuilt.setAuthor({ name: source.author.name, iconURL: validHttpUrl(source.author.icon_url) });

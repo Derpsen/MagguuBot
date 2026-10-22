@@ -1,10 +1,10 @@
 import { EmbedBuilder } from 'discord.js';
 import type { EnrichedBluePost } from '../services/blue-tracker-enrich.js';
 import type { RssItem } from '../services/rss.js';
-import { truncate } from './colors.js';
+import { BRAND_COLOR, truncate } from './colors.js';
 import { htmlToText } from '../utils/html.js';
 
-const BLIZZARD_BLUE = 0x148ae3;
+const BLIZZARD_BLUE = BRAND_COLOR;
 const SOFT_WORD_CAP = 180;
 const HARD_CHAR_CAP = 3800;
 
@@ -16,11 +16,11 @@ interface PostType {
 
 const POST_TYPES: { test: RegExp; type: PostType }[] = [
   { test: /\b(hotfix)\b/i, type: { emoji: '🔥', label: 'Hotfix', color: 0xef4444 } },
-  { test: /\b(tuning|class changes?)\b/i, type: { emoji: '💉', label: 'Tuning', color: 0xf97316 } },
-  { test: /\b(balance)\b/i, type: { emoji: '⚖️', label: 'Balance', color: 0xeab308 } },
-  { test: /\b(ptr|public test realm|public test)\b/i, type: { emoji: '🧪', label: 'PTR', color: 0x8b5cf6 } },
-  { test: /\b(patch notes?|release notes?)\b/i, type: { emoji: '📋', label: 'Patch Notes', color: 0x06b6d4 } },
-  { test: /\b(maintenance|server status|downtime|restart)\b/i, type: { emoji: '🔧', label: 'Maintenance', color: 0x64748b } },
+  { test: /\b(tuning|class changes?)\b/i, type: { emoji: '💉', label: 'Tuning', color: BRAND_COLOR } },
+  { test: /\b(balance)\b/i, type: { emoji: '⚖️', label: 'Balance', color: BRAND_COLOR } },
+  { test: /\b(ptr|public test realm|public test)\b/i, type: { emoji: '🧪', label: 'PTR', color: BRAND_COLOR } },
+  { test: /\b(patch notes?|release notes?)\b/i, type: { emoji: '📋', label: 'Patch Notes', color: BRAND_COLOR } },
+  { test: /\b(maintenance|server status|downtime|restart)\b/i, type: { emoji: '🔧', label: 'Maintenance', color: BRAND_COLOR } },
 ];
 
 function classifyPost(title: string, description: string): PostType | null {

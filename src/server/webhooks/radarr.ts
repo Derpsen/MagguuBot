@@ -32,7 +32,7 @@ export const radarrWebhook = new Hono().post('/', async (c) => {
     case 'Grab': {
       const quality = body.release?.quality;
       const pingRoles = ['ping-movies'];
-      if (is4kQuality(quality)) pingRoles.push('ping-4k');
+      if (is4kQuality(quality)) pingRoles.push('ping-extras');
       await postEmbed({
         channelId: getChannel('grabs'),
         embed: buildGrabEmbed({

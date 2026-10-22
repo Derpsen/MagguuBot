@@ -255,7 +255,7 @@ export const githubWebhook = new Hono().post('/', async (c) => {
         prerelease: p.release.prerelease,
         addonRelease: isAddonRepository(p.repository.full_name, addonRepos),
       }),
-      pingRoles: p.release.prerelease ? [] : ['ping-github'],
+      pingRoles: p.release.prerelease ? [] : ['ping-magguuui'],
     });
     if (pollerOwnsRelease) markAddonReleaseAnnounced(p.release.tag_name);
     return c.json({ ok: true });

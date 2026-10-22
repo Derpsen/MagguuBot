@@ -8,6 +8,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { Colors } from '../../embeds/colors.js';
+import { findLayoutRole } from '../role-lookup.js';
 import type { SlashCommand } from './index.js';
 
 const COLOR_CHOICES = [
@@ -33,11 +34,9 @@ const PING_PRESETS = [
   { name: '📢 Announcements-Rolle', value: 'ping-announcements' },
   { name: '🎬 Film-Alerts', value: 'ping-movies' },
   { name: '📺 Serien-Alerts', value: 'ping-series' },
-  { name: '🔊 4K-Alerts', value: 'ping-4k' },
-  { name: '🌸 Anime-Alerts', value: 'ping-anime' },
-  { name: '⚔️ WoW Class Tuning', value: 'ping-wow-tuning' },
-  { name: '🧪 WoW PTR', value: 'ping-wow-ptr' },
-  { name: '🔨 GitHub Releases', value: 'ping-github' },
+  { name: '✨ 4K & Anime', value: 'ping-extras' },
+  { name: '🎮 WoW', value: 'ping-wow' },
+  { name: '🎨 MagguuUI-Updates', value: 'ping-magguuui' },
 ] as const;
 
 type PingPreset = (typeof PING_PRESETS)[number]['value'];
@@ -132,7 +131,7 @@ function resolvePing(
   if (preset === 'everyone') return { content: '@everyone', roleIds: [], parseTypes: ['everyone'] };
   if (preset === 'here') return { content: '@here', roleIds: [], parseTypes: ['everyone'] };
 
-  const role = guild.roles.cache.find((r) => r.name === preset);
+  const role = findLayoutRole(guild.roles.cache, preset);
   if (!role) return { content: undefined, roleIds: [], parseTypes: [] };
   return { content: `<@&${role.id}>`, roleIds: [role.id], parseTypes: [] };
 }

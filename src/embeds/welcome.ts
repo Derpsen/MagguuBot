@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { Colors } from './colors.js';
+import { Colors, FOOTER_ICONS } from './colors.js';
+import { PING_ROLE_BUTTONS } from '../discord/server-layout.js';
 
 export interface ChannelRefs {
   welcome?: string;
@@ -51,10 +52,10 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
       {
         name: '🚀 Quick-Start',
         value: [
-          `**1.** Regeln lesen → ${m(r.rules, 'regeln')}`,
-          `**2.** Rollen holen → ${m(r.roles, 'rollen')}`,
+          `**1.** Regeln lesen → ${m(r.rules, '👋・willkommen')}`,
+          `**2.** Ping-Rollen holen → Buttons unten in ${m(r.roles, '👋・willkommen')}`,
           `**3.** Erste Anfrage → ${m(r.requests, 'requests')}`,
-          `**4.** Commands entdecken → ${m(r.botHelp, 'bot-hilfe')}`,
+          '**4.** Commands entdecken → `/help`',
         ].join('\n'),
       },
       {
@@ -76,7 +77,7 @@ export function buildWelcomeHeroEmbed(r: ChannelRefs): EmbedBuilder {
         inline: true,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  Sonarr / Radarr / Seerr / SABnzbd / Tautulli' })
+    .setFooter({ text: 'MagguuBot  ·  Sonarr / Radarr / Seerr / SABnzbd / Tautulli', iconURL: FOOTER_ICONS.bot })
     .setTimestamp(new Date());
 }
 
@@ -94,7 +95,7 @@ export function buildRulesEmbed(): EmbedBuilder {
       },
       {
         name: '2️⃣ Spoiler sind Spoiler',
-        value: 'Packt sie in `||Spoiler-Tags||` oder geht in `#🔇・spoiler-zone`. Spoiler gehören in Tags oder in die Spoiler-Zone.',
+        value: 'Packt sie in `||Spoiler-Tags||` oder in einen Thread in `#💬・chat`.',
       },
       {
         name: '3️⃣ Keine Piraterie',
@@ -113,7 +114,7 @@ export function buildRulesEmbed(): EmbedBuilder {
         value: '`Warnung` → `Timeout` → `Kick` → `Ban`. Sichtbar im Mod-Log für Transparenz.',
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  Regeln v1' })
+    .setFooter({ text: 'MagguuBot  ·  Regeln v1', iconURL: FOOTER_ICONS.bot })
     .setTimestamp(new Date());
 }
 
@@ -167,7 +168,7 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
         value: [
           '`/announce` — styled Embed in einen Channel',
           '`/setup-server` — Struktur neu aufbauen/sortieren (idempotent)',
-          '`/cleanup-server` — Orphan-Channels löschen (mit Confirm)',
+          '`/cleanup-server` — fremde Kanäle ins 🗄️ ARCHIV (löscht nichts)',
           '`/doctor` — Config, Channels, Permissions, Dienste prüfen',
           '`/downloads-live` — Live-Downloadkarte ein/aus',
           '`/tag add|edit|delete` — Custom-Text-Antworten',
@@ -196,101 +197,33 @@ export function buildBotHelpEmbed(r: ChannelRefs): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  /help für die volle Liste mit Kategorien' })
+    .setFooter({ text: 'MagguuBot  ·  /help für die volle Liste mit Kategorien', iconURL: FOOTER_ICONS.bot })
     .setTimestamp(new Date());
 }
 
 export function buildRolePickerEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(Colors.seerr)
-    .setTitle('🎭 Deine Rollen')
+    .setColor(Colors.brand)
+    .setTitle('Ping-Rollen')
     .setDescription(
       [
-        'Klick auf einen Button — schaltet die Rolle an oder aus.',
+        '**MAGGUU · PINGS**',
+        'Ein Klick schaltet die Rolle an oder aus. Du wirst nur gepingt, wenn etwas Passendes kommt.',
         '',
-        '**🔓 Interessen** (obere Reihe) — schalten Channels frei. Ohne diese siehst du als Newcomer nur das Nötigste.',
+        PING_ROLE_BUTTONS.map((b) => `${b.emoji} ${b.label}`).join(' · '),
         '',
-        '**🔔 Pings** (untere Reihen) — du wirst benachrichtigt wenn was Relevantes passiert.',
-        '',
-        '_Rang-Rollen (Regular/VIP) vergibt der Bot automatisch nach Aktivität. Plex-User-Rolle vergibt ein Admin manuell für Request-Zugriff._',
+        '_Regular vergibt der Bot nach Aktivität. Plex-User vergibt ein Admin._',
       ].join('\n'),
     )
-    .addFields(
-      {
-        name: '🔓 Interessen — Channels freischalten',
-        value: [
-          '🎬 **Plex-Interesse** — schaltet MEDIA + DOWNLOADS frei',
-          '🎮 **WoW-Interesse** — schaltet blue-tracker frei',
-          '🎨 **Addon-Interesse** — schaltet addon-updates frei',
-        ].join('\n'),
-        inline: false,
-      },
-      {
-        name: '📺 Media-Pings',
-        value: [
-          '🎬 **Film-Alerts** — Radarr Grabs',
-          '📺 **Serien-Alerts** — Sonarr Grabs',
-          '🔊 **4K-Alerts** — nur bei 2160p-Releases (zusätzlich)',
-          '🌸 **Anime-Alerts** — manuelles Ping',
-        ].join('\n'),
-        inline: false,
-      },
-      {
-        name: '🎮 WoW + Meta-Pings',
-        value: [
-          '⚔️ **Class Tuning** — Balance/Hotfix Blue-Posts',
-          '🧪 **PTR-Alerts** — Public Test Realm Patchnotes',
-          '📢 **Announcements** — Server-Broadcasts',
-          '🔨 **GitHub Releases** — neue Bot/Stack-Versionen',
-        ].join('\n'),
-        inline: false,
-      },
-    )
-    .setFooter({ text: 'MagguuBot  ·  Rollen frei wählbar' });
+    .setFooter({ text: 'MagguuBot · ui.magguu.xyz', iconURL: FOOTER_ICONS.bot });
 }
 
-interface ButtonDef {
-  role: string;
-  label: string;
-  emoji: string;
-  style?: ButtonStyle;
-}
-
-const INTEREST_BUTTONS: ButtonDef[] = [
-  { role: 'Plex-Fan', label: 'Plex', emoji: '🎬', style: ButtonStyle.Primary },
-  { role: 'WoW-Fan', label: 'WoW', emoji: '🎮', style: ButtonStyle.Primary },
-  { role: 'MagguuUI', label: 'MagguuUI', emoji: '🎨', style: ButtonStyle.Primary },
-];
-
-const PING_BUTTONS: ButtonDef[] = [
-  { role: 'ping-movies', label: 'Film', emoji: '🎬' },
-  { role: 'ping-series', label: 'Serien', emoji: '📺' },
-  { role: 'ping-4k', label: '4K', emoji: '🔊' },
-  { role: 'ping-anime', label: 'Anime', emoji: '🌸' },
-  { role: 'ping-wow-tuning', label: 'WoW Tuning', emoji: '⚔️' },
-  { role: 'ping-wow-ptr', label: 'WoW PTR', emoji: '🧪' },
-  { role: 'ping-announcements', label: 'Announcements', emoji: '📢' },
-  { role: 'ping-github', label: 'GitHub', emoji: '🔨' },
-];
-
+/** The single role-button set (welcome channel panel and join DM). */
 export function buildRolePickerButtons(): ActionRowBuilder<ButtonBuilder>[] {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-
-  const interestRow = new ActionRowBuilder<ButtonBuilder>();
-  for (const def of INTEREST_BUTTONS) {
-    interestRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`role:toggle:${def.role}`)
-        .setLabel(def.label)
-        .setEmoji(def.emoji)
-        .setStyle(def.style ?? ButtonStyle.Primary),
-    );
-  }
-  rows.push(interestRow);
-
-  for (let i = 0; i < PING_BUTTONS.length; i += 4) {
+  for (let i = 0; i < PING_ROLE_BUTTONS.length; i += 3) {
     const row = new ActionRowBuilder<ButtonBuilder>();
-    for (const def of PING_BUTTONS.slice(i, i + 4)) {
+    for (const def of PING_ROLE_BUTTONS.slice(i, i + 3)) {
       row.addComponents(
         new ButtonBuilder()
           .setCustomId(`role:toggle:${def.role}`)
@@ -317,7 +250,7 @@ export function buildAnnouncementsEmbed(): EmbedBuilder {
         '_Wichtige Änderungen werden mit einem Role-Ping gepostet. Wer nicht gepingt werden will: stumm-schalten._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  broadcasts' });
+    .setFooter({ text: 'MagguuBot  ·  broadcasts', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildRequestsChannelEmbed(r: ChannelRefs): EmbedBuilder {
@@ -350,7 +283,7 @@ export function buildRequestsChannelEmbed(r: ChannelRefs): EmbedBuilder {
         ].join('\n'),
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  Seerr request pipeline' });
+    .setFooter({ text: 'MagguuBot  ·  Seerr request pipeline', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildApprovalsChannelEmbed(): EmbedBuilder {
@@ -369,7 +302,7 @@ export function buildApprovalsChannelEmbed(): EmbedBuilder {
       { name: '❌ Decline', value: 'User wird informiert, kein Download', inline: true },
       { name: '📜 Audit', value: 'Jede Entscheidung wird geloggt', inline: true },
     )
-    .setFooter({ text: 'MagguuBot  ·  admin decision queue' });
+    .setFooter({ text: 'MagguuBot  ·  admin decision queue', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildNewOnPlexChannelEmbed(): EmbedBuilder {
@@ -383,7 +316,7 @@ export function buildNewOnPlexChannelEmbed(): EmbedBuilder {
         '_Direkt in die Plex-App → Neuheiten-Sektion._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  Tautulli recently-added' });
+    .setFooter({ text: 'MagguuBot  ·  Tautulli recently-added', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildGrabsChannelEmbed(r: ChannelRefs): EmbedBuilder {
@@ -398,7 +331,7 @@ export function buildGrabsChannelEmbed(r: ChannelRefs): EmbedBuilder {
       { name: 'Was kommt danach?', value: `SABnzbd lädt → ${m(r.imports, 'imports')} → Plex` },
       { name: 'Dauert zu lang?', value: '`/queue` zeigt live den Fortschritt mit Progress-Bar' },
     )
-    .setFooter({ text: 'MagguuBot  ·  release grabbed' });
+    .setFooter({ text: 'MagguuBot  ·  release grabbed', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildImportsChannelEmbed(): EmbedBuilder {
@@ -412,7 +345,7 @@ export function buildImportsChannelEmbed(): EmbedBuilder {
         '**🎬 Upgrade**: wenn Sonarr/Radarr ein besseres Release gefunden hat, steht hier _Upgraded_ im Titel.',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  ready to stream' });
+    .setFooter({ text: 'MagguuBot  ·  ready to stream', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildFailuresChannelEmbed(): EmbedBuilder {
@@ -435,7 +368,7 @@ export function buildFailuresChannelEmbed(): EmbedBuilder {
         ].join('\n'),
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  needs attention' });
+    .setFooter({ text: 'MagguuBot  ·  needs attention', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildHealthChannelEmbed(): EmbedBuilder {
@@ -457,7 +390,7 @@ export function buildHealthChannelEmbed(): EmbedBuilder {
         '_Live-Snapshot jederzeit mit `/arr-status`._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  stack health' });
+    .setFooter({ text: 'MagguuBot  ·  stack health', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildGeneralChatEmbed(): EmbedBuilder {
@@ -477,7 +410,7 @@ export function buildGeneralChatEmbed(): EmbedBuilder {
         '_Keine Spoiler ohne Tag. Keine Links zu Piraten-Quellen._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  Community-Chat' });
+    .setFooter({ text: 'MagguuBot  ·  Community-Chat', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildBotCommandsChannelEmbed(): EmbedBuilder {
@@ -499,7 +432,7 @@ export function buildBotCommandsChannelEmbed(): EmbedBuilder {
         '_Für admin-only: `/announce` funktioniert auch hier — postet dann aber in den Ziel-Channel._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  /help für alles' });
+    .setFooter({ text: 'MagguuBot  ·  /help für alles', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildModLogChannelEmbed(): EmbedBuilder {
@@ -517,7 +450,7 @@ export function buildModLogChannelEmbed(): EmbedBuilder {
       { name: '🐌 SLOWMODE', value: 'Channel-Slowmode gesetzt', inline: true },
       { name: '🤖 AUTOMOD', value: 'Auto-gelöscht (Invite/Caps/Mention/Link/Phrase)', inline: true },
     )
-    .setFooter({ text: 'MagguuBot  ·  moderation audit' });
+    .setFooter({ text: 'MagguuBot  ·  moderation audit', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildAuditLogChannelEmbed(): EmbedBuilder {
@@ -534,7 +467,7 @@ export function buildAuditLogChannelEmbed(): EmbedBuilder {
         value: 'Deletes/Edits holst du mit `/snipe` und `/editsnipe`. Der `MessageContent`-Intent ist an (Autoresponder).',
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  server audit' });
+    .setFooter({ text: 'MagguuBot  ·  server audit', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildGithubChannelEmbed(): EmbedBuilder {
@@ -554,7 +487,7 @@ export function buildGithubChannelEmbed(): EmbedBuilder {
           'GitHub → Repo → Settings → Webhooks → Add → URL `<bot-url>/webhook/github` · Content-Type `application/json` · Secret = `GITHUB_WEBHOOK_SECRET` · Events: Push, Workflow runs, Releases, Pull requests, **Issues**',
       },
     )
-    .setFooter({ text: 'MagguuBot  ·  GitHub activity' });
+    .setFooter({ text: 'MagguuBot  ·  GitHub activity', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildPlexActivityChannelEmbed(): EmbedBuilder {
@@ -566,8 +499,6 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
         'Live-Feed der aktuellen Plex-Sessions: wer was schaut, pausiert, fortsetzt oder zu Ende gesehen hat.',
         '',
         'Pausierte oder feststeckende Sessions (oft Fire TV im Hintergrund) beendet der Bot nach **20 Minuten** automatisch. Live-Stand jederzeit mit `/plex-now-playing`.',
-        '',
-        '_Live-Stream-Counter siehst du außerdem im Voice-Channel **🎬 Plex: N** in der STATISTIK-Kategorie._',
       ].join('\n'),
     )
     .addFields(
@@ -580,7 +511,7 @@ export function buildPlexActivityChannelEmbed(): EmbedBuilder {
           'Tautulli → Settings → **Notification Agents** → Add Webhook · URL `http://<unraid-ip>:3000/webhook/tautulli` mit Header `X-Magguu-Token` = WEBHOOK_SECRET · Triggers: Playback Start/Pause/Resume/Stop + Watched + Recently Added (`created`) + Error',
       },
     )
-    .setFooter({ text: 'MagguuBot · Plex activity + live stream count' });
+    .setFooter({ text: 'MagguuBot · Plex activity + live stream count', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildMaintainerrChannelEmbed(): EmbedBuilder {
@@ -606,7 +537,7 @@ export function buildMaintainerrChannelEmbed(): EmbedBuilder {
           '*arr → Settings → Connect → Webhook → Triggers: **On Movie/Series Delete** + **On Movie/Episode File Delete** ✅ · *For Upgrade* aus (Upgrade kommt als Import-Karte)',
       },
     )
-    .setFooter({ text: 'MagguuBot · library cleanup feed' });
+    .setFooter({ text: 'MagguuBot · library cleanup feed', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildStarboardChannelEmbed(): EmbedBuilder {
@@ -626,7 +557,7 @@ export function buildStarboardChannelEmbed(): EmbedBuilder {
       { name: '✨ Update', value: 'Live — Count wird nachgezogen', inline: true },
       { name: '🧹 Aufräumen', value: 'Bei 0 Sternen wird der Eintrag gelöscht', inline: true },
     )
-    .setFooter({ text: 'MagguuBot  ·  highlights curated by you' });
+    .setFooter({ text: 'MagguuBot  ·  highlights curated by you', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
@@ -642,15 +573,15 @@ export function buildAddonUpdatesChannelEmbed(): EmbedBuilder {
         '• Manuell: ZIP entpacken und die **vier** Ordner (`MagguuUI`, `MagguuUI_Data`, `MagguuUI_EUI`, `MagguuUI_Media`) in `Interface/AddOns` ersetzen — alle aktiviert lassen',
         '• Danach WoW neu starten oder `/reload` — Ellesmere-Startpopup wird übersprungen. `/mui` Setup: **Magguu-Profile übernehmen** (Profile + Magguu Settings + Begleiter; Edit Mode MagguuUI einmal; Window & Tooltip Skins Precheck), **Magguu Settings** (nur Overlay/QoL) | **Profile laden** (aktiviert nur, außer Klassenlayouts; kein Neuimport). Scale `0.58` kommt mit Magguu-Profile übernehmen / Magguu Settings',
         '',
-        '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-github (Opt-in über `🎭・rollen`)._',
+        '_Pre-releases werden gepostet aber **nicht gepingt**. Nur stabile Releases pingen @ping-magguuui (Opt-in über die Buttons in `👋・willkommen`)._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  addon release feed' });
+    .setFooter({ text: 'MagguuBot  ·  addon release feed', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
-  const addonRef = r.addonUpdates ? `<#${r.addonUpdates}>` : '**#🎨・addon-updates**';
-  const rolesRef = r.roles ? `<#${r.roles}>` : '**#🎭・rollen**';
+  const addonRef = r.addonUpdates ? `<#${r.addonUpdates}>` : '**#📰・updates**';
+  const rolesRef = r.roles ? `<#${r.roles}>` : '**#👋・willkommen**';
   return new EmbedBuilder()
     .setColor(Colors.brand)
     .setAuthor({ name: 'MagguuUI  ·  Addon & Homelab FAQ' })
@@ -712,7 +643,7 @@ export function buildFaqChannelEmbed(r: ChannelRefs): EmbedBuilder {
         inline: false,
       },
     )
-    .setFooter({ text: 'MagguuUI  ·  Addon & Homelab FAQ' });
+    .setFooter({ text: 'MagguuUI  ·  Addon & Homelab FAQ', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildWeeklyDigestChannelEmbed(): EmbedBuilder {
@@ -726,7 +657,7 @@ export function buildWeeklyDigestChannelEmbed(): EmbedBuilder {
         '_Read-only. Läuft von selbst — kein Command nötig._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  weekly digest' });
+    .setFooter({ text: 'MagguuBot  ·  weekly digest', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildDownloadLiveChannelEmbed(): EmbedBuilder {
@@ -740,7 +671,7 @@ export function buildDownloadLiveChannelEmbed(): EmbedBuilder {
         'Admin: `/downloads-live enable|refresh|disable`',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  live queue card' });
+    .setFooter({ text: 'MagguuBot  ·  live queue card', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildMovieNightChannelEmbed(): EmbedBuilder {
@@ -758,12 +689,12 @@ export function buildMovieNightChannelEmbed(): EmbedBuilder {
         '_Voice dafür: 🎬 Movie Night._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  movie night' });
+    .setFooter({ text: 'MagguuBot  ·  movie night', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildBlueTrackerChannelEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(0x148ae3)
+    .setColor(Colors.brand)
     .setTitle('📰 WoW Blue-Tracker')
     .setDescription(
       [
@@ -779,7 +710,7 @@ export function buildBlueTrackerChannelEmbed(): EmbedBuilder {
       { name: '🔵 Quelle', value: 'WoW-Forum Blue-Tracker (RSS)', inline: true },
       { name: '🎯 Scope', value: 'Retail + PTR only', inline: true },
     )
-    .setFooter({ text: 'MagguuBot  ·  Blue-Tracker' });
+    .setFooter({ text: 'MagguuBot  ·  Blue-Tracker', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildSuggestionsChannelEmbed(): EmbedBuilder {
@@ -798,7 +729,7 @@ export function buildSuggestionsChannelEmbed(): EmbedBuilder {
         '_Bei "Angenommen" und "Abgelehnt" wird Voting geschlossen. Admins ändern Status via `/suggestion-status`._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  community feedback' });
+    .setFooter({ text: 'MagguuBot  ·  community feedback', iconURL: FOOTER_ICONS.bot });
 }
 
 export function buildSpoilerChannelEmbed(): EmbedBuilder {
@@ -812,5 +743,5 @@ export function buildSpoilerChannelEmbed(): EmbedBuilder {
         '_Kein ||Tag|| nötig. Wenn du nicht verspoilert werden willst: einfach diesen Channel muten._',
       ].join('\n'),
     )
-    .setFooter({ text: 'MagguuBot  ·  Spoiler-Zone ohne Tags' });
+    .setFooter({ text: 'MagguuBot  ·  Spoiler-Zone ohne Tags', iconURL: FOOTER_ICONS.bot });
 }

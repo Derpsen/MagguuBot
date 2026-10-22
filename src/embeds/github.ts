@@ -180,7 +180,7 @@ export interface PullRequestEmbedInput {
 
 export function buildPullRequestEmbed(i: PullRequestEmbedInput): EmbedBuilder {
   const icon = i.merged ? '🟣' : i.state === 'open' ? '🟢' : '🔴';
-  const color = i.merged ? 0x8250df : i.state === 'open' ? Colors.success : Colors.muted;
+  const color = i.merged ? Colors.brand : i.state === 'open' ? Colors.success : Colors.muted;
   return new EmbedBuilder()
     .setColor(color)
     .setAuthor({ name: i.repo.full_name, url: i.repo.html_url })

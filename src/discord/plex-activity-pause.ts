@@ -2,7 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { and, eq, isNotNull, lte, ne } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { plexActivityMessages } from '../db/schema.js';
-import { Colors } from '../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { PLEX_PAUSE_HOLD_MS, shouldFlushDeferredPause } from '../utils/plex-activity.js';
 import { getClient } from './client.js';
@@ -34,7 +34,7 @@ export async function runPlexPauseFlushTick(now = new Date()): Promise<void> {
         .setColor(Colors.warn)
         .setTitle('⏸️ Pausiert')
         .setTimestamp(now)
-        .setFooter({ text: 'MagguuBot · Plex-Aktivität' });
+        .setFooter({ text: 'MagguuBot · Plex-Aktivität', iconURL: FOOTER_ICONS.bot });
       await message.edit({ embeds: [embed] });
       db.update(plexActivityMessages)
         .set({ state: 'pause', pausedAt: null, updatedAt: now })

@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, truncate } from './colors.js';
+import { Colors, truncate, FOOTER_ICONS } from './colors.js';
 
 export interface WeeklyDigestData {
   periodLabel: string;
@@ -46,6 +46,6 @@ export function buildWeeklyDigestEmbed(data: WeeklyDigestData): EmbedBuilder {
       { name: '👑 Aktueller XP-Spitzenreiter', value: topUser },
       { name: '⚙️ Bot-Aktivität', value: truncate(sources, 1024) },
     )
-    .setFooter({ text: 'MagguuBot · automatisch jeden Sonntag' })
+    .setFooter({ text: 'MagguuBot · automatisch jeden Sonntag', iconURL: FOOTER_ICONS.bot })
     .setTimestamp(new Date());
 }

@@ -9,6 +9,7 @@ import { getSonarrQueue } from '../services/sonarr.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
 import { getClient } from './client.js';
+import { FOOTER_ICONS } from '../embeds/colors.js';
 
 const VERIFY_MS = 15 * 60 * 1000;
 
@@ -33,7 +34,7 @@ export async function runDownloadLiveTick(): Promise<void> {
   ]);
   const embed = buildQueueEmbed({ sonarr, radarr, sab })
     .setTitle('📡 Live-Downloads')
-    .setFooter({ text: 'MagguuBot · aktualisiert jede Minute' });
+    .setFooter({ text: 'MagguuBot · aktualisiert jede Minute', iconURL: FOOTER_ICONS.bot });
   const payloadHash = hashQueueEmbedPayload(embed);
   const hashHit = Boolean(
     existing

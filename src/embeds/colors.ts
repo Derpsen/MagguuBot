@@ -1,24 +1,30 @@
+/** Brand accent of ui.magguu.xyz. Every embed uses it; only errors and warnings differ. */
+export const BRAND_COLOR = 0x0cd29d;
+
 export const Colors = {
-  brand: 0x7c3aed,
-  success: 0x22c55e,
+  brand: BRAND_COLOR,
+  success: BRAND_COLOR,
   warn: 0xf59e0b,
   danger: 0xef4444,
-  info: 0x3b82f6,
-  sonarr: 0x35c5f4,
-  radarr: 0xffc230,
-  seerr: 0x7c3aed,
-  plex: 0xe5a00d,
-  sabnzbd: 0xffd100,
-  prowlarr: 0xe66000,
-  tautulli: 0xfa8500,
-  github: 0x24292f,
-  maintainerr: 0xa855f7,
-  blueTracker: 0x148ae3,
-  suggestion: 0x06b6d4,
-  muted: 0x64748b,
+  info: BRAND_COLOR,
+  sonarr: BRAND_COLOR,
+  radarr: BRAND_COLOR,
+  seerr: BRAND_COLOR,
+  plex: BRAND_COLOR,
+  sabnzbd: BRAND_COLOR,
+  prowlarr: BRAND_COLOR,
+  tautulli: BRAND_COLOR,
+  github: BRAND_COLOR,
+  maintainerr: BRAND_COLOR,
+  blueTracker: BRAND_COLOR,
+  suggestion: BRAND_COLOR,
+  muted: BRAND_COLOR,
 } as const;
 
-const FOOTER_ICONS: Record<string, string> = {
+/** Website logo (ui.magguu.xyz) used as the bot footer icon. */
+export const WEBSITE_LOGO_URL = 'https://ui.magguu.xyz/apple-touch-icon.png';
+
+export const FOOTER_ICONS: Record<string, string> = {
   sonarr: 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/256.png',
   radarr: 'https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/256.png',
   seerr: 'https://raw.githubusercontent.com/sct/overseerr/develop/public/android-chrome-512x512.png',
@@ -27,7 +33,7 @@ const FOOTER_ICONS: Record<string, string> = {
   tautulli: 'https://raw.githubusercontent.com/Tautulli/Tautulli/master/data/interfaces/default/images/logo-circle.png',
   github: 'https://github.githubassets.com/favicons/favicon-dark.png',
   maintainerr: 'https://raw.githubusercontent.com/jorenn92/Maintainerr/main/docs/assets/logo.png',
-  bot: 'https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/discord.png',
+  bot: WEBSITE_LOGO_URL,
 };
 
 export interface FooterOptions {
@@ -36,7 +42,7 @@ export interface FooterOptions {
 }
 
 export function buildFooter(opts: FooterOptions = {}): { text: string; iconURL?: string } {
-  const text = opts.text ?? 'MagguuBot';
+  const text = opts.text ?? 'MagguuBot · ui.magguu.xyz';
   const iconURL = opts.source ? FOOTER_ICONS[opts.source] : FOOTER_ICONS.bot;
   return { text, iconURL };
 }

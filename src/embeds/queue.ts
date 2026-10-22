@@ -3,7 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import type { RadarrQueueResponse } from '../services/radarr.js';
 import type { SabQueueResponse } from '../services/sabnzbd.js';
 import type { SonarrQueueResponse } from '../services/sonarr.js';
-import { Colors, clampProgress, formatBytes, progressBar, truncate } from './colors.js';
+import { Colors, clampProgress, formatBytes, progressBar, truncate, FOOTER_ICONS } from './colors.js';
 
 interface Line {
   title: string;
@@ -57,7 +57,7 @@ export function buildQueueEmbed(i: BuildQueueEmbedInput): EmbedBuilder {
     e.setDescription('_Queue is empty._');
   }
 
-  e.setFooter({ text: 'MagguuBot  ·  live snapshot' });
+  e.setFooter({ text: 'MagguuBot  ·  live snapshot', iconURL: FOOTER_ICONS.bot });
   return e;
 }
 

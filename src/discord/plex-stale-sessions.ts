@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { plexActivityMessages } from '../db/schema.js';
-import { Colors } from '../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../embeds/colors.js';
 import { getActiveSessions, terminateSession, type TautulliSession } from '../services/tautulli.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -106,7 +106,7 @@ async function closeOrphanActivityCards(sessions: TautulliSession[], now: Date):
         .setColor(Colors.muted)
         .setTitle('⏹️ Gestoppt')
         .setTimestamp(now)
-        .setFooter({ text: 'MagguuBot · Plex-Aktivität' });
+        .setFooter({ text: 'MagguuBot · Plex-Aktivität', iconURL: FOOTER_ICONS.bot });
       await message.edit({ embeds: [embed] });
       markStopped(row.id, now);
     } catch (err) {

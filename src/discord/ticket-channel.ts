@@ -6,8 +6,10 @@ import {
   type TextChannel,
   type User,
 } from 'discord.js';
+import { TICKET_CATEGORY_NAME } from './server-layout.js';
 
-export const TICKET_CATEGORY_NAME = '🎫 TICKETS';
+export { TICKET_CATEGORY_NAME };
+
 const MODERATOR_ROLE_NAMES = new Set(['Admin', 'Moderator']);
 
 interface CreatePrivateTicketChannelOptions {

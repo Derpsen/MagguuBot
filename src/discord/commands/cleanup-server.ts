@@ -2,63 +2,40 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
   ComponentType,
   EmbedBuilder,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
-  type GuildBasedChannel,
 } from 'discord.js';
 import { Colors } from '../../embeds/colors.js';
-import { TICKET_CATEGORY_NAME } from '../ticket-channel.js';
-import { KNOWN_CATEGORIES, isKnownChannelName } from './setup-server.js';
+import { executeActions } from '../../rollout/execute.js';
+import { describeAction, planRollout, type Action } from '../../rollout/plan.js';
+import { ARCHIVE_CATEGORY_NAME } from '../server-layout.js';
+import { clientRestFor, snapshotFromGuild } from './setup-server.js';
 import type { SlashCommand } from './index.js';
 
 const CONFIRM_MS = 60_000;
 
-/** Dynamic surfaces created outside STRUCTURE (tickets, join-to-create). */
-const PROTECTED_CATEGORIES = new Set([
-  TICKET_CATEGORY_NAME,
-  '🎙️ VOICE-CREATE',
-]);
-
-const PROTECTED_CHANNEL_NAMES = new Set([
-  'ticket-logs',
-  '➕ Voice erstellen',
-]);
-
-function isProtectedSurface(channel: GuildBasedChannel): boolean {
-  if (channel.type === ChannelType.GuildCategory) {
-    return KNOWN_CATEGORIES.has(channel.name) || PROTECTED_CATEGORIES.has(channel.name);
-  }
-  if (
-    channel.type !== ChannelType.GuildText
-    && channel.type !== ChannelType.GuildVoice
-    && channel.type !== ChannelType.GuildAnnouncement
-  ) {
-    return true;
-  }
-  if (isKnownChannelName(channel.name) || PROTECTED_CHANNEL_NAMES.has(channel.name)) {
-    return true;
-  }
-  const parentName = channel.parent?.name;
-  // Only dynamic categories may host unnamed children (open tickets, JTC rooms).
-  if (parentName && PROTECTED_CATEGORIES.has(parentName)) {
-    return true;
-  }
-  // JTC personal rooms if parent mapping was lost
-  if (channel.type === ChannelType.GuildVoice && channel.name.startsWith('🔊 ')) {
-    return true;
-  }
-  return false;
+/** Only the archive part of the shared plan: move foreign channels into 🗄️ ARCHIV, hide empty legacy categories. */
+function archiveActions(actions: Action[]): Action[] {
+  return actions.filter((a) =>
+    a.kind === 'archiveChannel'
+    || a.kind === 'hideCategory'
+    || (a.kind === 'createCategory' && a.name === ARCHIVE_CATEGORY_NAME),
+  );
 }
 
+/**
+ * `/cleanup-server` no longer deletes anything. It archives channels outside
+ * the layout; final deletion is the gated rollout step
+ * (`DELETE_APPROVED=yes node dist/rollout/discord-rollout.js --delete-archived --apply`).
+ */
 export const cleanupServerCommand: SlashCommand = {
   category: 'admin',
   data: new SlashCommandBuilder()
     .setName('cleanup-server')
-    .setDescription('Alle Channels + Kategorien löschen, die nicht zur MagguuBot-Struktur gehören')
+    .setDescription(`Fremde Kanäle nach ${ARCHIVE_CATEGORY_NAME} verschieben (löscht nichts)`)
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -67,37 +44,28 @@ export const cleanupServerCommand: SlashCommand = {
       return;
     }
 
-    const orphans = interaction.guild.channels.cache.filter((c) => !isProtectedSurface(c));
-
-    if (orphans.size === 0) {
-      await interaction.editReply(
-        '✅ Nichts zu löschen — alle Channels und Kategorien gehören zur MagguuBot-Struktur.',
-      );
+    const snap = await snapshotFromGuild(interaction.guild);
+    const actions = archiveActions(planRollout(snap).actions);
+    if (actions.length === 0) {
+      await interaction.editReply('✅ Nichts zu archivieren — alle Kanäle gehören zur MagguuBot-Struktur.');
       return;
     }
 
-    const list = orphans.map((c) => `• ${c.type === ChannelType.GuildCategory ? '📁' : c.type === ChannelType.GuildVoice ? '🔊' : '💬'} **${c.name}**`).join('\n');
-
     const embed = new EmbedBuilder()
-      .setColor(Colors.danger)
-      .setTitle('⚠️ Cleanup — zu löschen')
+      .setColor(Colors.warn)
+      .setTitle('Cleanup — archivieren')
       .setDescription(
         [
-          `**${orphans.size}** Channel(s) / Kategorie(n) sind nicht Teil der MagguuBot-Struktur:`,
+          `**${actions.length}** Schritt(e). Nachrichten bleiben erhalten, nichts wird gelöscht:`,
           '',
-          list.slice(0, 3800),
+          actions.map((a) => `• ${describeAction(a)}`).join('\n').slice(0, 3600),
           '',
-          '**Alle Messages in diesen Channels gehen verloren.**',
-          '',
-          'Klick **Bestätigen** innerhalb von 60s um zu löschen.',
+          'Klick **Bestätigen** innerhalb von 60s.',
         ].join('\n'),
       );
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('cleanup:confirm')
-        .setLabel('Bestätigen')
-        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('cleanup:confirm').setLabel('Bestätigen').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('cleanup:cancel').setLabel('Abbrechen').setStyle(ButtonStyle.Secondary),
     );
 
@@ -115,22 +83,11 @@ export const cleanupServerCommand: SlashCommand = {
         return;
       }
 
-      await button.update({ content: '🧹 Lösche…', embeds: [], components: [] });
-
-      let deleted = 0;
-      let failed = 0;
-      for (const ch of orphans.values()) {
-        try {
-          await ch.delete('MagguuBot /cleanup-server');
-          deleted++;
-        } catch {
-          failed++;
-        }
-      }
-
-      await interaction.editReply(
-        `✅ Fertig: **${deleted}** gelöscht, **${failed}** Fehler.`,
-      );
+      await button.update({ content: '🗄️ Archiviere…', embeds: [], components: [] });
+      const { results } = await executeActions(clientRestFor(interaction.guild), snap, actions, []);
+      const ok = results.filter((r) => r.status === 'ok').length;
+      const failed = results.filter((r) => r.status === 'error').length;
+      await interaction.editReply(`✅ Fertig: **${ok}** archiviert/versteckt, **${failed}** Fehler.`);
     } catch {
       await interaction.editReply({ content: 'Zeit abgelaufen.', embeds: [], components: [] });
     }

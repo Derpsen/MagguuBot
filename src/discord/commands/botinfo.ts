@@ -2,7 +2,7 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { webhookEvents } from '../../db/schema.js';
-import { Colors, formatBytes } from '../../embeds/colors.js';
+import { Colors, formatBytes, buildFooter } from '../../embeds/colors.js';
 import type { SlashCommand } from './index.js';
 
 function formatUptime(s: number): string {
@@ -37,7 +37,7 @@ export const botinfoCommand: SlashCommand = {
         { name: 'Ping', value: `${Math.round(interaction.client.ws.ping)} ms`, inline: true },
         { name: 'Guilds', value: `${interaction.client.guilds.cache.size}`, inline: true },
       )
-      .setFooter({ text: 'MagguuBot' })
+      .setFooter(buildFooter())
       .setTimestamp(new Date());
     await interaction.reply({ embeds: [e], flags: MessageFlags.Ephemeral });
   },

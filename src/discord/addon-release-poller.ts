@@ -99,7 +99,7 @@ export async function runAddonReleasePollTick(): Promise<void> {
       body: release.body,
       url: release.html_url,
     }),
-    pingRoles: ['ping-github'],
+    pingRoles: ['ping-magguuui'],
   });
   if (message || !channelId) markAddonReleaseAnnounced(release.tag_name);
   logger.info({ repo, tag: release.tag_name, posted: Boolean(message) }, 'addon release announced');

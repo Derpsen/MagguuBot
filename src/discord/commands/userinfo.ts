@@ -2,7 +2,7 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { warnings } from '../../db/schema.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import { getUserXp, levelFromXp } from '../xp.js';
 import type { SlashCommand } from './index.js';
 
@@ -54,7 +54,7 @@ export const userinfoCommand: SlashCommand = {
         { name: 'Verwarnungen', value: `${warnCount}`, inline: true },
         { name: `Rollen${member?.roles.cache.size ? ` (${member.roles.cache.size - 1})` : ''}`, value: roles || '_none_' },
       )
-      .setFooter({ text: 'MagguuBot  ·  userinfo' });
+      .setFooter({ text: 'MagguuBot  ·  userinfo', iconURL: FOOTER_ICONS.bot });
 
     await interaction.editReply({ embeds: [e] });
   },

@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { Colors, formatBytes, truncate } from './colors.js';
+import { Colors, formatBytes, truncate, FOOTER_ICONS } from './colors.js';
 
 export type SabEventStatus = 'complete' | 'failed' | 'warning';
 
@@ -24,7 +24,7 @@ export function buildSabEventEmbed(i: SabEventEmbedInput): EmbedBuilder {
     .setAuthor({ name: `SABnzbd  ·  ${label}` })
     .setTitle(`${icon}  ${truncate(i.name, 240)}`)
     .setTimestamp(new Date())
-    .setFooter({ text: 'MagguuBot  ·  SABnzbd' });
+    .setFooter({ text: 'MagguuBot  ·  SABnzbd', iconURL: FOOTER_ICONS.bot });
 
   const fields: { name: string; value: string; inline?: boolean }[] = [];
   if (i.category) fields.push({ name: 'Category', value: i.category, inline: true });

@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import type { RadarrCalendarEntry } from '../services/radarr.js';
 import type { SonarrCalendarEntry } from '../services/sonarr.js';
-import { Colors, truncate } from './colors.js';
+import { Colors, truncate, FOOTER_ICONS } from './colors.js';
 
 interface Input {
   sonarr: SonarrCalendarEntry[];
@@ -46,7 +46,7 @@ export function buildCalendarEmbed(i: Input): EmbedBuilder {
     e.setDescription(`_Nichts geplant in den nächsten ${i.days} Tagen._`);
   }
 
-  e.setFooter({ text: 'MagguuBot  ·  only unaired / not-yet-downloaded' });
+  e.setFooter({ text: 'MagguuBot  ·  only unaired / not-yet-downloaded', iconURL: FOOTER_ICONS.bot });
   return e;
 }
 

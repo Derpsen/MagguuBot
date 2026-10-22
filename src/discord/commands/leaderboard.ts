@@ -1,5 +1,5 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import { getLeaderboard, levelFromXp } from '../xp.js';
 import type { SlashCommand } from './index.js';
 
@@ -35,7 +35,7 @@ export const leaderboardCommand: SlashCommand = {
       .setColor(Colors.brand)
       .setTitle('🏆 Top 10 Chatter')
       .setDescription(lines.join('\n'))
-      .setFooter({ text: 'MagguuBot  ·  leaderboard' });
+      .setFooter({ text: 'MagguuBot  ·  leaderboard', iconURL: FOOTER_ICONS.bot });
 
     await interaction.editReply({ embeds: [e] });
   },

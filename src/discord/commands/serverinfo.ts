@@ -1,5 +1,5 @@
 import { ChannelType, EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { Colors } from '../../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import type { SlashCommand } from './index.js';
 
 export const serverinfoCommand: SlashCommand = {
@@ -37,7 +37,7 @@ export const serverinfoCommand: SlashCommand = {
         { name: 'Text-Channels', value: `${text}`, inline: true },
         { name: 'Voice-Channels', value: `${voice}`, inline: true },
       )
-      .setFooter({ text: 'MagguuBot  ·  serverinfo' });
+      .setFooter({ text: 'MagguuBot  ·  serverinfo', iconURL: FOOTER_ICONS.bot });
 
     if (g.description) e.setDescription(g.description);
     const banner = g.bannerURL({ size: 1024 });

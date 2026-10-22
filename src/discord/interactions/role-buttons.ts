@@ -1,14 +1,16 @@
 import { MessageFlags, type ButtonInteraction, type GuildMember } from 'discord.js';
 import { logger } from '../../utils/logger.js';
+import { findLayoutRole } from '../role-lookup.js';
+import { PING_ROLE_BUTTONS, canonicalRoleName } from '../server-layout.js';
 
+// Layout ping roles plus legacy names, so buttons on older panels keep working
+// (legacy names resolve to their merged layout role).
 const TOGGLEABLE = new Set([
-  'ping-movies',
-  'ping-series',
+  ...PING_ROLE_BUTTONS.map((b) => b.role),
   'ping-4k',
   'ping-anime',
   'ping-wow-tuning',
   'ping-wow-ptr',
-  'ping-announcements',
   'ping-github',
   'Plex-Fan',
   'WoW-Fan',
@@ -26,10 +28,10 @@ export async function handleRoleButton(interaction: ButtonInteraction): Promise<
     return;
   }
 
-  const role = interaction.guild.roles.cache.find((r) => r.name === roleName);
+  const role = findLayoutRole(interaction.guild.roles.cache, roleName);
   if (!role) {
     await interaction.reply({
-      content: `Rolle **${roleName}** existiert nicht. Lass einen Admin \`/setup-server\` ausführen.`,
+      content: `Rolle **${canonicalRoleName(roleName)}** existiert nicht. Lass einen Admin \`/setup-server\` ausführen.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -43,12 +45,12 @@ export async function handleRoleButton(interaction: ButtonInteraction): Promise<
     if (hasRole) {
       await member.roles.remove(role, 'role-picker button');
       await interaction.editReply({
-        content: `❌ **${roleName}** entfernt. Du bekommst keine Pings mehr dazu.`,
+        content: `❌ **${role.name}** entfernt. Du bekommst keine Pings mehr dazu.`,
       });
     } else {
       await member.roles.add(role, 'role-picker button');
       await interaction.editReply({
-        content: `✅ **${roleName}** zugewiesen. Du wirst ab jetzt gepingt.`,
+        content: `✅ **${role.name}** zugewiesen. Du wirst ab jetzt gepingt.`,
       });
     }
   } catch (err) {
