@@ -216,3 +216,9 @@ test('ticket channels are private, staff + bot can see them, bot in the create c
   assert.equal(verifyTicketOverwrites(api.filter((o) => o.id !== 'G'), cat).length, 1);
   assert.equal(verifyTicketOverwrites([{ id: 'G', type: 0, allow: '0', deny: '0' }, ...api.slice(1)], cat).length, 1);
 });
+
+test('markdown matrix escapes backslashes and pipes in cells', async () => {
+  const { matrixMarkdown } = await import('../src/rollout/acceptance-plan.ts');
+  const [, , row] = matrixMarkdown([{ source: 'a|b\\', key: 'k', channel: 'c\nd', routing: 'ok', test: 'ok' }]);
+  assert.equal(row, '| a\\|b\\\\ | k | c d | ok | ok |');
+});

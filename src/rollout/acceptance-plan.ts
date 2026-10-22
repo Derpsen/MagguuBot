@@ -245,7 +245,7 @@ export interface SectionResult {
   lines: string[];
 }
 
-const cell = (s: string): string => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+const cell = (s: string): string => s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
 export function matrixMarkdown(rows: readonly MatrixRow[]): string[] {
   return [
