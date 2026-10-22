@@ -129,7 +129,7 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | Seerr MEDIA_PENDING (with Approve/Decline buttons) | `approvals` → `⏳・freigaben` |
 | Seerr approved/declined/available/failed/deleted | `requests` → `📝・anfragen` |
 | Tautulli recently_added / created | `newOnPlex` → `✨・neu-auf-plex` |
-| Tautulli playback events | `plexActivity` → `📡・downloads` |
+| Tautulli playback events | `plexActivity` → `🎬・plex-aktivität` |
 | Sonarr/Radarr SeriesDelete/MovieDelete/*FileDelete | `health` → `🩺・status` |
 | Sonarr/Radarr/Prowlarr health + warnings + ApplicationUpdate | `health` → `🩺・status` |
 | Member join welcome embed | `welcome` → `👋・willkommen` |
@@ -142,19 +142,32 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 | Ticket close + transcripts | `ticketLogs` → `📋・logs` (name fallback `TICKET_LOG_CHANNEL_NAME`) |
 | WoW Blue-Tracker RSS | `blizzard` → `🟦・blizzard-updates` |
 | Multi-RSS feeds | per-feed `channel_id` in `rss_feeds` table |
-| Starboard (⭐ threshold) | `starboard` → `🎬・movie-night` |
+| Starboard (⭐ threshold) | `starboard` → `💬・chat` |
 | Automatic weekly digest | `weeklyDigest` → `✨・neu-auf-plex` |
 | Auto-updating queue card | `downloadLive` → `📡・downloads` |
 | Movie-Night voting | `movieNight` → `🎬・movie-night` |
+| Level/XP | no post (roles only) · `/remindme` → DM, fallback in the command's channel |
+| Bazarr, Uptime Kuma, Twitch | not integrated |
+
+`📡・downloads` carries **only** Sonarr/Radarr/SABnzbd output (`DOWNLOADS_KEYS` in `src/utils/routing.ts`: `downloadLive`, `grabs`, `imports`) and exactly one live card, pinned. `ROUTES` in `src/utils/routing.ts` is the source → key list used by `/doctor`, the daily self-check and the acceptance CLI.
 
 ## Server layout & rollout
 
-- Layout (5 categories, 16 channels, 11 roles) lives in `src/discord/server-layout.ts`: `STRUCTURE`, `ROLES` (with `oldNames` = rename/reuse, `mergeFrom` = member migration), name constants (`CHANNEL`, `ROLE`, `TICKET_LOG_CHANNEL_NAME`, `TICKET_CATEGORY_NAME`, `JTC_*`, `ARCHIVE_CATEGORY_NAME` = `🗄️ ARCHIV`) and the single role-button set `PING_ROLE_BUTTONS`.
+- Layout (5 categories, 17 channels, 11 roles) lives in `src/discord/server-layout.ts`: `STRUCTURE`, `ROLES` (with `oldNames` = rename/reuse, `mergeFrom` = member migration), name constants (`CHANNEL`, `ROLE`, `TICKET_LOG_CHANNEL_NAME`, `TICKET_CATEGORY_NAME`, `JTC_*`, `ARCHIVE_CATEGORY_NAME` = `🗄️ ARCHIV`) and the single role-button set `PING_ROLE_BUTTONS`.
 - Planning is pure (`src/rollout/plan.ts`, tests in `tests/discord-rollout.test.ts`); `/setup-server`, `/cleanup-server` and the CLI share it. Ping/role lookups go through `findLayoutRole` so legacy names (`ping-4k`, `ping-github`, …) keep working until the rename.
 - `/setup-server` renames/reuses, moves foreign channels to `🗄️ ARCHIV`, hides empty legacy categories, re-points bot keys and sets `autoRoleId` to the real Newcomer id. It **never deletes** channels or roles. `/cleanup-server` only archives. Nothing deletes layout channels/roles on startup (only JTC personal rooms and closed tickets are deleted by their features).
 - One-shot CLI inside the container: `node dist/rollout/discord-rollout.js` (`--dry-run` default, `--apply`; also enables Community, onboarding and welcome screen, migrates members of merged roles). Deletion is separate: `--delete-archived` plus env `DELETE_APPROVED=yes`, only channels in `🗄️ ARCHIV` without open bot cards/DB references, empty legacy categories and empty non-layout roles. `--apply` takes a DB snapshot first and aborts on pending webhook retries. After `--apply` restart the container (channel cache is per process).
+- Community **public updates** channel is the owner's choice (`📢・ankündigungen`): planner/executor only fill it when unset; cards, acceptance and `/doctor` never PATCH it (doctor only reads it).
+- Ticket channels: `ticketChannelOverwrites` / `ticketCategoryOverwrites` in `src/utils/ticket-perms.ts` (everyone hidden, opener + Admin/Moderator + bot in the create call). `🎫 TICKETS` is found by name and created hidden if missing; transcripts go to `ticketLogs` (`📋・logs`).
 - Bot role sits below Admin/Moderator live, so their permission edits are reported as manual steps.
 - Embeds: one accent `BRAND_COLOR` #0CD29D (only `warn` #F59E0B and `danger` #EF4444 differ); bot footer icon is the Website logo (`WEBSITE_LOGO_URL`). Stats voice counters are gone.
+
+## Cards, pins & acceptance
+
+- Cards live in `src/embeds/cards.ts` (`CARDS`, website style, short German text, mentions resolved at post time, only registered commands listed). Pinned per channel: willkommen (welcome + rules + roles), hilfe (FAQ + `🎫 Support-Tickets` panel with the `ticket-category:open` select), bot-befehle (commands), status, logs, updates, blizzard-updates, plex-aktivität, neu-auf-plex, anfragen/freigaben. `📡・downloads` has only the live card (pinned by `download-live.ts`). Pin limit: only the oldest **bot** pin is evicted (`src/discord/pin.ts`).
+- `node dist/rollout/discord-cards.js` (inside the container): `--export <dir>` (bot messages + all pins, secrets masked), `--dry-run` (default), `--apply` (creates/reuses `🟦・blizzard-updates` and `🎬・plex-aktivität`, re-points keys, replaces old bot cards, deletes misplaced Plex-activity cards and duplicate live panels, never guild settings), `--check` (dead `<#id>` mentions / unknown commands). Only bot-authored messages are ever touched. Restart the container after `--apply`.
+- `node dist/rollout/discord-acceptance.js`: `--dry-run` (default, read-only), `--apply` (marked test post per routing key with post → verify → delete, test ticket channel with the real overwrite spec, missing `🎫 TICKETS`/its overwrites, deletes bot-authored offenders from the 90-day scan: transient misroutes, duplicate live panels, untracked old cards, leftover test posts; history is report-only), `--report` (read-only + last `--apply` results). Output: `<db dir>/acceptance/*.md|json`. Exit 0 green · 6 findings · 2 API errors. Sections: routing matrix, 90-day scan, slash diff (guild vs code, removed services, global), tickets, permissions/roles/onboarding (`planRollout` drift), stored IDs (`src/utils/stale-ids.ts`).
+- `/doctor` and the daily self-check (`src/discord/self-check.ts`, scheduler tick, posts to `modLog`/`📋・logs` **only on failure**) run routing, stored IDs, card/pin audit and the read-only public-updates check.
 
 ## Slash commands (52 total, categorized in `/help`)
 
