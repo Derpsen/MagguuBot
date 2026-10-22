@@ -17,10 +17,12 @@ import { getSeerrRequestCount } from '../../services/seerr.js';
 import { getSonarrStatus } from '../../services/sonarr.js';
 import { resolveAutoRoleTarget } from '../auto-role.js';
 import { getChannel, type ChannelKey } from '../channel-store.js';
+import { runSelfCheck } from '../self-check.js';
 import type { SlashCommand } from './index.js';
 
 const REQUIRED_CHANNELS: ChannelKey[] = [
   'requests', 'approvals', 'grabs', 'imports', 'failures', 'health', 'weeklyDigest', 'downloadLive', 'movieNight',
+  'plexActivity', 'newOnPlex', 'blizzard', 'addonUpdates', 'github', 'modLog', 'ticketLogs', 'welcome', 'faq',
 ];
 
 export const doctorCommand: SlashCommand = {
@@ -91,6 +93,8 @@ export const doctorCommand: SlashCommand = {
     const dashboardPartial = dashboardValues.some(Boolean) && !dashboardConfigured;
     checks.push({ label: 'Dashboard', ok: !dashboardPartial, detail: dashboardConfigured ? 'vollständig konfiguriert' : dashboardPartial ? 'nur teilweise konfiguriert' : 'bewusst deaktiviert' });
     checks.push({ label: 'Frontend-Build', ok: existsSync(resolve('dist-frontend/index.html')), detail: existsSync(resolve('dist-frontend/index.html')) ? 'vorhanden' : 'npm run build ausführen' });
+
+    checks.push(...(await runSelfCheck(interaction.guild)));
 
     const services = await Promise.all([
       serviceCheck('Sonarr', Boolean(config.SONARR_URL && config.SONARR_API_KEY), () => getSonarrStatus()),

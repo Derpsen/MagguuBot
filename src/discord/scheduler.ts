@@ -24,6 +24,7 @@ import { runAutomaticBackupTick } from './automatic-backup.js';
 import { runPlexActivityCleanupTick } from './plex-activity-cleanup.js';
 import { runPlexPauseFlushTick } from './plex-activity-pause.js';
 import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
+import { runDailySelfCheckTick } from './self-check.js';
 import { runWebhookRetryTick } from '../server/webhook-retry.js';
 
 const REMINDER_TICK_MS = 30_000;
@@ -44,6 +45,7 @@ const WEBHOOK_RETRY_TICK_MS = 60_000;
 const PLEX_ACTIVITY_CLEANUP_TICK_MS = 60 * 60_000;
 const PLEX_PAUSE_FLUSH_TICK_MS = 30_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
+const SELF_CHECK_TICK_MS = 60 * 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
@@ -64,6 +66,7 @@ let webhookRetryTimer: NodeJS.Timeout | null = null;
 let plexActivityCleanupTimer: NodeJS.Timeout | null = null;
 let plexPauseFlushTimer: NodeJS.Timeout | null = null;
 let plexStaleSessionTimer: NodeJS.Timeout | null = null;
+let selfCheckTimer: NodeJS.Timeout | null = null;
 const activeTicks = new Set<string>();
 
 export function startScheduler(): void {
@@ -154,6 +157,10 @@ export function startScheduler(): void {
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session tick failed');
   }, PLEX_STALE_SESSION_TICK_MS);
 
+  selfCheckTimer = setInterval(() => {
+    runTick('self-check', () => runDailySelfCheckTick(), 'daily self-check failed');
+  }, SELF_CHECK_TICK_MS);
+
   setImmediate(() => {
     runTick('reminders', processDueReminders, 'reminder boot tick failed');
     runTick('announcements', processDueAnnouncements, 'announce boot tick failed');
@@ -238,6 +245,7 @@ export function stopScheduler(): void {
   if (plexActivityCleanupTimer) clearInterval(plexActivityCleanupTimer);
   if (plexPauseFlushTimer) clearInterval(plexPauseFlushTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
+  if (selfCheckTimer) clearInterval(selfCheckTimer);
   remindersTimer = null;
   announceTimer = null;
   blueTrackerTimer = null;
@@ -257,6 +265,7 @@ export function stopScheduler(): void {
   plexActivityCleanupTimer = null;
   plexPauseFlushTimer = null;
   plexStaleSessionTimer = null;
+  selfCheckTimer = null;
 }
 
 const COLOR_MAP: Record<string, number> = {
