@@ -1,16 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import {
-  Clock,
-  ShieldAlert,
-  Trophy,
-  Webhook,
-  Inbox,
-  Star,
-  Tag as TagIcon,
-  Ticket,
-  Calendar,
-} from '@lucide/vue';
 import { api, ApiError } from '../lib/api';
 import Skeleton from '../components/Skeleton.vue';
 
@@ -95,7 +84,7 @@ const requestSegments = computed(() => {
   if (!total || !seerrWeekly.value) return [];
   let x = 0;
   return [
-    { label: 'Approved', value: seerrWeekly.value.approved, color: 'bg-emerald-500', fill: '#10b981' },
+    { label: 'Approved', value: seerrWeekly.value.approved, color: 'bg-emerald-500', fill: '#0cd29d' },
     { label: 'Pending', value: seerrWeekly.value.pending, color: 'bg-amber-500', fill: '#f59e0b' },
     { label: 'Declined', value: seerrWeekly.value.declined, color: 'bg-red-500', fill: '#ef4444' },
     { label: 'Failed', value: seerrWeekly.value.failed, color: 'bg-orange-500', fill: '#f97316' },
@@ -121,155 +110,78 @@ function formatUptime(sec: number): string {
   <div>
     <div class="page-header">
       <div>
-        <h1 class="page-title">Übersicht</h1>
-        <p class="page-subtitle">Live-Status deines Bots und der letzten Aktivität.</p>
+        <p class="mini-label">Übersicht</p>
+        <h1 class="page-title mt-1.5">MagguuBot</h1>
+        <p class="page-subtitle">Live-Status des Bots und der letzten Aktivität.</p>
       </div>
-      <div class="flex items-center gap-2 text-xs text-slate-500">
-        <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-400" />
         Live · {{ lastUpdated?.toLocaleTimeString() ?? 'verbinde …' }}
-        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load()">↻</button>
+        <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load()">Aktualisieren</button>
       </div>
     </div>
 
-    <div v-if="loadError" class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+    <p v-if="loadError" class="mt-4 border-t border-amber-300/40 pt-3 text-sm text-amber-300">
       {{ loadError }} Die letzte erfolgreiche Ansicht bleibt sichtbar.
-    </div>
+    </p>
 
-    <div v-if="loading" class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <div v-for="i in 8" :key="i" class="skeleton h-24" />
-    </div>
+    <section class="mt-8 border-t border-line pt-5">
+      <p class="mini-label">Status</p>
+      <div v-if="loading" class="mt-3"><Skeleton :rows="2" /></div>
+      <dl v-else-if="stats" class="mt-3 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div><dt class="text-xs text-slate-400">Uptime</dt><dd class="stat-number">{{ formatUptime(stats.uptimeSeconds) }}</dd></div>
+        <div><dt class="text-xs text-slate-400">Webhooks 24 h</dt><dd class="stat-number">{{ stats.webhooksLast24h }}</dd></div>
+        <router-link to="/requests" class="group"><dt class="text-xs text-slate-400">Offene Anfragen</dt><dd class="stat-number group-hover:underline underline-offset-4">{{ stats.pendingSeerrCount }}</dd></router-link>
+        <router-link to="/moderation?tab=tickets" class="group"><dt class="text-xs text-slate-400">Offene Tickets</dt><dd class="stat-number group-hover:underline underline-offset-4">{{ stats.openTicketsCount }}</dd></router-link>
+        <router-link to="/moderation?tab=warnings" class="group"><dt class="text-xs text-slate-400">Verwarnungen</dt><dd class="stat-number group-hover:underline underline-offset-4">{{ stats.warningsCount }}</dd></router-link>
+      </dl>
+      <p v-if="stats" class="mt-4 text-sm leading-7 text-silver-300">
+        <router-link to="/members?tab=xp" class="hover:underline underline-offset-4">Top-Nutzer {{ stats.topUser ? `${stats.topUser.username} · Lv ${stats.topUser.level}` : '—' }}</router-link>
+        <span class="px-1.5 text-white/25">·</span>
+        <router-link to="/members?tab=reminders" class="hover:underline underline-offset-4">Erinnerungen {{ stats.remindersCount }}</router-link>
+        <span class="px-1.5 text-white/25">·</span>
+        <router-link to="/content?tab=scheduled" class="hover:underline underline-offset-4">Geplant {{ stats.scheduledPending }}</router-link>
+        <span class="px-1.5 text-white/25">·</span>
+        <router-link to="/content?tab=tags" class="hover:underline underline-offset-4">Tags {{ stats.tagsCount }}</router-link>
+        <span class="px-1.5 text-white/25">·</span>
+        <span>Starboard {{ stats.starboardCount }}</span>
+      </p>
+    </section>
 
-    <div v-else-if="stats" class="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <div class="stat-card">
-        <div class="flex items-center gap-2">
-          <Clock class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Uptime</span>
-        </div>
-        <div class="stat-number">{{ formatUptime(stats.uptimeSeconds) }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="flex items-center gap-2">
-          <Webhook class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Webhooks 24h</span>
-        </div>
-        <div class="stat-number">{{ stats.webhooksLast24h }}</div>
-      </div>
-      <router-link to="/warnings" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <ShieldAlert class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Verwarnungen</span>
-        </div>
-        <div class="stat-number">{{ stats.warningsCount }}</div>
-      </router-link>
-      <router-link to="/leaderboard" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <Trophy class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Top-Nutzer</span>
-        </div>
-        <div v-if="stats.topUser" class="stat-number">
-          {{ stats.topUser.username }}
-          <span class="ml-1 text-sm font-normal text-slate-500">Lv {{ stats.topUser.level }}</span>
-        </div>
-        <div v-else class="stat-number text-slate-600">—</div>
-      </router-link>
-      <router-link to="/requests" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <Inbox class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Offene Seerr-Anfragen</span>
-        </div>
-        <div class="stat-number">{{ stats.pendingSeerrCount }}</div>
-      </router-link>
-      <router-link to="/tickets" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <Ticket class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Offene Tickets</span>
-        </div>
-        <div class="stat-number">{{ stats.openTicketsCount }}</div>
-      </router-link>
-      <router-link to="/reminders" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <Clock class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Aktive Erinnerungen</span>
-        </div>
-        <div class="stat-number">{{ stats.remindersCount }}</div>
-      </router-link>
-      <router-link to="/scheduled" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <Calendar class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Geplant</span>
-        </div>
-        <div class="stat-number">{{ stats.scheduledPending }}</div>
-      </router-link>
-      <router-link to="/tags" class="stat-card clickable">
-        <div class="flex items-center gap-2">
-          <TagIcon class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Tags</span>
-        </div>
-        <div class="stat-number">{{ stats.tagsCount }}</div>
-      </router-link>
-      <div class="stat-card">
-        <div class="flex items-center gap-2">
-          <Star class="h-4 w-4 text-slate-500" />
-          <span class="stat-label">Starboard</span>
-        </div>
-        <div class="stat-number">{{ stats.starboardCount }}</div>
-      </div>
-    </div>
-
-    <div v-if="services.length" class="mt-6 card">
+    <section v-if="services.length" class="mt-8 border-t border-line pt-5">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold text-white">Dienste</h2>
-          <p class="mt-0.5 text-xs text-slate-500">Direkte Erreichbarkeit und letzter Maintainerr-Webhook</p>
-        </div>
+        <p class="mini-label">Dienste</p>
         <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load(true)">Neu prüfen</button>
       </div>
-      <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <div v-for="service in services" :key="service.key" class="rounded-lg border border-line bg-surface-2 px-4 py-3">
-          <div class="flex items-center justify-between gap-3">
-            <span class="font-medium text-white">{{ service.label }}</span>
-            <span
-              class="rounded-full px-2 py-0.5 text-[11px] font-medium"
-              :class="service.state === 'ok' ? 'bg-emerald-500/15 text-emerald-400' : service.state === 'error' ? 'bg-red-500/15 text-red-400' : service.state === 'waiting' ? 'bg-amber-500/15 text-amber-300' : 'bg-slate-500/15 text-slate-400'"
-            >
-              {{ service.state === 'ok' ? 'online' : service.state === 'error' ? 'Fehler' : service.state === 'waiting' ? 'wartet' : 'deaktiviert' }}
-            </span>
-          </div>
-          <div class="mt-1 text-xs text-slate-400">{{ service.detail }}</div>
-          <div v-if="service.latencyMs !== null" class="mt-1 text-[11px] text-slate-600">{{ service.latencyMs }} ms</div>
-          <div v-else-if="service.lastEventAt" class="mt-1 text-[11px] text-slate-600">Letztes Event: {{ new Date(service.lastEventAt).toLocaleString() }}</div>
-        </div>
-      </div>
-    </div>
+      <ul class="mt-2">
+        <li v-for="service in services" :key="service.key" class="row text-sm">
+          <span class="font-medium text-white">{{ service.label }}</span>
+          <span class="min-w-0 flex-1 truncate text-xs text-slate-400">{{ service.detail }}</span>
+          <span v-if="service.latencyMs !== null" class="font-mono text-[11px] text-slate-500">{{ service.latencyMs }} ms</span>
+          <span v-else-if="service.lastEventAt" class="text-[11px] text-slate-500">{{ new Date(service.lastEventAt).toLocaleString() }}</span>
+          <span
+            class="w-20 text-right text-xs font-medium"
+            :class="service.state === 'ok' ? 'text-brand-300' : service.state === 'error' ? 'text-red-400' : service.state === 'waiting' ? 'text-amber-300' : 'text-slate-500'"
+          >
+            {{ service.state === 'ok' ? 'online' : service.state === 'error' ? 'Fehler' : service.state === 'waiting' ? 'wartet' : 'deaktiviert' }}
+          </span>
+        </li>
+      </ul>
+    </section>
 
-    <div v-if="seerrWeekly && seerrWeekly.total > 0" class="mt-6 card">
+    <section v-if="seerrWeekly && seerrWeekly.total > 0" class="mt-8 border-t border-line pt-5">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-white">Seerr — diese Woche</h2>
-        <router-link to="/requests" class="text-xs text-blurple hover:underline">Alle Requests →</router-link>
+        <p class="mini-label">Seerr · diese Woche</p>
+        <router-link to="/requests" class="text-xs text-brand-300 hover:underline">Alle Anfragen</router-link>
       </div>
-      <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <div>
-          <div class="stat-label">Total</div>
-          <div class="stat-number">{{ seerrWeekly.total }}</div>
-        </div>
-        <div>
-          <div class="stat-label">Approved</div>
-          <div class="stat-number text-green-400">{{ seerrWeekly.approved }}</div>
-        </div>
-        <div>
-          <div class="stat-label">Declined</div>
-          <div class="stat-number text-red-400">{{ seerrWeekly.declined }}</div>
-        </div>
-        <div>
-          <div class="stat-label">Failed</div>
-          <div class="stat-number text-orange-400">{{ seerrWeekly.failed }}</div>
-        </div>
-        <div>
-          <div class="stat-label">Decline-Rate</div>
-          <div class="stat-number">{{ seerrWeekly.declineRate }}%</div>
-        </div>
-      </div>
-      <svg class="mt-5 h-2 w-full overflow-hidden rounded-full bg-surface-3" viewBox="0 0 100 8" preserveAspectRatio="none" aria-label="Request-Verteilung">
+      <p class="mt-3 text-sm leading-7 text-silver-300">
+        Gesamt <strong class="text-white">{{ seerrWeekly.total }}</strong>
+        <span class="px-1.5 text-white/25">·</span> Freigegeben <strong class="text-brand-300">{{ seerrWeekly.approved }}</strong>
+        <span class="px-1.5 text-white/25">·</span> Abgelehnt <strong class="text-red-400">{{ seerrWeekly.declined }}</strong>
+        <span class="px-1.5 text-white/25">·</span> Fehlgeschlagen <strong class="text-amber-300">{{ seerrWeekly.failed }}</strong>
+        <span class="px-1.5 text-white/25">·</span> Ablehnungsquote <strong class="text-white">{{ seerrWeekly.declineRate }}%</strong>
+      </p>
+      <svg class="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10" viewBox="0 0 100 8" preserveAspectRatio="none" aria-label="Request-Verteilung">
         <rect
           v-for="segment in requestSegments"
           :key="segment.label"
@@ -280,63 +192,38 @@ function formatUptime(sec: number): string {
           :fill="segment.fill"
         ><title>{{ segment.label }}: {{ segment.value }}</title></rect>
       </svg>
-      <div class="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-500">
-        <span v-for="segment in requestSegments" :key="segment.label" class="flex items-center gap-1.5">
-          <span class="h-2 w-2 rounded-full" :class="segment.color" />
-          {{ segment.label }} {{ segment.value }}
-        </span>
-      </div>
-    </div>
+    </section>
 
-    <div class="mt-6 grid gap-4 lg:grid-cols-2">
-      <div class="card overflow-hidden">
-        <div class="stat-label">Discord-Vorschau · Request-Lifecycle</div>
-        <div class="mt-3 rounded-lg border-l-4 border-emerald-500 bg-surface-2 p-4">
-          <div class="text-xs font-medium text-violet-400">Seerr · Request #42</div>
-          <div class="mt-1 text-lg font-semibold text-white">🎬 Beispiel-Film · 2026</div>
-          <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div><span class="text-slate-500">Status</span><br /><span class="text-emerald-400">🎉 Available</span></div>
-            <div><span class="text-slate-500">Type</span><br />Movie</div>
-          </div>
-          <div class="mt-3 text-xs text-slate-500">Eine Nachricht · alle Statuswechsel</div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="stat-label">Automationen</div>
-        <div class="mt-3 space-y-3 text-sm">
-          <div class="flex items-center justify-between"><span>📊 Wochenrückblick</span><span :class="stats?.automations.weeklyDigest ? 'badge-success' : 'badge-muted'">{{ stats?.automations.weeklyDigest ? 'aktiv' : 'nicht eingerichtet' }}</span></div>
-          <div class="flex items-center justify-between"><span>📡 Live-Downloads</span><span :class="stats?.automations.downloadLive ? 'badge-success' : 'badge-muted'">{{ stats?.automations.downloadLive ? 'aktiv · 60s' : 'deaktiviert' }}</span></div>
-          <div class="flex items-center justify-between"><span>🎬 Movie-Night Reminder</span><span :class="stats?.automations.movieNight ? 'badge-success' : 'badge-muted'">{{ stats?.automations.movieNight ? 'bereit' : 'nicht eingerichtet' }}</span></div>
-          <div class="flex items-center justify-between"><span>↻ Webhook-Replay</span><router-link to="/webhooks" class="text-blurple">öffnen →</router-link></div>
-          <div class="flex items-center justify-between"><span>💾 Automatische Backups</span><span :class="stats?.automations.automaticBackup ? 'badge-success' : 'badge-muted'">{{ stats?.automations.automaticBackup ? 'täglich aktiv' : 'deaktiviert' }}</span></div>
-          <div class="flex items-center justify-between"><span>🔁 Webhook-Retries</span><span :class="stats?.automations.webhookRetry ? 'badge-success' : 'badge-muted'">{{ stats?.automations.webhookRetry ? 'automatisch' : 'deaktiviert' }}</span></div>
-          <div class="flex items-center justify-between"><span>🎞️ Plex-Aktivitätskarten</span><span class="badge-success">Film/Serie pro Stream · Musik pro Player · {{ stats?.automations.plexActivityRetentionDays === 0 ? 'dauerhaft' : `${stats?.automations.plexActivityRetentionDays} Tage` }}</span></div>
-          <div class="flex items-center justify-between"><span>⏹️ Plex-Session-Timeout</span><span :class="stats?.automations.plexStaleSessionMinutes ? 'badge-success' : 'badge-muted'">{{ stats?.automations.plexStaleSessionMinutes ? `${stats.automations.plexStaleSessionMinutes} Min` : 'deaktiviert' }}</span></div>
-        </div>
-      </div>
-    </div>
+    <section v-if="stats" class="mt-8 border-t border-line pt-5">
+      <p class="mini-label">Automationen</p>
+      <ul class="mt-2 text-sm">
+        <li class="row"><span>Wochenrückblick</span><span :class="stats.automations.weeklyDigest ? 'badge-success' : 'badge-muted'">{{ stats.automations.weeklyDigest ? 'aktiv' : 'nicht eingerichtet' }}</span></li>
+        <li class="row"><span>Live-Downloads</span><span :class="stats.automations.downloadLive ? 'badge-success' : 'badge-muted'">{{ stats.automations.downloadLive ? 'aktiv · 60 s' : 'deaktiviert' }}</span></li>
+        <li class="row"><span>Movie-Night-Erinnerung</span><span :class="stats.automations.movieNight ? 'badge-success' : 'badge-muted'">{{ stats.automations.movieNight ? 'bereit' : 'nicht eingerichtet' }}</span></li>
+        <li class="row"><span>Automatische Backups</span><span :class="stats.automations.automaticBackup ? 'badge-success' : 'badge-muted'">{{ stats.automations.automaticBackup ? 'täglich aktiv' : 'deaktiviert' }}</span></li>
+        <li class="row"><span>Webhook-Retries</span><span :class="stats.automations.webhookRetry ? 'badge-success' : 'badge-muted'">{{ stats.automations.webhookRetry ? 'automatisch' : 'deaktiviert' }}</span></li>
+        <li class="row"><span>Plex-Aktivitätskarten</span><span class="badge-success">{{ stats.automations.plexActivityRetentionDays === 0 ? 'dauerhaft' : `${stats.automations.plexActivityRetentionDays} Tage` }}</span></li>
+        <li class="row"><span>Plex-Session-Timeout</span><span :class="stats.automations.plexStaleSessionMinutes ? 'badge-success' : 'badge-muted'">{{ stats.automations.plexStaleSessionMinutes ? `${stats.automations.plexStaleSessionMinutes} Min` : 'deaktiviert' }}</span></li>
+      </ul>
+    </section>
 
-    <div v-if="stats" class="mt-6 card">
+    <section v-if="stats" class="mt-8 border-t border-line pt-5">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-white">Letzte Mod-Aktionen</h2>
-        <router-link to="/warnings" class="text-xs text-blurple hover:underline">Alle →</router-link>
+        <p class="mini-label">Letzte Mod-Aktionen</p>
+        <router-link to="/moderation?tab=warnings" class="text-xs text-brand-300 hover:underline">Alle</router-link>
       </div>
-      <div v-if="stats.recentActions.length === 0" class="mt-4 text-sm text-slate-500">
+      <p v-if="stats.recentActions.length === 0" class="mt-3 text-sm text-slate-400">
         Noch keine Aktionen aufgezeichnet.
-      </div>
-      <div v-else class="mt-3 -mx-1">
-        <div v-for="a in stats.recentActions" :key="a.id" class="row text-sm">
-          <div class="flex items-center gap-2">
-            <span class="badge-warn">{{ a.action }}</span>
+      </p>
+      <ul v-else class="mt-2">
+        <li v-for="a in stats.recentActions" :key="a.id" class="row text-sm">
+          <span class="flex items-center gap-3">
+            <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-amber-300">{{ a.action }}</span>
             <span class="text-slate-400">{{ a.moderator }} → {{ a.target }}</span>
-          </div>
-          <div class="text-xs text-slate-500">{{ new Date(a.createdAt).toLocaleString() }}</div>
-        </div>
-      </div>
-    </div>
-
-    <div v-else-if="!loading" class="mt-6 card">
-      <Skeleton :rows="3" />
-    </div>
+          </span>
+          <span class="text-xs text-slate-500">{{ new Date(a.createdAt).toLocaleString() }}</span>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import {
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
 import { api } from '../lib/api';
 import { useToast } from '../composables/useToast';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
+import SessionRevoke from '../components/SessionRevoke.vue';
 
 const toast = useToast();
 
@@ -549,6 +550,8 @@ onMounted(load);
         </button>
       </div>
     </div>
+
+    <SessionRevoke class="mt-8" />
 
     <ConfirmDialog
       :open="confirmReconcile"

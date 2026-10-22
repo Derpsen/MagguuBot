@@ -1,23 +1,21 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useSession } from './composables/useSession';
+import { LEGACY_REDIRECTS } from './lib/navigation';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: () => import('./pages/Login.vue') },
   { path: '/', name: 'dashboard', component: () => import('./pages/Dashboard.vue') },
-  { path: '/warnings', name: 'warnings', component: () => import('./pages/Warnings.vue') },
-  { path: '/leaderboard', name: 'leaderboard', component: () => import('./pages/Leaderboard.vue') },
-  { path: '/webhooks', name: 'webhooks', component: () => import('./pages/Webhooks.vue') },
-  { path: '/channels', name: 'channels', component: () => import('./pages/Channels.vue') },
-  { path: '/reminders', name: 'reminders', component: () => import('./pages/Reminders.vue') },
   { path: '/requests', name: 'requests', component: () => import('./pages/Requests.vue') },
-  { path: '/role-panels', name: 'role-panels', component: () => import('./pages/RolePanels.vue') },
+  { path: '/webhooks', name: 'webhooks', component: () => import('./pages/Webhooks.vue') },
+  { path: '/moderation', name: 'moderation', component: () => import('./pages/Moderation.vue') },
+  { path: '/content', name: 'content', component: () => import('./pages/Content.vue') },
+  { path: '/members', name: 'members', component: () => import('./pages/Members.vue') },
+  { path: '/channels', name: 'channels', component: () => import('./pages/ChannelsHub.vue') },
   { path: '/settings', name: 'settings', component: () => import('./pages/Settings.vue') },
-  { path: '/tags', name: 'tags', component: () => import('./pages/Tags.vue') },
-  { path: '/autoresponders', name: 'autoresponders', component: () => import('./pages/Autoresponders.vue') },
-  { path: '/scheduled', name: 'scheduled', component: () => import('./pages/Scheduled.vue') },
-  { path: '/tickets', name: 'tickets', component: () => import('./pages/Tickets.vue') },
-  { path: '/reputation', name: 'reputation', component: () => import('./pages/Reputation.vue') },
-  { path: '/rss', name: 'rss', component: () => import('./pages/RssFeeds.vue') },
+  ...LEGACY_REDIRECTS.map(({ from, hub, tab }): RouteRecordRaw => ({
+    path: from,
+    redirect: (to) => ({ path: `/${hub}`, query: { ...to.query, tab } }),
+  })),
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 

@@ -29,11 +29,14 @@ const channelGate = new CooldownGate();
 const repeatGate = new CooldownGate();
 
 function helpChannels(): Set<string> {
-  return new Set(
-    config.FAQ_AUTOANSWER_CHANNEL_IDS.split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
+  return new Set(faqAutoanswerChannelIds());
+}
+
+/** Configured help-channel IDs (env only, not stored in channel_config). */
+export function faqAutoanswerChannelIds(): string[] {
+  return config.FAQ_AUTOANSWER_CHANNEL_IDS.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 export function faqAutoanswerEnabled(): boolean {

@@ -1,6 +1,6 @@
-﻿<script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { Hash, Check } from '@lucide/vue';
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { Check } from '@lucide/vue';
 import { api } from '../lib/api';
 
 interface Mapping {
@@ -47,6 +47,33 @@ async function update(key: string, channelId: string): Promise<void> {
   }
 }
 
+const GROUPS: Array<{ title: string; keys: string[] }> = [
+  { title: 'Start & Community', keys: ['welcome', 'movieNight', 'starboard'] },
+  { title: 'MagguuUI', keys: ['addonUpdates', 'blueTracker', 'faq', 'suggestions'] },
+  { title: 'Plex', keys: ['requests', 'newOnPlex', 'weeklyDigest', 'downloadLive', 'grabs', 'imports', 'plexActivity'] },
+  { title: 'Admin', keys: ['approvals', 'failures', 'health', 'maintainerr', 'github', 'modLog', 'auditLog', 'ticketLogs'] },
+];
+
+const grouped = computed(() => {
+  const known = new Set(GROUPS.flatMap((g) => g.keys));
+  const groups = GROUPS.map((g) => ({
+    title: g.title,
+    items: g.keys
+      .map((key) => mappings.value.find((m) => m.key === key))
+      .filter((m): m is Mapping => Boolean(m)),
+  }));
+  const rest = mappings.value.filter((m) => !known.has(m.key));
+  if (rest.length) groups.push({ title: 'Weitere', items: rest });
+  return groups.filter((g) => g.items.length > 0);
+});
+
+/** Mapped to an ID that no longer exists as a text channel in the guild. */
+function isOrphan(m: Mapping): boolean {
+  return m.channelId !== null && m.channelName === null;
+}
+
+const orphanCount = computed(() => mappings.value.filter(isOrphan).length);
+
 onMounted(load);
 </script>
 
@@ -54,38 +81,45 @@ onMounted(load);
   <div>
     <h1 class="text-2xl font-semibold text-white">Kanal-Zuordnung</h1>
     <p class="mt-1 text-sm text-slate-400">
-      Welcher Discord-Channel empfängt welche Events. Wird auch von <code>/setup-server</code> gepflegt.
+      Welcher Discord-Kanal welche Events empfängt. Mehrere Einträge dürfen auf denselben Kanal zeigen. Wird auch von <code>/setup-server</code> gepflegt.
+    </p>
+    <p v-if="!loading && orphanCount > 0" class="mt-4 border-t border-amber-300/40 pt-3 text-sm text-amber-300" role="alert">
+      {{ orphanCount }} Zuordnung(en) zeigen auf einen Kanal, den es im Server nicht mehr gibt. Bitte neu zuordnen.
     </p>
 
-    <div v-if="loading" class="mt-8 text-slate-500">Lade…</div>
+    <div v-if="loading" class="mt-8 text-slate-400">Lade…</div>
 
-    <div v-else class="mt-6 grid gap-3">
-      <div v-for="m in mappings" :key="m.key" class="card">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <Hash class="h-4 w-4 text-slate-500" />
-              <h3 class="font-semibold text-white">{{ m.label }}</h3>
-              <code class="rounded-sm bg-slate-800 px-1.5 py-0.5 text-xs text-slate-400">{{ m.key }}</code>
+    <div v-else class="mt-6 space-y-8">
+      <section v-for="group in grouped" :key="group.title">
+        <p class="mini-label">{{ group.title }}</p>
+        <ul class="mt-2">
+          <li v-for="m in group.items" :key="m.key" class="row flex-wrap">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-white">{{ m.label }}</span>
+                <code class="text-[11px] text-slate-500">{{ m.key }}</code>
+              </div>
+              <p class="mt-0.5 text-xs text-slate-400">{{ m.description }}</p>
+              <p v-if="isOrphan(m)" class="mt-0.5 text-xs text-amber-300">Kanal {{ m.channelId }} nicht gefunden</p>
             </div>
-            <p class="mt-1 text-xs text-slate-500">{{ m.description }}</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <select
-              :value="m.channelId ?? ''"
-              class="rounded-lg border border-border bg-slate-900 px-3 py-2 text-sm text-white focus:border-blurple focus:outline-hidden"
-              @change="(e) => update(m.key, (e.target as HTMLSelectElement).value)"
-            >
-              <option value="" disabled>— wähle Channel —</option>
-              <option v-for="ch in available" :key="ch.id" :value="ch.id">
-                {{ ch.parentName ? `[${ch.parentName}] ` : '' }}#{{ ch.name }}
-              </option>
-            </select>
-            <Check v-if="savedKey === m.key" class="h-5 w-5 text-green-400" />
-            <span v-else-if="savingKey === m.key" class="text-xs text-slate-500">…</span>
-          </div>
-        </div>
-      </div>
+            <div class="flex items-center gap-2">
+              <select
+                :value="m.channelId ?? ''"
+                class="input w-72 max-w-full"
+                :aria-label="`Kanal für ${m.label}`"
+                @change="(e) => update(m.key, (e.target as HTMLSelectElement).value)"
+              >
+                <option value="" disabled>— Kanal wählen —</option>
+                <option v-for="ch in available" :key="ch.id" :value="ch.id">
+                  {{ ch.parentName ? `[${ch.parentName}] ` : '' }}#{{ ch.name }}
+                </option>
+              </select>
+              <Check v-if="savedKey === m.key" class="h-4 w-4 text-brand-300" />
+              <span v-else-if="savingKey === m.key" class="text-xs text-slate-400">…</span>
+            </div>
+          </li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>

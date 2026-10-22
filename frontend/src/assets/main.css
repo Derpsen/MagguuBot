@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @config "../../../tailwind.config.ts";
 
+/*
+ * Plain style aligned with ui.magguu.xyz (dark admin shell of MagguuUI-Website):
+ * #0b1118 background, green mono mini-labels as headings, sections split by
+ * hairlines. No cards, icon tiles, pills, gradients or glow.
+ */
+
 html,
 body,
 #app {
@@ -12,22 +18,10 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, ui-sans-serif, sans-serif;
-  font-feature-settings: 'cv11', 'ss01', 'cv02';
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background: #080b12;
-  color: #e2e8f0;
-}
-
-body::before {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  content: '';
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(124, 109, 242, 0.10), transparent 28rem),
-    radial-gradient(circle at 88% 85%, rgba(34, 211, 238, 0.055), transparent 30rem);
+  background: #0b1118;
+  color: #e0e6ee;
 }
 
 button,
@@ -38,38 +32,6 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-.theme-amoled {
-  background: #000;
-}
-.theme-amoled .bg-surface-0,
-.theme-amoled .bg-surface-1 {
-  background-color: #000 !important;
-}
-.theme-amoled .bg-surface-2 {
-  background-color: #080808 !important;
-}
-.theme-aurora {
-  background:
-    radial-gradient(circle at 12% 8%, rgba(124, 109, 242, 0.22), transparent 32%),
-    radial-gradient(circle at 86% 16%, rgba(168, 85, 247, 0.14), transparent 30%),
-    radial-gradient(circle at 65% 92%, rgba(6, 182, 212, 0.11), transparent 36%),
-    #080b12;
-  background-attachment: fixed;
-}
-.theme-aurora .bg-surface-0 {
-  background-color: rgba(9, 13, 22, 0.82) !important;
-}
-.theme-aurora .bg-surface-1 {
-  background-color: rgba(17, 24, 39, 0.78) !important;
-  backdrop-filter: blur(18px);
-}
-.theme-aurora .card,
-.theme-aurora .card-flush,
-.theme-aurora .stat-card {
-  backdrop-filter: blur(14px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
-}
-
 code,
 kbd,
 .mono {
@@ -77,269 +39,245 @@ kbd,
 }
 
 ::selection {
-  background: rgba(88, 101, 242, 0.4);
+  background: rgba(12, 210, 157, 0.32);
+  color: #fff;
 }
 
-/* Scrollbar — subtle */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: rgba(12, 210, 157, 0.18) transparent;
 }
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: rgba(12, 210, 157, 0.18);
+  border-radius: 3px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(12, 210, 157, 0.32);
+}
+
+:focus-visible {
+  outline: 2px solid #0cd29d;
+  outline-offset: 2px;
 }
 
 @layer components {
-  /* Cards */
+  /* Sections instead of cards: hairline on top, no fill, no radius, no shadow */
   .card {
-    @apply rounded-[20px] border border-line bg-surface-1/90 p-5 shadow-card;
+    @apply border-t border-line py-5;
   }
   .card-flush {
-    @apply rounded-[20px] border border-line bg-surface-1/90 shadow-card;
+    @apply border-t border-line;
   }
 
-  /* Buttons — shared base via multi-selector (v4: @apply only works on utility classes) */
   .btn,
   .btn-primary,
   .btn-secondary,
   .btn-ghost,
   .btn-danger,
   .btn-success {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blurple-ring disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply bg-blurple text-white shadow-[0_8px_24px_rgba(124,109,242,0.20)] hover:bg-blurple-hover hover:shadow-[0_10px_30px_rgba(124,109,242,0.28)] active:translate-y-px;
+    @apply bg-brand-400 text-ink hover:bg-brand-300;
   }
   .btn-secondary {
-    @apply border border-line-strong bg-surface-2 text-slate-100 hover:bg-surface-3;
+    @apply border border-line-strong bg-transparent text-silver-200 hover:bg-white/5;
   }
   .btn-ghost {
-    @apply text-slate-300 hover:bg-surface-2 hover:text-white;
+    @apply text-slate-400 hover:bg-white/5 hover:text-white;
   }
   .btn-danger {
-    @apply bg-red-600/90 text-white hover:bg-red-600 active:translate-y-px;
+    @apply border border-red-400/40 bg-transparent text-red-400 hover:bg-red-400/10;
   }
   .btn-success {
-    @apply bg-emerald-600/90 text-white hover:bg-emerald-600 active:translate-y-px;
+    @apply bg-brand-400 text-ink hover:bg-brand-300;
   }
   .btn-sm {
     @apply gap-1.5 px-2.5 py-1.5 text-xs;
   }
   .btn-icon {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all duration-200 hover:bg-surface-2 hover:text-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blurple-ring;
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white;
   }
 
-  /* Nav items (Vben-style) */
+  /* Green mono mini-label (public: font-mono 11px, uppercase, 0.14em, brand-300) */
+  .mini-label,
+  .section-eyebrow,
   .nav-section-label {
-    @apply mx-3 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600;
+    @apply font-mono text-[11px] font-medium uppercase leading-4 tracking-[0.14em] text-brand-300;
+  }
+  .nav-section-label {
+    @apply mx-3 mb-1 mt-4 block;
   }
   .nav-item {
-    @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-surface-2/80 hover:text-white;
+    @apply relative flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-sm font-medium text-slate-400 transition-colors duration-150 hover:bg-white/5 hover:text-white;
   }
-  .nav-item-active {
-    @apply bg-blurple-soft text-white shadow-[inset_0_0_0_1px_rgba(124,109,242,0.12)];
-  }
+  .nav-item-active,
   .nav-item-active:hover {
-    @apply bg-blurple-soft text-white;
+    @apply border-brand-300 bg-white/5 text-white;
   }
 
-  /* Tables / table rows */
   .row,
   .data-row {
-    @apply flex items-center justify-between gap-3 border-b border-line px-4 py-3.5 last:border-0 hover:bg-surface-2/50 transition-colors;
+    @apply flex items-center justify-between gap-3 border-t border-line px-0 py-3 transition-colors hover:bg-white/[0.03];
   }
 
-  /* Stats */
+  /* Metrics: plain figures split by hairlines */
   .stat-card {
-    @apply flex flex-col gap-1 rounded-[20px] border border-line bg-surface-1/90 p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong;
+    @apply flex flex-col gap-1 border-t border-line pt-3;
+  }
+  .stat-card.clickable:hover .stat-number {
+    @apply underline underline-offset-4;
   }
   .stat-number {
-    @apply text-3xl font-semibold tracking-tight text-white;
+    @apply text-2xl font-semibold tracking-tight text-white;
   }
   .stat-label {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-brand-300;
   }
 
-  /* Inputs */
   .input {
-    @apply w-full rounded-xl border border-line-strong bg-surface-2/80 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-blurple focus:outline-hidden focus:ring-2 focus:ring-blurple-ring;
+    @apply w-full rounded-md border border-line-strong bg-white/[0.04] px-3 py-2 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-brand-400 focus:outline-hidden;
   }
 
-  /* Badges — shared base via multi-selector */
+  /* Badges read as plain coloured text, no fill */
   .badge,
   .badge-success,
   .badge-warn,
   .badge-danger,
   .badge-info,
   .badge-muted {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1 text-xs font-medium;
   }
-  .badge-success {
-    @apply bg-emerald-500/15 text-emerald-400;
-  }
-  .badge-warn {
-    @apply bg-amber-500/15 text-amber-400;
-  }
-  .badge-danger {
-    @apply bg-red-500/15 text-red-400;
-  }
-  .badge-info {
-    @apply bg-blurple-soft text-blurple;
-  }
-  .badge-muted {
-    @apply bg-slate-500/15 text-slate-400;
-  }
+  .badge-success { @apply text-brand-300; }
+  .badge-warn { @apply text-amber-300; }
+  .badge-danger { @apply text-red-400; }
+  .badge-info { @apply text-brand-300; }
+  .badge-muted { @apply text-slate-400; }
 
-  /* Skeleton loader */
   .skeleton {
-    @apply rounded-md bg-gradient-to-r from-surface-2 via-surface-3 to-surface-2 bg-[length:200%_100%] animate-shimmer;
+    @apply rounded-sm bg-gradient-to-r from-surface-2 via-surface-3 to-surface-2 bg-[length:200%_100%] animate-shimmer;
   }
 
-  /* Section header */
   .page-header {
     @apply flex items-start justify-between gap-3;
   }
   .page-title {
-    @apply text-3xl font-bold tracking-[-0.035em] text-white;
+    @apply text-3xl font-semibold tracking-[-0.02em] text-white;
   }
   .page-subtitle {
     @apply mt-1.5 text-sm leading-relaxed text-slate-400;
   }
 
-  /* Focus ring utility for interactive card */
   .clickable {
-    @apply cursor-pointer transition-colors hover:border-blurple/40;
+    @apply cursor-pointer;
+  }
+
+  /* Underline tabs (public strings tabs) */
+  .tab-bar {
+    @apply flex flex-wrap gap-5 border-b border-line;
+  }
+  .tab-item {
+    @apply -mb-px border-b-2 border-transparent py-2 text-sm font-medium text-slate-400 transition-colors hover:text-white;
+  }
+  .tab-item-active {
+    @apply border-brand-300 text-white;
   }
 }
 
 .app-content {
   position: relative;
-  isolation: isolate;
-}
-
-.app-content::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  content: '';
-  pointer-events: none;
-  opacity: 0.22;
-  background-image: radial-gradient(rgba(148, 163, 184, 0.16) 0.7px, transparent 0.7px);
-  background-size: 22px 22px;
-  mask-image: linear-gradient(to bottom, black, transparent 34rem);
 }
 
 .page-hero {
-  position: relative;
   display: flex;
-  min-height: 150px;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 1.5rem;
-  overflow: hidden;
-  padding: clamp(1.35rem, 3vw, 2rem);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 24px;
-  background:
-    linear-gradient(120deg, rgba(124, 109, 242, 0.11), transparent 48%),
-    linear-gradient(160deg, rgba(19, 26, 39, 0.92), rgba(13, 18, 28, 0.88));
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 28px 80px rgba(0, 0, 0, 0.18);
-}
-
-.page-hero::after {
-  position: absolute;
-  width: 18rem;
-  height: 18rem;
-  right: -7rem;
-  top: -10rem;
-  content: '';
-  border-radius: 999px;
-  background: rgba(124, 109, 242, 0.18);
-  filter: blur(55px);
-  pointer-events: none;
+  padding: 0 0 1.25rem;
 }
 
 .metric-tile {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.10);
-  border-radius: 18px;
-  padding: 1rem;
-  background: linear-gradient(145deg, rgba(19, 26, 39, 0.90), rgba(13, 18, 28, 0.84));
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 0 0;
 }
 
 .filter-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 0.4rem;
   white-space: nowrap;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.45rem 0.8rem;
-  color: #94a3b8;
-  font-size: 0.75rem;
-  font-weight: 600;
-  transition: 180ms ease;
+  border-bottom: 2px solid transparent;
+  padding: 0.35rem 0;
+  color: #a7b3c2;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: color 150ms ease;
 }
-
 .filter-pill:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
 }
-
 .filter-pill-active {
-  color: #ddd6fe;
-  border-color: rgba(124, 109, 242, 0.22);
-  background: rgba(124, 109, 242, 0.13);
+  color: #fff;
+  border-bottom-color: #45e0bb;
 }
 
 .progress-track {
-  height: 0.4rem;
+  height: 0.25rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.08);
 }
-
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #7c6df2, #a78bfa, #22d3ee);
-  box-shadow: 0 0 18px rgba(124, 109, 242, 0.28);
+  background: #0cd29d;
 }
 
 .empty-state-surface {
-  position: relative;
-  overflow: hidden;
-  border: 1px dashed rgba(148, 163, 184, 0.16);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(124, 109, 242, 0.10), transparent 45%),
-    rgba(13, 18, 28, 0.62);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Page fade-in */
+/* Inline-styled page blocks (rounded + bordered divs) become plain sections:
+   top hairline only, no fill, no radius, no shadow (same rule as the Website admin). */
+.app-content :is(div, section, a, article, li):is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-\[18px\], .rounded-\[20px\], .rounded-\[24px\]).border {
+  background: transparent !important;
+  border-width: 1px 0 0 0 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Icon-only tiles (square block holding just an svg) are dropped. */
+.app-content :is(div, span):is(.h-9, .h-10, .h-11, .h-12, .h-14):is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-full).justify-center:has(> svg:only-child) {
+  display: none !important;
+}
+
+/* No glow or gradient fills inside pages */
+.app-content [class*="blur-3xl"],
+.app-content [class*="blur-2xl"] {
+  display: none !important;
+}
+.app-content [class*="bg-gradient-to"] {
+  background-image: none !important;
+}
+
 .page-fade {
-  animation: fade-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: fade-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Kbd */
 kbd {
-  @apply inline-flex h-5 items-center rounded-sm border border-line-strong bg-surface-2 px-1.5 text-[10px] font-medium text-slate-400;
+  @apply inline-flex h-5 items-center rounded-sm border border-line-strong px-1.5 text-[10px] font-medium text-slate-400;
 }
 
 @media (max-width: 640px) {
   .page-hero {
-    min-height: 0;
     align-items: flex-start;
     flex-direction: column;
   }

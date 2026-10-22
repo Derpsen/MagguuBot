@@ -47,6 +47,7 @@ import {
 } from '../webhook-sources.js';
 import { parseWebhookClearScope } from './webhook-clear-scope.js';
 import { isSafeRegexPattern, parsePositiveId } from './validation.js';
+import { faqAutoanswerChannelIds } from '../../discord/faq-autoanswer.js';
 
 export const adminRouter = new Hono();
 const autoRoleReconcileInFlight = new Set<string>();
@@ -90,7 +91,7 @@ adminRouter.get('/search', async (c) => {
         kind: 'user',
         label: member.displayName,
         description: `Nutzer · ${member.user.username}`,
-        to: '/leaderboard',
+        to: '/members?tab=xp',
       }))
     : [];
   const requestResults = db
@@ -108,7 +109,7 @@ adminRouter.get('/search', async (c) => {
     .orderBy(desc(tickets.createdAt))
     .limit(6)
     .all()
-    .map((row) => ({ kind: 'ticket', label: `Ticket #${row.id}`, description: `${row.closedAt ? 'geschlossen' : 'offen'} · ${row.topic ?? 'ohne Thema'}`, to: '/tickets' }));
+    .map((row) => ({ kind: 'ticket', label: `Ticket #${row.id}`, description: `${row.closedAt ? 'geschlossen' : 'offen'} · ${row.topic ?? 'ohne Thema'}`, to: '/moderation?tab=tickets' }));
   const warningResults = db
     .select({ id: warnings.id, userId: warnings.userId, reason: warnings.reason })
     .from(warnings)
@@ -116,7 +117,7 @@ adminRouter.get('/search', async (c) => {
     .orderBy(desc(warnings.createdAt))
     .limit(6)
     .all()
-    .map((row) => ({ kind: 'warning', label: `Verwarnung #${row.id}`, description: `${row.reason ?? 'ohne Grund'} · ${row.userId}`, to: '/warnings' }));
+    .map((row) => ({ kind: 'warning', label: `Verwarnung #${row.id}`, description: `${row.reason ?? 'ohne Grund'} · ${row.userId}`, to: '/moderation?tab=warnings' }));
   const webhookResults = db
     .select({ id: webhookEvents.id, source: webhookEvents.source, eventType: webhookEvents.eventType, status: webhookEvents.status })
     .from(webhookEvents)
@@ -782,7 +783,12 @@ adminRouter.get('/channels', async (c) => {
     };
   });
 
-  return c.json({ mappings, available: textChannels });
+  const faqAutoanswerChannels = faqAutoanswerChannelIds().map((id) => ({
+    id,
+    name: guild?.channels.cache.get(id)?.name ?? null,
+  }));
+
+  return c.json({ mappings, available: textChannels, faqAutoanswerChannels });
 });
 
 const channelUpdateSchema = z.object({ channelId: z.string().regex(/^\d{17,20}$/) });
