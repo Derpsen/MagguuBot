@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
@@ -10,6 +9,7 @@ import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import { adminRouter } from './admin/index.js';
 import { clientIp } from './client-ip.js';
+import { constantTimeEquals, createWebhookGuard, RATE_WINDOW_MS } from './webhook-guard.js';
 import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canonical-dashboard.js';
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
@@ -93,7 +93,12 @@ export function buildApp(): Hono {
     }));
   });
 
-  app.use('/webhook/*', webhookRateLimit());
+  // Webhook rate limiting is split (see src/server/webhook-guard.ts): a loose
+  // per-IP flood limit before auth that only counts unauthenticated requests,
+  // and a per-webhook limit after successful auth.
+  const webhookGuard = createWebhookGuard({ secret: config.WEBHOOK_SECRET, clientIp, logger });
+  setInterval(() => webhookGuard.sweep(), RATE_WINDOW_MS).unref();
+  app.use('/webhook/*', webhookGuard.preAuth);
   app.use('/webhook/*', bodyLimit({
     maxSize: WEBHOOK_BODY_LIMIT,
     onError: (c) => {
@@ -102,36 +107,7 @@ export function buildApp(): Hono {
     },
   }));
 
-  app.use('/webhook/*', async (c, next) => {
-    if (c.req.path.startsWith('/webhook/github')) {
-      await next();
-      return;
-    }
-
-    if (c.req.path.startsWith('/webhook/prowlarr')) {
-      const queryToken = c.req.query('token');
-      const authorization = c.req.header('authorization');
-      const headerToken = authorization?.replace(/^Bearer\s+/i, '').trim();
-      const token = queryToken || headerToken;
-      if (!token) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook missing auth token');
-        return c.json({ ok: false, error: 'unauthorized' }, 401);
-      }
-      if (!constantTimeEquals(token, config.WEBHOOK_SECRET)) {
-        logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook bad token');
-        return c.json({ ok: false, error: 'unauthorized' }, 401);
-      }
-      await next();
-      return;
-    }
-
-    const token = c.req.header('x-magguu-token');
-    if (!token || !constantTimeEquals(token, config.WEBHOOK_SECRET)) {
-      logger.warn({ path: c.req.path, ip: clientIp(c) }, 'webhook auth failed');
-      return c.json({ ok: false, error: 'unauthorized' }, 401);
-    }
-    await next();
-  });
+  app.use('/webhook/*', webhookGuard.sharedSecretAuth);
 
   app.route('/webhook/sonarr', sonarrWebhook);
   app.route('/webhook/radarr', radarrWebhook);
@@ -240,13 +216,6 @@ function fileResponse(filePath: string): Response {
   return new Response(body, { headers: { 'Content-Type': mime, 'Cache-Control': cacheControl } });
 }
 
-function constantTimeEquals(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
-
 function isSameOrigin(c: import('hono').Context): boolean {
   if (!config.DASHBOARD_BASE_URL) {
     // Dashboard-disabled deployment can't be browsed → CSRF doesn't apply.
@@ -267,43 +236,4 @@ function isSameOrigin(c: import('hono').Context): boolean {
     }
   }
   return false;
-}
-
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = 120;
-// Cap the bucket map so an attacker cycling source IPs (or a misconfigured
-// proxy producing per-request unique keys) cannot grow the map without bound.
-const RATE_BUCKETS_MAX = 10_000;
-
-function webhookRateLimit(): (c: import('hono').Context, next: () => Promise<void>) => Promise<Response | void> {
-  const buckets = new Map<string, { count: number; resetAt: number }>();
-
-  setInterval(() => {
-    const now = Date.now();
-    for (const [ip, bucket] of buckets) {
-      if (bucket.resetAt <= now) buckets.delete(ip);
-    }
-  }, RATE_WINDOW_MS).unref();
-
-  return async (c, next) => {
-    const ip = clientIp(c) ?? 'unknown';
-    const now = Date.now();
-    const bucket = buckets.get(ip);
-    if (!bucket || bucket.resetAt <= now) {
-      if (buckets.size >= RATE_BUCKETS_MAX) {
-        // Evict the oldest entry (insertion order) so the map stays bounded.
-        const oldest = buckets.keys().next().value;
-        if (oldest !== undefined) buckets.delete(oldest);
-      }
-      buckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-      await next();
-      return;
-    }
-    bucket.count += 1;
-    if (bucket.count > RATE_MAX) {
-      logger.warn({ ip, path: c.req.path, count: bucket.count }, 'webhook rate limit exceeded');
-      return c.json({ ok: false, error: 'rate limit exceeded' }, 429);
-    }
-    await next();
-  };
 }

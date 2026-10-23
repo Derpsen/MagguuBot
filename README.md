@@ -134,7 +134,7 @@ Expose the dashboard through a trusted HTTPS reverse proxy, then configure `DISC
 
 A successful dashboard login remains valid for up to 30 days. Keep `SESSION_SECRET` unchanged across container updates; rotating it intentionally signs every device out.
 
-Forwarded client-IP headers (`cf-connecting-ip`, `x-forwarded-for`, `x-real-ip`) are trusted only when the TCP peer is listed in `TRUSTED_PROXIES` (IPs/CIDRs of your reverse proxy, e.g. the cloudflared container); empty means the socket IP is used. `TRUST_PROXY` alone no longer trusts anything, so a direct LAN client cannot spoof its rate-limit key. The exact public host/protocol headers above are used only for safe dashboard canonicalization, not as proof of identity or as a client IP.
+Forwarded client-IP headers (`cf-connecting-ip`, `x-forwarded-for`, `x-real-ip`) are trusted only when the TCP peer is listed in `TRUSTED_PROXIES` (IPs/CIDRs of your reverse proxy, e.g. the cloudflared container); empty means the socket IP is used. `TRUST_PROXY` alone no longer trusts anything, so a direct LAN client cannot spoof its rate-limit key. Webhook rate limits: at most 300 unauthenticated requests per minute per client IP (checked before auth; authenticated requests do not count, and a valid `WEBHOOK_SECRET` passes even when that IP is flooding), plus 600 authenticated requests per minute per webhook source after auth. Over-limit requests get HTTP 429. The exact public host/protocol headers above are used only for safe dashboard canonicalization, not as proof of identity or as a client IP.
 
 ## Development
 

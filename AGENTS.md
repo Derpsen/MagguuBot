@@ -80,7 +80,7 @@ npm run db:push      # drizzle-kit sync
 - `/webhook/github` — HMAC-SHA256 via `GITHUB_WEBHOOK_SECRET` instead
 - `/webhook/prowlarr` — requires `Authorization: Bearer <WEBHOOK_SECRET>` (preferred) or `?token=<WEBHOOK_SECRET>`; Prowlarr has no custom-header field so it uses the query token; keep internal/LAN-only
 
-`/webhook/*` is rate-limited at 120 req/min/IP (runs before auth, so the key must not be spoofable). Client IP = TCP socket peer (`src/server/client-ip.ts` → `src/utils/trusted-proxy.ts`, port of the Website helper). Forwarded headers (`cf-connecting-ip` → `x-forwarded-for` right-to-left, skipping trusted hops → `x-real-ip`) are used only when the socket peer is in `TRUSTED_PROXIES` (IPs/CIDRs, `private`, `none`; empty = never). `TRUST_PROXY` is legacy and ignored (startup warning). Don't downgrade the token check to plain `===`.
+`/webhook/*` rate limiting is split (`src/server/webhook-guard.ts`): (1) pre-auth flood limit, 300 unauthenticated req/min per client IP, before body parsing; authenticated requests are refunded and a request with the valid shared secret passes even when its IP bucket is full, so an unauthenticated flood cannot starve real webhooks; (2) after successful auth, 600 req/min per webhook identity (route source + 12-hex SHA-256 of the credential; GitHub counts after its HMAC check via `webhookGuard.authorized`). Never log or store the raw token. Client IP = TCP socket peer (`src/server/client-ip.ts` → `src/utils/trusted-proxy.ts`, port of the Website helper). Forwarded headers (`cf-connecting-ip` → `x-forwarded-for` right-to-left, skipping trusted hops → `x-real-ip`) are used only when the socket peer is in `TRUSTED_PROXIES` (IPs/CIDRs, `private`, `none`; empty = never). `TRUST_PROXY` is legacy and ignored (startup warning). Don't downgrade the token check to plain `===`.
 
 **Moderation authority** — `/ban`, `/kick`, `/timeout` go through `checkModerationTarget` (`src/discord/moderation-guard.ts`): no self/bot/guild-owner targets, invoker's highest role must be strictly above the target's (guild owner exempt), bot-side `bannable`/`kickable`/`moderatable`. `/announce`, `/schedule-announce`, `/purge-user` check the invoker's channel perms via `channel.permissionsFor(member)` (`src/discord/channel-authority.ts`); `/announce ping-role` needs a mentionable role or `MentionEveryone` in that channel. The `/warn` auto-escalation (timeout and kick) runs through the same guard (`src/discord/warn-escalation.ts`): the warning is always recorded, a denied step is skipped with a German reason in the ephemeral reply and the mod log. New moderation commands must reuse these helpers (Discord's default-member-permissions alone is not a hierarchy check).
 
@@ -106,7 +106,7 @@ npm run db:push      # drizzle-kit sync
 
 **SABnzbd does NOT emit native webhooks** — use the bash script in `scripts/sabnzbd-webhook.sh` as a post-processing script in SAB. It POSTs to `/webhook/sabnzbd` with a typed Zod payload.
 
-**Rate limit is intentionally small and in-process** — webhooks are expected to be internal (Docker network). Never expose port 3000 publicly without mTLS + stronger edge rate-limiting + IP allowlist.
+**Rate limit is in-process** (per-container fixed windows, buckets capped at 10k keys) — webhooks are expected to be internal (Docker network) or via the cloudflared tunnel with `TRUSTED_PROXIES` set. Never expose port 3000 publicly without mTLS + stronger edge rate-limiting + IP allowlist.
 
 ## Conventions
 

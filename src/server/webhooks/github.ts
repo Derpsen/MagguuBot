@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
+import { webhookIdentity } from '../webhook-guard.js';
 import { config } from '../../config.js';
 import { markAddonReleaseAnnounced, wasAddonReleaseAnnounced } from '../../discord/addon-release-poller.js';
 import { getChannel } from '../../discord/channel-store.js';
@@ -151,6 +152,9 @@ export const githubWebhook = new Hono().post('/', async (c) => {
     logger.warn({ eventName }, 'github webhook signature mismatch');
     return c.json({ ok: false, error: 'invalid signature' }, 401);
   }
+  // Authenticated: count against the per-webhook limit (identity = route + secret hash).
+  const limited = c.get('webhookGuard')?.authorized(c, webhookIdentity('github', secret));
+  if (limited) return limited;
 
   if (deliveryId && !seenDeliveries.remember(deliveryId)) {
     logger.warn({ deliveryId, eventName }, 'github webhook replay rejected');
