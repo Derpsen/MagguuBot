@@ -7,6 +7,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ### Security
 - `/ban`, `/kick`, `/timeout` enforce role hierarchy (invoker's highest role above the target's, guild owner exempt), reject self/bot/owner targets and keep the bot-side check, with German ephemeral errors.
 - `/announce`, `/schedule-announce`, `/purge-user` check the invoker's permissions in the target channel(s); `/announce ping-role` requires a mentionable role or `Mention @everyone` in that channel.
+- `/warn` auto-escalation (1h timeout and kick) uses the same role-hierarchy guard; the warning is still recorded, a denied escalation is skipped and the moderator is told why (ephemeral, German).
 - Webhook rate-limit client IP: forwarded headers are only trusted from peers listed in the new `TRUSTED_PROXIES` (IP/CIDR allowlist, X-Forwarded-For walked right-to-left). `TRUST_PROXY=true` alone no longer trusts headers (startup warning).
 
 ### Fixed

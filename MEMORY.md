@@ -6,7 +6,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - Audit `~/security-audit-skill/magguubot/run-20261023/REPORT.md`: MEDIUM hierarchy bypass (ban/kick/timeout only checked bot side) fixed via `checkModerationTarget`; LOW invoker channel perms (announce/schedule-announce/purge-user) and `ping-role` mention bypass fixed via `channel-authority.ts`.
 - Rate limit before auth: live Unraid container had no proxy env (TRUST_PROXY unset → socket IP only, not spoofable). Container br0 192.168.178.9 (no port mapping, LAN-reachable), CloudflaredTunnel br0 192.168.178.19 → all tunnel traffic shares one 120/min bucket. Fix: explicit `TRUSTED_PROXIES` allowlist (Website 0f1c7ef model); optional Unraid env `TRUSTED_PROXIES=192.168.178.19` for per-client buckets (not set, Marco decides).
-- Open: warn-escalation timeout (`/warn` auto-timeout) is not routed through the hierarchy guard.
+- Follow-up same day: `/warn` auto-timeout and auto-kick now go through `checkModerationTarget` (`warn-escalation.ts`); warning always stored, denied step skipped with reason (`⏭️ Auto-Timeout übersprungen (n ≥ m): …`). Auto-kick was included because it had the same bypass.
 
 ## 2026-10-22
 

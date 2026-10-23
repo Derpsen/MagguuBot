@@ -11,6 +11,7 @@ import { warnings } from '../../db/schema.js';
 import { getSetting } from '../../settings.js';
 import { logger } from '../../utils/logger.js';
 import { postModLog } from '../mod-log.js';
+import { pickEscalation, runEscalation } from '../warn-escalation.js';
 import type { SlashCommand } from './index.js';
 
 const ESCALATION_TIMEOUT_MS = 60 * 60 * 1000;
@@ -47,7 +48,7 @@ export const warnCommand: SlashCommand = {
       .where(and(eq(warnings.guildId, interaction.guild.id), eq(warnings.userId, user.id)))
       .get()?.count ?? 0;
 
-    const escalation = await maybeEscalate(interaction.guild, user, count);
+    const escalation = await maybeEscalate(interaction.guild, interaction.user, user, count);
 
     await postModLog({
       guild: interaction.guild,
@@ -68,37 +69,36 @@ export const warnCommand: SlashCommand = {
   },
 };
 
-async function maybeEscalate(guild: Guild, user: User, count: number): Promise<string | null> {
-  if (!getSetting('warnEscalationEnabled')) return null;
-  const timeoutAt = getSetting('warnEscalationTimeoutAt');
-  const kickAt = getSetting('warnEscalationKickAt');
+async function maybeEscalate(guild: Guild, moderator: User, user: User, count: number): Promise<string | null> {
+  const step = pickEscalation(count, {
+    enabled: getSetting('warnEscalationEnabled'),
+    timeoutAt: getSetting('warnEscalationTimeoutAt'),
+    kickAt: getSetting('warnEscalationKickAt'),
+  });
+  if (!step) return null;
 
-  const member = await guild.members.fetch(user.id).catch(() => null);
+  const [invoker, member] = await Promise.all([
+    guild.members.fetch(moderator.id).catch(() => null),
+    guild.members.fetch(user.id).catch(() => null),
+  ]);
   if (!member) return null;
 
-  if (kickAt > 0 && count >= kickAt) {
-    if (member.kickable) {
-      try {
-        await member.kick(`Auto-Eskalation: ${count} Warnungen erreicht`);
-        return `Auto-kick (${count} ≥ ${kickAt})`;
-      } catch (err) {
-        logger.warn({ err, userId: user.id }, 'auto-kick on warn-escalation failed');
-      }
-    }
-    return `Eskalation fehlgeschlagen — fehlende Permissions (${count} ≥ ${kickAt})`;
-  }
-
-  if (timeoutAt > 0 && count >= timeoutAt) {
-    if (member.moderatable) {
-      try {
-        await member.timeout(ESCALATION_TIMEOUT_MS, `Auto-Eskalation: ${count} Warnungen erreicht`);
-        return `Auto-timeout 1h (${count} ≥ ${timeoutAt})`;
-      } catch (err) {
-        logger.warn({ err, userId: user.id }, 'auto-timeout on warn-escalation failed');
-      }
-    }
-    return `Eskalation fehlgeschlagen — fehlende Permissions (${count} ≥ ${timeoutAt})`;
-  }
-
-  return null;
+  return runEscalation(
+    step,
+    count,
+    {
+      guildOwnerId: guild.ownerId,
+      botUserId: guild.client.user.id,
+      invokerId: moderator.id,
+      invoker,
+      targetId: user.id,
+      target: member,
+    },
+    async (action) => {
+      const auditReason = `Auto-Eskalation: ${count} Warnungen erreicht`;
+      if (action === 'kick') await member.kick(auditReason);
+      else await member.timeout(ESCALATION_TIMEOUT_MS, auditReason);
+    },
+    (err) => logger.warn({ err, userId: user.id, action: step.action }, 'auto-escalation on warn failed'),
+  );
 }
