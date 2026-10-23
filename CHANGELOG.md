@@ -4,6 +4,11 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Security
+- `/ban`, `/kick`, `/timeout` enforce role hierarchy (invoker's highest role above the target's, guild owner exempt), reject self/bot/owner targets and keep the bot-side check, with German ephemeral errors.
+- `/announce`, `/schedule-announce`, `/purge-user` check the invoker's permissions in the target channel(s); `/announce ping-role` requires a mentionable role or `Mention @everyone` in that channel.
+- Webhook rate-limit client IP: forwarded headers are only trusted from peers listed in the new `TRUSTED_PROXIES` (IP/CIDR allowlist, X-Forwarded-For walked right-to-left). `TRUST_PROXY=true` alone no longer trusts headers (startup warning).
+
 ### Fixed
 - Discord Seerr Approve/Decline failed with HTTP 403 because MagguuBot used a stale Seerr API key. Doctor and service health now probe `/api/v1/request/count` (authenticated) instead of the public `/status` endpoint.
 

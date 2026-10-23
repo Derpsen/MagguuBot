@@ -105,10 +105,12 @@ const schema = z.object({
 
   HTTP_PORT: z.coerce.number().int().positive().max(65_535).default(3000),
   HTTP_HOST: z.string().default('0.0.0.0'),
-  // Trust proxy headers (cf-connecting-ip / x-forwarded-for) only when the
-  // bot is actually deployed behind one. Default off so a misconfigured
-  // exposure doesn't let attackers spoof the rate-limit key with a header.
+  // Proxy headers (cf-connecting-ip / x-forwarded-for / x-real-ip) are trusted
+  // only when the socket peer is in TRUSTED_PROXIES (IPs/CIDRs, `private`,
+  // `none`; unset = none). TRUST_PROXY alone no longer trusts anything (it is
+  // kept only to warn about the legacy setting), see src/server/client-ip.ts.
   TRUST_PROXY: envBoolean(false),
+  TRUSTED_PROXIES: z.preprocess(emptyEnvToUndefined, z.string().optional()),
   WEBHOOK_SECRET: z.string().min(16),
   // GitHub webhook secret is enforced if any GitHub repo points at the bot.
   // Required >= 16 chars when present; absent disables the route at runtime.

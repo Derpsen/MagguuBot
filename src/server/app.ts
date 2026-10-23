@@ -9,6 +9,7 @@ import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import { adminRouter } from './admin/index.js';
+import { clientIp } from './client-ip.js';
 import { canonicalDashboardUrl, isCanonicalDashboardRequest } from './auth/canonical-dashboard.js';
 import { authRouter } from './auth/oauth.js';
 import { githubWebhook } from './webhooks/github.js';
@@ -268,22 +269,6 @@ function isSameOrigin(c: import('hono').Context): boolean {
   return false;
 }
 
-function clientIp(c: import('hono').Context): string {
-  if (config.TRUST_PROXY) {
-    const cf = c.req.header('cf-connecting-ip');
-    if (cf) return cf;
-    const fwd = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-    if (fwd) return fwd;
-    const real = c.req.header('x-real-ip');
-    if (real) return real;
-  }
-  // Fallback to the raw socket address — never trust client-supplied headers
-  // unless TRUST_PROXY is on, otherwise an attacker can spoof their key for
-  // the rate-limit map and bypass it by cycling header values.
-  const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
-  return env?.incoming?.socket?.remoteAddress ?? 'unknown';
-}
-
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 120;
 // Cap the bucket map so an attacker cycling source IPs (or a misconfigured
@@ -301,7 +286,7 @@ function webhookRateLimit(): (c: import('hono').Context, next: () => Promise<voi
   }, RATE_WINDOW_MS).unref();
 
   return async (c, next) => {
-    const ip = clientIp(c);
+    const ip = clientIp(c) ?? 'unknown';
     const now = Date.now();
     const bucket = buckets.get(ip);
     if (!bucket || bucket.resetAt <= now) {
