@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.7
 # ─── Build Stage ─────────────────────────────────
-# node:26-alpine multi-arch index digest (2026-10-16)
+# node:26-alpine multi-arch index digest (26.12.1, 2026-10-22); Renovate keeps it current via the comment below
+# renovate: image=node:26-alpine
 ARG NODE_VERSION=26
-ARG NODE_DIGEST=sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5
+ARG NODE_DIGEST=sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
 FROM node:${NODE_VERSION}-alpine@${NODE_DIGEST} AS builder
 
 WORKDIR /app
