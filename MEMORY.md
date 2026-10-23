@@ -114,6 +114,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Quality (2026-10-16): `.github/workflows/quality.yml` runs `tools/drift-check.sh` (banned addon names outside AGENTS/MEMORY/CHANGELOG/tests, EllesmereUI min 9.0.6 in TOCs, Docker uid 99, engines.node = `${NODE_ENGINE:->=26}`), actionlint 1.7.12 + zizmor 1.31.1 (medium+) + shellcheck + osv-scanner 2.7.0 (downloads sha256-verified). All workflows hardened for zizmor: checkout `persist-credentials: false`, docker.yml packages:write only on build job and no npm cache (package-manager-cache: false).
 
 - 2026-10-23: advisory zizmor workflow `.github/workflows/zizmor.yml` added (zizmor-action v0.8.0 SHA-pinned, non-SARIF, continue-on-error, not required). Findings not fixed yet, pending Buddy review.
+- 2026-10-23 (Buddy-approved follow-up): zizmor info `template-injection` fixed (docker.yml Sign image uses step env `IMG` instead of `${{ steps.img.outputs.name }}` in run); stale `# actions/checkout@v7.0.0` comments → `v7.0.1` (SHA unchanged). zizmor now clean.
 - 2026-10-23: Reporting an Buddy (ab 2026-10-23): genau eine Done-Meldung pro Auftrag, max. ~800 Zeichen plus Pfad/Commit für Details; Zwischenstände nur bei Aufträgen über 30 Minuten.
 
 ## 2026-10-22 Docs drift check

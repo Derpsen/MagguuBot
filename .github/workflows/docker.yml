@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout repository
-        # actions/checkout@v7.0.0
+        # actions/checkout@v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -68,7 +68,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        # actions/checkout@v7.0.0
+        # actions/checkout@v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -126,5 +126,6 @@ jobs:
 
       - name: Sign image
         env:
+          IMG: ${{ steps.img.outputs.name }}
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: cosign sign --yes "${{ steps.img.outputs.name }}@${DIGEST}"
+        run: cosign sign --yes "${IMG}@${DIGEST}"

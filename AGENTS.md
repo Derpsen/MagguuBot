@@ -271,7 +271,7 @@ Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
 
 - CodeQL: `github/codeql-action/init` and `analyze` in `.github/workflows/codeql.yml` must share one commit SHA. After a dependency-bot bump (Renovate; formerly Dependabot) of only one pin, merge the matching `init` or `analyze` PR before calling main green.
 - Normal work: commit and push directly to `main` from this checkout (no PR, no force-push). Only dependency-bot PRs (Renovate) are merged: locally with `gh pr merge --squash --delete-branch` (the GitHub connector Auto-review blocks MagguuBot merges).
-- zizmor advisory (2026-10-23): `.github/workflows/zizmor.yml` (zizmorcore/zizmor-action SHA-pinned, `advanced-security: false`, no SARIF/`security-events`, step + job `continue-on-error`, never a required check) logs all zizmor findings on push main/PR/dispatch; `quality.yml` keeps its pinned zizmor (medium+) gate. Findings not fixed yet, pending Buddy review.
+- zizmor advisory (2026-10-23): `.github/workflows/zizmor.yml` (zizmorcore/zizmor-action SHA-pinned, `advanced-security: false`, no SARIF/`security-events`, step + job `continue-on-error`, never a required check) logs all zizmor findings on push main/PR/dispatch; `quality.yml` keeps its pinned zizmor (medium+) gate. First run: 1 info `template-injection` (docker.yml cosign step), fixed same day after Buddy review (`IMG` step env). Checkout comments corrected to `v7.0.1` (SHA `3d3c42e…` is the v7.0.1 tag).
 - Never launch Cursor cloud agents for dependency-bot PRs (Renovate/Dependabot), merges, or MagguuBot/Website polyfill work. Never ask Marco; report only to Buddy.
 
 
