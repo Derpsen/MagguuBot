@@ -29,8 +29,8 @@
     {
       "customType": "regex",
       "description": "Dockerfile base image digest (ARG NODE_DIGEST, FROM uses variables)",
-      "fileMatch": [
-        "(^|/)Dockerfile$"
+      "managerFilePatterns": [
+        "/(^|/)Dockerfile$/"
       ],
       "matchStrings": [
         "#\\s*renovate: image=(?<depName>[^:\\s]+):(?<currentValue>\\S+)\\nARG NODE_VERSION=\\S+\\nARG NODE_DIGEST=(?<currentDigest>sha256:[a-f0-9]{64})"
