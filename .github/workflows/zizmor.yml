@@ -1,0 +1,43 @@
+# Advisory zizmor (GitHub Actions security linter), added 2026-10-23.
+# Never blocks CI: no SARIF upload (advanced-security: false, no security-events: write),
+# findings go to the job log; the scan step and the job are continue-on-error.
+# Not a required check. quality.yml keeps its own pinned zizmor (medium+) run.
+name: zizmor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: zizmor (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        id: zizmor
+        continue-on-error: true
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          advanced-security: false
+
+      - name: Advisory note
+        if: steps.zizmor.outcome == 'failure'
+        run: echo "::warning title=zizmor (advisory)::zizmor reported findings (or failed); see the 'Run zizmor' step log. Advisory only, not blocking."

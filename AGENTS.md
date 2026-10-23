@@ -251,6 +251,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - Checkout: Unraid-VM `Ubuntu`, machineId `3ff4cee8-7e7c-4cc9-a262-ebf10016d570`, path `~/Projekte/MagguuBot` (repos ready).
 - Marcos PC (`f01cf815-a384-40fb-ac18-c8450b4d5889` / DESKTOP-MA0R4G0) only for WoW AddOns deploy; may be offline.
 - Report only to Buddy; never 1:1 Marco (except Auto-review cards with no text).
+- Reporting an Buddy (ab 2026-10-23): genau eine Done-Meldung pro Auftrag, max. ~800 Zeichen plus Pfad/Commit für Details; Zwischenstände nur bei Aufträgen über 30 Minuten.
 
 
 Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to Buddy.
@@ -270,6 +271,7 @@ Marco uses Grok Bot “Buddy” as the single front door. Helpers report back to
 
 - CodeQL: `github/codeql-action/init` and `analyze` in `.github/workflows/codeql.yml` must share one commit SHA. After a dependency-bot bump (Renovate; formerly Dependabot) of only one pin, merge the matching `init` or `analyze` PR before calling main green.
 - Normal work: commit and push directly to `main` from this checkout (no PR, no force-push). Only dependency-bot PRs (Renovate) are merged: locally with `gh pr merge --squash --delete-branch` (the GitHub connector Auto-review blocks MagguuBot merges).
+- zizmor advisory (2026-10-23): `.github/workflows/zizmor.yml` (zizmorcore/zizmor-action SHA-pinned, `advanced-security: false`, no SARIF/`security-events`, step + job `continue-on-error`, never a required check) logs all zizmor findings on push main/PR/dispatch; `quality.yml` keeps its pinned zizmor (medium+) gate. Findings not fixed yet, pending Buddy review.
 - Never launch Cursor cloud agents for dependency-bot PRs (Renovate/Dependabot), merges, or MagguuBot/Website polyfill work. Never ask Marco; report only to Buddy.
 
 
