@@ -8,6 +8,12 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { Colors } from '../../embeds/colors.js';
+import {
+  ANNOUNCE_CHANNEL_PERMS,
+  invokerChannelError,
+  missingChannelPermissions,
+  rolePingAllowed,
+} from '../channel-authority.js';
 import { findLayoutRole } from '../role-lookup.js';
 import type { SlashCommand } from './index.js';
 
@@ -81,10 +87,28 @@ export const announceCommand: SlashCommand = {
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+    const invoker = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    const invokerPerms = invoker ? channel.permissionsFor(invoker) : null;
+    const channelError = invokerChannelError(
+      channel.toString(),
+      missingChannelPermissions(invokerPerms, ANNOUNCE_CHANNEL_PERMS),
+    );
+    if (channelError) {
+      await interaction.editReply({ content: channelError });
+      return;
+    }
+
+    if (pingRoleOverride && !rolePingAllowed(pingRoleOverride.mentionable, invokerPerms)) {
+      await interaction.editReply({
+        content: '❌ Diese Rolle ist nicht erwähnbar. Dafür brauchst du `Mention @everyone/@here` in diesem Channel.',
+      });
+      return;
+    }
+
     const ping = resolvePing(interaction.guild, pingPreset, pingRoleOverride?.id);
 
     if (ping.parseTypes.includes('everyone') &&
-        !interaction.memberPermissions?.has(PermissionFlagsBits.MentionEveryone)) {
+        !invokerPerms?.has(PermissionFlagsBits.MentionEveryone)) {
       await interaction.editReply({
         content: '❌ Du brauchst `Mention @everyone/@here` Permission für diese Ping-Option.',
       });

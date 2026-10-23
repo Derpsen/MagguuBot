@@ -7,6 +7,11 @@ import {
 } from 'discord.js';
 import { db } from '../../db/client.js';
 import { scheduledAnnouncements } from '../../db/schema.js';
+import {
+  ANNOUNCE_CHANNEL_PERMS,
+  invokerChannelError,
+  missingChannelPermissions,
+} from '../channel-authority.js';
 import type { SlashCommand } from './index.js';
 
 const COLOR_CHOICES = [
@@ -69,6 +74,16 @@ export const scheduleAnnounceCommand: SlashCommand = {
     const title = interaction.options.getString('title', true);
     const message = interaction.options.getString('message', true);
     const color = interaction.options.getString('color') ?? 'brand';
+
+    const invoker = await interaction.guild?.members.fetch(interaction.user.id).catch(() => null);
+    const channelError = invokerChannelError(
+      channel.toString(),
+      missingChannelPermissions(invoker ? channel.permissionsFor(invoker) : null, ANNOUNCE_CHANNEL_PERMS),
+    );
+    if (channelError) {
+      await interaction.reply({ content: channelError, flags: MessageFlags.Ephemeral });
+      return;
+    }
 
     let fireAt: Date;
     const dur = parseDuration(when);

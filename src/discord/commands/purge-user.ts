@@ -6,6 +6,7 @@ import {
   type TextChannel,
 } from 'discord.js';
 import { logger } from '../../utils/logger.js';
+import { missingChannelPermissions, PURGE_CHANNEL_PERMS } from '../channel-authority.js';
 import { postModLog } from '../mod-log.js';
 import type { SlashCommand } from './index.js';
 
@@ -39,12 +40,18 @@ export const purgeUserCommand: SlashCommand = {
     const limit = interaction.options.getInteger('limit-per-channel') ?? PER_CHANNEL_LIMIT;
 
     const botMember = await interaction.guild.members.fetchMe();
+    const invoker = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    if (!invoker) {
+      await interaction.editReply('❌ Deine Rechte konnten nicht geprüft werden. Bitte erneut versuchen.');
+      return;
+    }
     const textChannels = interaction.guild.channels.cache.filter(
       (c): c is TextChannel => c.type === ChannelType.GuildText,
     );
 
     let totalDeleted = 0;
     let skippedNoPerms = 0;
+    let skippedInvoker = 0;
     let scannedChannels = 0;
     const perChannel: Array<{ name: string; count: number }> = [];
 
@@ -57,6 +64,12 @@ export const purgeUserCommand: SlashCommand = {
         !perms.has(PermissionFlagsBits.ReadMessageHistory)
       ) {
         skippedNoPerms++;
+        continue;
+      }
+      // Only channels the invoker could moderate themselves: the bot must not
+      // delete messages in channels the moderator cannot see or manage.
+      if (missingChannelPermissions(channel.permissionsFor(invoker), PURGE_CHANNEL_PERMS).length > 0) {
+        skippedInvoker++;
         continue;
       }
 
@@ -82,7 +95,7 @@ export const purgeUserCommand: SlashCommand = {
       action: 'purge',
       moderator: interaction.user,
       target,
-      reason: `purge-user — all channels (scanned ${scannedChannels}, skipped ${skippedNoPerms})`,
+      reason: `purge-user — all channels (scanned ${scannedChannels}, skipped bot ${skippedNoPerms}, skipped moderator ${skippedInvoker})`,
       extra: [
         { name: 'Total deleted', value: `${totalDeleted}`, inline: true },
         { name: 'Hit channels', value: `${perChannel.length}`, inline: true },
@@ -94,7 +107,7 @@ export const purgeUserCommand: SlashCommand = {
       await interaction.editReply(
         `Keine Nachrichten von **${target.displayName}** in den letzten ${PER_CHANNEL_LIMIT} Messages pro Channel gefunden${
           skippedNoPerms > 0 ? ` (${skippedNoPerms} Channels übersprungen — keine Permissions)` : ''
-        }.`,
+        }${skippedInvoker > 0 ? ` (${skippedInvoker} Channels übersprungen — dir fehlen dort Rechte)` : ''}.`,
       );
       return;
     }
@@ -104,7 +117,9 @@ export const purgeUserCommand: SlashCommand = {
       .slice(0, 15)
       .map((c) => `- \`#${c.name}\`: **${c.count}**`);
     const more = perChannel.length > 15 ? `\n_…+${perChannel.length - 15} weitere_` : '';
-    const skipNote = skippedNoPerms > 0 ? `\n\n_${skippedNoPerms} Channels übersprungen — Bot hat dort keine Manage-Messages-Permission._` : '';
+    const skipNote =
+      (skippedNoPerms > 0 ? `\n\n_${skippedNoPerms} Channels übersprungen — Bot hat dort keine Manage-Messages-Permission._` : '') +
+      (skippedInvoker > 0 ? `\n_${skippedInvoker} Channels übersprungen — dir fehlen dort Ansehen/Verwalten/Verlauf._` : '');
 
     await interaction.editReply(
       `🧹 **${totalDeleted}** Nachrichten von **${target.displayName}** gelöscht in **${perChannel.length}** Channels:\n${lines.join('\n')}${more}${skipNote}`,
