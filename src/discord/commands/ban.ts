@@ -1,4 +1,5 @@
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { checkModerationTarget } from '../moderation-guard.js';
 import { postModLog } from '../mod-log.js';
 import type { SlashCommand } from './index.js';
 
@@ -24,6 +25,24 @@ export const banCommand: SlashCommand = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) {
       await interaction.editReply({ content: 'Dieser Befehl ist nur auf einem Server verfügbar.' });
+      return;
+    }
+
+    const [invoker, target] = await Promise.all([
+      interaction.guild.members.fetch(interaction.user.id).catch(() => null),
+      interaction.guild.members.fetch(user.id).catch(() => null),
+    ]);
+    const denied = checkModerationTarget({
+      action: 'ban',
+      guildOwnerId: interaction.guild.ownerId,
+      botUserId: interaction.client.user.id,
+      invokerId: interaction.user.id,
+      invoker,
+      targetId: user.id,
+      target,
+    });
+    if (denied) {
+      await interaction.editReply({ content: denied });
       return;
     }
 

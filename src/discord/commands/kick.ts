@@ -1,4 +1,5 @@
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from 'discord.js';
+import { checkModerationTarget } from '../moderation-guard.js';
 import { postModLog } from '../mod-log.js';
 import type { SlashCommand } from './index.js';
 
@@ -19,9 +20,21 @@ export const kickCommand: SlashCommand = {
       return;
     }
 
-    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
-    if (!member) {
-      await interaction.editReply({ content: 'User ist nicht im Server.' });
+    const [invoker, member] = await Promise.all([
+      interaction.guild.members.fetch(interaction.user.id).catch(() => null),
+      interaction.guild.members.fetch(user.id).catch(() => null),
+    ]);
+    const denied = checkModerationTarget({
+      action: 'kick',
+      guildOwnerId: interaction.guild.ownerId,
+      botUserId: interaction.client.user.id,
+      invokerId: interaction.user.id,
+      invoker,
+      targetId: user.id,
+      target: member,
+    });
+    if (denied || !member) {
+      await interaction.editReply({ content: denied ?? 'User ist nicht im Server.' });
       return;
     }
 
