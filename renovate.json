@@ -13,7 +13,40 @@
   "prConcurrentLimit": 5,
   "platformAutomerge": true,
   "ignoreTests": false,
+  "configMigration": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "security"
+    ]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "* 0-12 1 * *"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Dockerfile base image digest (ARG NODE_DIGEST, FROM uses variables)",
+      "fileMatch": [
+        "(^|/)Dockerfile$"
+      ],
+      "matchStrings": [
+        "#\\s*renovate: image=(?<depName>[^:\\s]+):(?<currentValue>\\S+)\\nARG NODE_VERSION=\\S+\\nARG NODE_DIGEST=(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
+  ],
   "packageRules": [
+    {
+      "description": "npm: wait 3 days after publish (supply-chain safety; security fixes via vulnerabilityAlerts ignore this)",
+      "matchDatasources": [
+        "npm"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
     {
       "description": "npm non-major updates in one PR",
       "matchManagers": [
@@ -89,6 +122,19 @@
       "description": "undici majors off: each override must stay in its parent's declared major (6 for discord.js, 7 for cheerio)",
       "matchPackageNames": [
         "undici"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Node base image: digest/minor only, Node majors are a manual decision (engines >=26, Node 26 locked line)",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "node"
       ],
       "matchUpdateTypes": [
         "major"
