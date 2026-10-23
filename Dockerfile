@@ -53,6 +53,7 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.title="MagguuBot" \
       org.opencontainers.image.description="Discord bot + admin dashboard for Magguu media homelab" \
       org.opencontainers.image.source="https://github.com/Derpsen/MagguuBot" \
+      org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"
 
@@ -60,6 +61,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/dist-frontend ./dist-frontend
 COPY --from=builder /app/package.json ./package.json
+COPY LICENSE THIRD-PARTY-NOTICES.md ./
 # Live /app/data is root-owned. The entrypoint chowns it to PUID:PGID and drops.
 # PUID=0 keeps the old root process.
 RUN mkdir -p /app/data

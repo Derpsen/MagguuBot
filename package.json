@@ -2,6 +2,7 @@
   "name": "magguu-bot",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Discord bot + admin dashboard for a media homelab (Sonarr, Radarr, Seerr, Tautulli, SABnzbd).",
   "type": "module",
   "engines": {
