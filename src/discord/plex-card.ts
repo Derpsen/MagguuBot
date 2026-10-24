@@ -53,7 +53,7 @@ function parseState(json: string): PlexCardState {
   return emptyPlexCardState();
 }
 
-const store: PlexCardStore = {
+export const plexCardStore: PlexCardStore = {
   load(channelId) {
     const row = db.select().from(plexActivityCard)
       .where(and(eq(plexActivityCard.guildId, config.DISCORD_GUILD_ID), eq(plexActivityCard.channelId, channelId)))
@@ -116,7 +116,7 @@ let manager: PlexCardManager | null = null;
 
 export function getPlexCard(): PlexCardManager {
   manager ??= new PlexCardManager({
-    store,
+    store: plexCardStore,
     gateway: discordCardGateway,
     log: (level, msg, data) => logger[level](data ?? {}, msg),
   });

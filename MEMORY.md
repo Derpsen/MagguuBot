@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-24 Plex card hardening (review findings on 4c7b538)
+
+- Failure counter used to count the debounce retry timer and the 30 s tick separately (threshold 5 reached after ~2-3 min) → now one counter per real Discord attempt with exponential backoff (`backoffUntil`), skipped flushes return `retry` without counting. 10003/50001/50013 → `pausedUntil` (30 min, option `permanentPauseMs`), quiet `warn` log, never a repost. Fold-time caps user 40 / player 40 / title 150 (assumed from the review note "150/40/40"), markdown/mention escaping at render (`escapePlexMarkdown`). Tests: `tests/plex-card-hardening.test.ts` (incl. real SQLite temp DB + second boot, `goneCooldownMs`). The first edit after deploy may change the card hash once (escaped text).
+
 ## 2026-10-24 Plex weekly statistics card (Welle a)
 
 - Request (Marco): weekly Tautulli statistics as ONE edited card. Rollback branch `rollback/pre-wochenstatistik-4c7b538`. Details/rules: AGENTS.md "Plex weekly statistics card".

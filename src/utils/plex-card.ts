@@ -50,6 +50,10 @@ export interface PlexCardEvent {
 }
 
 export const PLEX_CARD_MAX_RECENT = 6;
+/** Stored (and shown) text caps: webhook text is untrusted and ends up in SQLite and in Discord. */
+export const PLEX_CARD_MAX_TITLE = 150;
+export const PLEX_CARD_MAX_USER = 40;
+export const PLEX_CARD_MAX_PLAYER = 40;
 export const PLEX_CARD_MAX_SESSIONS = 12;
 /** A watched flag followed by the real stop within this window upgrades the entry instead of adding a line. */
 export const PLEX_CARD_WATCHED_MERGE_MS = 5 * 60_000;
@@ -58,6 +62,29 @@ export const PLEX_CARD_SESSION_TTL_MS = 6 * 60 * 60_000;
 
 export function emptyPlexCardState(now = 0): PlexCardState {
   return { sessions: [], recent: [], changedAt: now };
+}
+
+/** One line, no control characters, at most `max` characters (ellipsis when cut). */
+export function clipPlexText(value: string | undefined | null, max: number): string {
+  const text = (value ?? '')
+    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u2028\u2029\ufeff]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const chars = Array.from(text);
+  return chars.length <= max ? text : `${chars.slice(0, max - 1).join('').trimEnd()}…`;
+}
+
+/** Escapes Discord markdown and mention/timestamp syntax so untrusted text renders literally. */
+export function escapePlexMarkdown(value: string): string {
+  return value.replace(/[\\*_~`|>#<@[\]()]/g, '\\$&');
+}
+
+function sanitizeEvent(event: PlexCardEvent): PlexCardEvent {
+  const out = { ...event };
+  if (event.user !== undefined) out.user = clipPlexText(event.user, PLEX_CARD_MAX_USER);
+  if (event.player !== undefined) out.player = clipPlexText(event.player, PLEX_CARD_MAX_PLAYER);
+  if (event.title !== undefined) out.title = clipPlexText(event.title, PLEX_CARD_MAX_TITLE);
+  return out;
 }
 
 function norm(value: string | undefined | null): string {
@@ -78,7 +105,8 @@ function sessionRecent(session: PlexCardSession, kind: PlexCardRecentKind, at: n
 }
 
 /** Folds one Tautulli event into the card state. Returns the same object when nothing changed. */
-export function applyPlexCardEvent(state: PlexCardState, event: PlexCardEvent): PlexCardState {
+export function applyPlexCardEvent(state: PlexCardState, rawEvent: PlexCardEvent): PlexCardState {
+  const event = sanitizeEvent(rawEvent);
   const next = reduce(state, event);
   if (next === state) return state;
   return { ...next, changedAt: event.at };
@@ -243,16 +271,21 @@ function unixSeconds(ms: number): number {
   return Math.floor(ms / 1000);
 }
 
+/** Shown text: clipped again (old rows may predate the fold-time caps), then escaped. */
+function shown(value: string, max: number): string {
+  return escapePlexMarkdown(clipPlexText(value, max));
+}
+
 function sessionLine(session: PlexCardSession): string {
-  const who = session.user ? `**${truncate(session.user, 40)}** · ` : '';
-  const where = session.player ? ` · ${truncate(session.player, 40)}` : '';
+  const who = session.user ? `**${shown(session.user, PLEX_CARD_MAX_USER)}** · ` : '';
+  const where = session.player ? ` · ${shown(session.player, PLEX_CARD_MAX_PLAYER)}` : '';
   const done = session.watched ? ' ✅' : '';
-  return `${STATE_ICON[session.state]} ${who}${truncate(session.title, 120)}${where}${done} · seit <t:${unixSeconds(session.startedAt)}:R>`;
+  return `${STATE_ICON[session.state]} ${who}${shown(session.title, 110)}${where}${done} · seit <t:${unixSeconds(session.startedAt)}:R>`;
 }
 
 function recentLine(entry: PlexCardRecent): string {
-  const who = entry.user ? `**${truncate(entry.user, 40)}** · ` : '';
-  return `${RECENT_ICON[entry.kind]} ${who}${truncate(entry.title, 120)} · <t:${unixSeconds(entry.at)}:R>`;
+  const who = entry.user ? `**${shown(entry.user, PLEX_CARD_MAX_USER)}** · ` : '';
+  return `${RECENT_ICON[entry.kind]} ${who}${shown(entry.title, 110)} · <t:${unixSeconds(entry.at)}:R>`;
 }
 
 /** Builds the card embed. Deterministic for a given state: no "now", relative times are Discord timestamps. */
@@ -271,7 +304,7 @@ export function buildPlexCardEmbed(state: PlexCardState): EmbedBuilder {
     embed.setDescription(truncate(state.sessions.map(sessionLine).join('\n'), 3800));
   }
   if (state.recent.length > 0) {
-    embed.addFields({ name: 'Zuletzt', value: truncate(state.recent.map(recentLine).join('\n'), 1000) });
+    embed.addFields({ name: 'Zuletzt', value: truncate(state.recent.map(recentLine).join('\n'), 1024) });
   }
   if (state.sessions.length === 0 && state.recent.length === 0) {
     embed.setDescription('Sobald jemand etwas abspielt, erscheint es hier.');

@@ -359,7 +359,9 @@ test('transient edit errors retry without posting; only repeated failure reposts
   await timers.advance(4000); // failure 1
   assert.equal(gateway.posts.length, 1);
   assert.equal(store.load(CHANNEL)?.messageId, firstId);
-  await timers.advance(30_000); // failure 2 (retry timer)
+  await timers.advance(30_000); // failure 2 (retry timer after the 30 s backoff)
+  assert.equal(gateway.posts.length, 1);
+  await timers.advance(30_000); // inside the 60 s backoff: no attempt, not counted
   assert.equal(gateway.posts.length, 1);
   await timers.advance(30_000); // failure 3 -> repost
   assert.equal(gateway.posts.length, 2);

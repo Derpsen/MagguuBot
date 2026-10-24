@@ -24,7 +24,7 @@ import {
 
 const LAST_PERIOD_KEY = 'plexWeekly:lastPeriod';
 
-const store: PlexWeeklyStore = {
+export const plexWeeklyStore: PlexWeeklyStore = {
   load(channelId) {
     const row = db.select().from(plexWeeklyCard)
       .where(and(eq(plexWeeklyCard.guildId, config.DISCORD_GUILD_ID), eq(plexWeeklyCard.channelId, channelId)))
@@ -68,7 +68,7 @@ let manager: PlexWeeklyManager | null = null;
 
 export function getPlexWeekly(): PlexWeeklyManager {
   manager ??= new PlexWeeklyManager({
-    store,
+    store: plexWeeklyStore,
     gateway: discordCardGateway,
     fetchRaw,
     timeZone: config.TIME_ZONE,
