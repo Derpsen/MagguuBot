@@ -204,3 +204,5 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-24 Drift guard swap (block 2, step 3.1)
 - `tools/magguu-drift.py` replaces `tools/drift-check.sh` (adopted from the review draft in `~/security-audit-skill/quality-plan-20261024/`, read in full first). Verified locally: 0 errors on the repo, old script also OK, a tracked file with a forbidden name makes it exit 1 with a GitHub annotation. `quality.yml`: separate `drift` job, no `paths-ignore`.
+
+- 2026-10-24 (block 2, step 3.2): `renovate.json` extends `helpers:pinGitHubActionDigests` (new/updated actions are SHA-pinned automatically). Stale lock rule `satori ~0.41.0` replaced by `<0.48` (satori >=0.48 stays locked; 0.47.x allowed); h3 `<2`, TS `<7`, @types/node `<25` unchanged.
