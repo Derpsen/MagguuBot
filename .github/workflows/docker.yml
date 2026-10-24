@@ -66,6 +66,7 @@ jobs:
       contents: read
       id-token: write
       packages: write
+      attestations: write
     steps:
       - name: Checkout
         # actions/checkout@v7.0.1
@@ -129,6 +130,17 @@ jobs:
           IMG: ${{ steps.img.outputs.name }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMG}@${DIGEST}"
+
+      # GitHub build-provenance attestation (stored in GitHub's attestation store; not pushed to the registry,
+      # no storage record, so no extra permission). Does not change the image. No SBOM attestation, no cosign verify yet.
+      - name: Attest build provenance
+        # actions/attest-build-provenance@v4.2.2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-name: ${{ steps.img.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: false
+          create-storage-record: false
 
   alarm:
     name: failure alarm

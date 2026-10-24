@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Changed
+- docker.yml: GitHub build-provenance attestation (`actions/attest-build-provenance` v4.2.2, SHA-pinned, `attestations: write` on the build job only, GitHub attestation store only). Image content, Cosign keyless signing and uid 99 unchanged; no SBOM attestation, no cosign verify.
 - Renovate: `helpers:pinGitHubActionDigests` added; satori lock updated from `~0.41.0` to `<0.48` (>=0.48 locked); h3/TS/@types/node locks unchanged.
 - Drift guard: `tools/magguu-drift.py` (+ `tools/drift-allow.txt`) replaces `tools/drift-check.sh`; own `drift` job in `quality.yml` (alarm `needs` it) and a step in `.githooks/pre-push`; `quality.yml` no longer ignores `**/*.md`, so doc-only changes are checked too.
 
