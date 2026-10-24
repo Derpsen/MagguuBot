@@ -12,6 +12,7 @@ import {
 } from '../utils/faq-matcher.js';
 import { neutralizeMentions } from '../utils/faq-search.js';
 import { logger } from '../utils/logger.js';
+import { recordFaqUse } from './faq-stats.js';
 import { safeFetch } from '../utils/safe-fetch.js';
 
 const CACHE_TTL_MS = 60 * 60_000;
@@ -121,6 +122,7 @@ export async function runFaqAutoanswer(message: Message<true>): Promise<boolean>
     embeds: [buildFaqAnswerEmbed(match.entry, config.WEBSITE_FAQ_PAGE_URL)],
     allowedMentions: { repliedUser: false },
   });
+  recordFaqUse(match.entry.id, 'autoanswer');
   logger.info({ faqId: match.entry.id, score: match.score, channelId: message.channelId }, 'faq auto-answer sent');
   return true;
 }

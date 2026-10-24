@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Changed
+- FAQ statistics: anonymous per-day counters (`faq_usage_daily`: entry id, source command/autocomplete/autoanswer, count; no user/channel/text) written after a successful `/faq` or auto-answer reply, 90 day retention, 7 day `faq` block in the authenticated `GET /api/status` (counts + top 5) for the Magguu dashboard.
 - Weekly "FAQ der Woche" embed (one per week, restart/DST-safe slot like the digest, `FAQ_TOP_ENABLED` / `_DAY` / `_HOUR`, optional `DISCORD_CHANNEL_FAQ_TOP`, default channel weeklyDigest): most used website FAQ entry from anonymous per-day counters (`faq_usage_daily`, no user ids); nothing is posted without enough data.
 - Plex activity: one self-updating card per Plex user (table `plex_user_card`, idempotent migration from the old single card, per-card debounce/hash/backoff, channel pause on 10003/50001/50013, cards posted one by one, cap 25, optional `PLEX_CARD_USER_ALIASES` / `PLEX_CARD_USER_EXCLUDE`, user card footer `Plex-Nutzerkarte`). One-time, idempotent cleanup of the former Plex cards in the Plex channel (own messages with a former Plex card footer only, single deletes, state in `plex_cleanup_state`, `PLEX_CARD_CLEANUP_ENABLED` / `_DRY_RUN` / `_SCAN_LIMIT`), started only after all user cards are live.
 - `/faq` autocomplete: choice name and value are limited to 100 UTF-16 code units (not code points) and cut on grapheme boundaries (`clipChoiceValue` added).

@@ -10,6 +10,7 @@ import { Colors, truncate } from '../../embeds/colors.js';
 import { CooldownGate, type FaqEntry } from '../../utils/faq-matcher.js';
 import { clipChoiceText, faqChoices, neutralizeMentions, searchFaq } from '../../utils/faq-search.js';
 import { escapePlexMarkdown } from '../../utils/plex-card.js';
+import { recordFaqUse } from '../faq-stats.js';
 import { buildFaqAnswerEmbed, getCachedFaqEntries, loadFaqEntries } from '../faq-autoanswer.js';
 import type { SlashCommand } from './index.js';
 
@@ -108,9 +109,11 @@ export const faqCommand: SlashCommand = {
     } catch {
       entries = [];
     }
-    await interaction.editReply({
-      embeds: [buildFaqReply(interaction.options.getString('suche', true), entries)],
-      allowedMentions: NO_MENTIONS,
-    });
+    const raw = interaction.options.getString('suche', true);
+    await interaction.editReply({ embeds: [buildFaqReply(raw, entries)], allowedMentions: NO_MENTIONS });
+    // Anonymous counter after a successful reply: only a resolved entry counts, a picked autocomplete suggestion
+    // arrives as its numeric id, free text is a search. No user, channel or text is stored.
+    const resolved = entries.length > 0 ? resolveFaq(raw, entries) : null;
+    if (resolved?.entry) recordFaqUse(resolved.entry.id, /^\s*\d{1,9}\s*$/.test(raw) ? 'autocomplete' : 'command');
   },
 };

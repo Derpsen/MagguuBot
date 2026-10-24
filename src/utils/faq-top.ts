@@ -38,6 +38,13 @@ export interface FaqUsageSummary {
   ranked: FaqUsageEntry[];
 }
 
+export interface FaqStatusBlock {
+  windowDays: number;
+  total: number;
+  bySource: FaqUsageSummary['bySource'];
+  top: { id: number; title: string | null; count: number }[];
+}
+
 function emptySources(): Record<FaqUsageSourceKey, number> {
   return { command: 0, autocomplete: 0, autoanswer: 0 };
 }

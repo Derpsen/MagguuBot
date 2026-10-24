@@ -1,6 +1,8 @@
 import { isNull, max } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { webhookEvents } from '../db/schema.js';
+import { getCachedFaqEntries } from '../discord/faq-autoanswer.js';
+import { faqStatusBlock } from '../discord/faq-stats.js';
 import { readBuildInfo, type BuildInfo } from '../embeds/status.js';
 export { buildStatusSnapshot } from '../embeds/status.js';
 
@@ -24,4 +26,13 @@ export function lastWebhookBySource(): Map<string, Date> {
 
 export function currentBuildInfo(): BuildInfo {
   return readBuildInfo();
+}
+
+/** FAQ usage of the last 7 days from the local counters (titles from the in-memory FAQ cache, no network); null on error. */
+export function currentFaqStatus(now: Date = new Date()) {
+  try {
+    return faqStatusBlock(getCachedFaqEntries(), now);
+  } catch {
+    return null;
+  }
 }

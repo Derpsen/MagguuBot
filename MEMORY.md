@@ -2,6 +2,12 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 FAQ statistics + dashboard (Feature 2 of 3)
+
+- Rollback branches `rollback/pre-faqstats-31926a2` (bot) and one in Magguu-Dashboard. Rules: AGENTS.md "FAQ statistics".
+- Decisions: counters hooked after the successful reply; autocomplete selection is not observable in Discord, so it is derived at `/faq` execution from a numeric-id value; no feedback signal exists, so no helped ratio; prune inside the FAQ-top tick (always runs, posting is separately gated); dashboard data via the existing authenticated `/api/status` (new `faq` field), no new endpoint or attack surface; FAQ titles in that field are public website text.
+- No new envs.
+
 ## 2026-10-25 FAQ der Woche (Feature 1 of 3)
 
 - Request (Marco, via Buddy): weekly top FAQ entry as ONE embed, anonymous, only with data. Rollback branch `rollback/pre-faqtop-170d553`. Rules: AGENTS.md "FAQ der Woche".
@@ -131,7 +137,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - **MagguuUI release poller** (`src/discord/addon-release-poller.ts`): polls `releases/latest` of `MAGGUUUI_RELEASE_REPO` (default Derpsen/MagguuUI, private) every `ADDON_RELEASE_POLL_MINUTES` (15) with `MAGGUUUI_READ_TOKEN`; off without token. Posts to `addonUpdates` (fallback `github`). Announced tags persist in `bot_settings` key `addonReleaseAnnouncedTags`; empty store = seed with current latest (no historical post). Shared with the GitHub release webhook, so poll + webhook never double-post. Drafts/prereleases skipped. Never creates tags.
 - Release embed (`src/embeds/addon-release.ts`): deterministic summary of the newest version block of the release body, markdown stripped, headings Große Neuerungen / Weitere Features / Bugfixes, top 3 bullets each (+ "… und N weitere"), link to the full release; field ≤1024, description ≤4096.
 - **Website FAQ auto-answer** (`src/discord/faq-autoanswer.ts`, matcher `src/utils/faq-matcher.ts`): source `GET https://ui.magguu.xyz/api/v1/faqs` (public, grouped by category), hourly cache. Only in `FAQ_AUTOANSWER_CHANNEL_IDS` (empty = off), only question-like messages, conservative token-overlap score (`FAQ_AUTOANSWER_MIN_SCORE` 0.6, ≥2 shared tokens, clear lead over runner-up), per-user 300 s / per-channel 60 s cooldowns, same FAQ not repeated per channel within 360 min; otherwise silent. MessageContent intent is already requested in code (`client.ts`); must stay enabled in the Developer Portal.
-- `GET /api/status` (read-only JSON: uptime, build SHA/date, last webhook per source; no secrets) – disabled unless `STATUS_API_TOKEN` is set, then requires `Authorization: Bearer`. Used by the Magguu-Dashboard „Magguu-Dienste“ view.
+- `GET /api/status` (read-only JSON: uptime, build SHA/date, last webhook per source, `faq` block = anonymous FAQ usage counts of the last 7 days; no secrets) – disabled unless `STATUS_API_TOKEN` is set, then requires `Authorization: Bearer`. Used by the Magguu-Dashboard „Magguu-Dienste“ view.
 - Renovate replaces Dependabot (`renovate.json`, `.github/dependabot.yml` removed; @types/node <25, TS <7, h3 <2, satori ~0.41 guard in this repo's `renovate.json`, left as is). Website uses satori ^0.47.1; satori >=0.48 is locked without Marco's yes. Renovate GitHub App installed 2026-10-16 (Dependency Dashboard #111). `dependabot-auto-merge.yml` removed 2026-10-16: Renovate is the only updater (also handles vulnerability alerts).
 - "Unraid & Server": add to the Unraid template `MAGGUUUI_READ_TOKEN` (masked), `STATUS_API_TOKEN` (masked), `FAQ_AUTOANSWER_CHANNEL_IDS`; optional `ADDON_RELEASE_POLL_MINUTES`.
 

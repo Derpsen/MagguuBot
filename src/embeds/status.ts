@@ -1,4 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
+import type { FaqStatusBlock } from '../utils/faq-top.js';
 import { Colors, truncate } from './colors.js';
 
 export const STATUS_WEBHOOK_SOURCES = [
@@ -110,11 +111,13 @@ export interface StatusSnapshot {
   build: BuildInfo;
   staleHours: number;
   webhooks: Record<string, { lastReceivedAt: string | null; state: SourceState }>;
+  /** Anonymous FAQ usage of the last 7 days (counts per entry and source, no user data); null when unavailable. */
+  faq: FaqStatusBlock | null;
   generatedAt: string;
 }
 
 export function buildStatusSnapshot(
-  input: { uptimeSeconds: number; build: BuildInfo; lastWebhookAt: ReadonlyMap<string, Date>; staleHours: number; now: Date },
+  input: { uptimeSeconds: number; build: BuildInfo; lastWebhookAt: ReadonlyMap<string, Date>; staleHours: number; now: Date; faq?: FaqStatusBlock | null },
 ): StatusSnapshot {
   const webhooks: StatusSnapshot['webhooks'] = {};
   for (const source of STATUS_WEBHOOK_SOURCES) {
@@ -127,6 +130,7 @@ export function buildStatusSnapshot(
     build: input.build,
     staleHours: input.staleHours,
     webhooks,
+    faq: input.faq ?? null,
     generatedAt: input.now.toISOString(),
   };
 }

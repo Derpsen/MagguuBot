@@ -109,6 +109,8 @@ Once a week (default Friday 18:00 in `TIME_ZONE`; `PLEX_NEW_DIGEST_ENABLED`, `PL
 
 Once a week (default Monday 10:00 in `TIME_ZONE`; `FAQ_TOP_ENABLED`, `FAQ_TOP_DAY`, `FAQ_TOP_HOUR`) the bot posts **one** "📚 FAQ der Woche" embed with the most used website FAQ entry of the past week (plus up to four more) to the weekly digest channel (`DISCORD_CHANNEL_FAQ_TOP` overrides it). It is based on anonymous counters (per day, FAQ entry and way of use; never who asked or what was typed). Without enough use nothing is posted.
 
+FAQ use (`/faq` search, picked autocomplete suggestion, FAQ auto-answer) is counted anonymously per day and entry (no user, channel or text) and deleted after 90 days. The authenticated `GET /api/status` shows the last 7 days (total, per way, top 5) for the Magguu dashboard. The bot has no "helped" feedback button, so only usage is counted.
+
 Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.
 
 Other high-volume status channels use the same principle where identity is reliable: Seerr issue comments/resolution update one issue card, GitHub pull requests and issues update one card from open to closed/reopened, and Sonarr/Radarr health restoration updates the original warning. Content feeds, imports, releases, and audit/moderation logs remain append-only so history is not lost.

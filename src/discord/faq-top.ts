@@ -5,7 +5,7 @@ import { faqTopState } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
 import { loadFaqEntries } from './faq-autoanswer.js';
-import { faqUsageBetween } from './faq-stats.js';
+import { faqUsageBetween, faqUsageDay, pruneFaqUsage } from './faq-stats.js';
 import { FaqTopManager, type FaqTopDeps, type FaqTopRecord, type FaqTopStore } from './faq-top-manager.js';
 import { discordCardGateway } from './plex-card.js';
 
@@ -66,7 +66,20 @@ export function setFaqTopForTests(replacement: Pick<FaqTopManager, 'tick'> | nul
   manager = replacement as FaqTopManager | null;
 }
 
+let lastPruneDay = '';
+
+/** Retention: at most once per local day, independent of FAQ_TOP_ENABLED (the counters are written either way). */
+export function pruneFaqUsageDaily(now: Date = new Date()): number {
+  const day = faqUsageDay(now);
+  if (day === lastPruneDay) return 0;
+  lastPruneDay = day;
+  const removed = pruneFaqUsage(now);
+  if (removed > 0) logger.info({ removed }, 'old FAQ usage counters deleted');
+  return removed;
+}
+
 export async function runFaqTopTick(): Promise<void> {
+  pruneFaqUsageDaily();
   if (!config.FAQ_TOP_ENABLED) return;
   await getFaqTop().tick();
 }
