@@ -540,6 +540,23 @@ export function ensureSchema(): void {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS faq_usage_daily (
+      day TEXT NOT NULL,
+      faq_id INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, faq_id, source)
+    );
+
+    CREATE TABLE IF NOT EXISTS faq_top_state (
+      guild_id TEXT PRIMARY KEY,
+      last_scheduled_at INTEGER,
+      last_posted_at INTEGER,
+      last_message_id TEXT,
+      paused_until INTEGER,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS raid_reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,

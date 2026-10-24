@@ -519,6 +519,30 @@ export const plexNewDigest = sqliteTable('plex_new_digest', {
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
 
+// Anonymous FAQ usage: one counter per day, FAQ entry and source. No user, channel or message ids, no text.
+export const faqUsageDaily = sqliteTable(
+  'faq_usage_daily',
+  {
+    /** Local calendar day (TIME_ZONE) as YYYY-MM-DD. */
+    day: text('day').notNull(),
+    faqId: integer('faq_id').notNull(),
+    /** command (free-text /faq), autocomplete (/faq with a picked suggestion) or autoanswer. */
+    source: text('source').notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.day, t.faqId, t.source] })],
+);
+
+// Weekly FAQ top embed: which schedule slot was handled last, so restarts never post twice.
+export const faqTopState = sqliteTable('faq_top_state', {
+  guildId: text('guild_id').primaryKey(),
+  lastScheduledAt: integer('last_scheduled_at', { mode: 'timestamp_ms' }),
+  lastPostedAt: integer('last_posted_at', { mode: 'timestamp_ms' }),
+  lastMessageId: text('last_message_id'),
+  pausedUntil: integer('paused_until', { mode: 'timestamp_ms' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 // One persistent Plex activity card per channel; the message id survives restarts.
 export const plexActivityCard = sqliteTable(
   'plex_activity_card',

@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Changed
+- Weekly "FAQ der Woche" embed (one per week, restart/DST-safe slot like the digest, `FAQ_TOP_ENABLED` / `_DAY` / `_HOUR`, optional `DISCORD_CHANNEL_FAQ_TOP`, default channel weeklyDigest): most used website FAQ entry from anonymous per-day counters (`faq_usage_daily`, no user ids); nothing is posted without enough data.
 - Plex activity: one self-updating card per Plex user (table `plex_user_card`, idempotent migration from the old single card, per-card debounce/hash/backoff, channel pause on 10003/50001/50013, cards posted one by one, cap 25, optional `PLEX_CARD_USER_ALIASES` / `PLEX_CARD_USER_EXCLUDE`, user card footer `Plex-Nutzerkarte`). One-time, idempotent cleanup of the former Plex cards in the Plex channel (own messages with a former Plex card footer only, single deletes, state in `plex_cleanup_state`, `PLEX_CARD_CLEANUP_ENABLED` / `_DRY_RUN` / `_SCAN_LIMIT`), started only after all user cards are live.
 - `/faq` autocomplete: choice name and value are limited to 100 UTF-16 code units (not code points) and cut on grapheme boundaries (`clipChoiceValue` added).
 - Raid reminders to a channel re-check the subscriber's View + Send rights at send time (like the bot's); a subscriber who lost access or left pauses the subscription once (warn log, no alarm, no post, no ping).

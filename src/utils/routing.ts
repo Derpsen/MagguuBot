@@ -30,6 +30,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { source: 'Wochenrückblick', keys: ['weeklyDigest'], integrated: true, delivery: 'channel' },
   { source: 'Plex-Wochenstatistik (1 Karte, editiert)', keys: ['weeklyDigest'], integrated: true, delivery: 'channel', note: 'Kanal-Override: DISCORD_CHANNEL_PLEX_WEEKLY' },
   { source: 'Neu-hinzugefügt-Digest (1 Embed pro Woche)', keys: ['newOnPlex', 'weeklyDigest'], integrated: true, delivery: 'channel', note: 'Kanal-Override: DISCORD_CHANNEL_NEW_ADDED; nichts Neues = keine Nachricht' },
+  { source: 'FAQ der Woche (1 Embed pro Woche)', keys: ['weeklyDigest'], integrated: true, delivery: 'channel', note: 'Kanal-Override: DISCORD_CHANNEL_FAQ_TOP; ohne Nutzungsdaten keine Nachricht' },
   { source: 'Seerr', keys: ['requests', 'approvals', 'failures'], integrated: true, delivery: 'channel' },
   { source: 'Prowlarr', keys: ['health'], integrated: true, delivery: 'channel' },
   { source: 'GitHub (CI, PRs, Issues)', keys: ['github'], integrated: true, delivery: 'channel' },
@@ -153,6 +154,7 @@ export function classifyBotEmbed(embed: EmbedView): ChannelKey[] | null {
   if (footer === 'MagguuBot · recently_added' || footer === 'MagguuBot · now available') return ['newOnPlex'];
   if (footer === 'MagguuBot · automatisch jeden Sonntag') return ['weeklyDigest'];
   if (footer === 'MagguuBot · Plex-Wochenstatistik') return ['weeklyDigest'];
+  if (footer === 'MagguuBot · FAQ der Woche') return ['weeklyDigest'];
   if (footer === 'MagguuBot · Neu-hinzugefügt-Digest') return ['newOnPlex', 'weeklyDigest'];
   if (footer.startsWith('MagguuBot · WoW Blue-Tracker')) return ['blizzard'];
   if (/^MagguuUI · (neues Release|Vorabversion|stabiles Update)$/.test(footer)) return ['addonUpdates', 'github'];

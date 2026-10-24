@@ -107,6 +107,8 @@ Plex playback notifications live in `🎬・plex-aktivität` as **one card per P
 
 Once a week (default Friday 18:00 in `TIME_ZONE`; `PLEX_NEW_DIGEST_ENABLED`, `PLEX_NEW_DIGEST_DAY`, `PLEX_NEW_DIGEST_HOUR`) the bot posts **one** "🆕 Neu hinzugefügt" embed with the movies and series added since the previous digest (Tautulli `get_recently_added`, at most 15 titles plus `+N weitere`); if nothing is new, nothing is posted. The channel is `DISCORD_CHANNEL_NEW_ADDED`, otherwise the New-on-Plex channel, otherwise the weekly digest channel. The last run is stored in SQLite (`plex_new_digest`), so a restart never posts a digest twice.
 
+Once a week (default Monday 10:00 in `TIME_ZONE`; `FAQ_TOP_ENABLED`, `FAQ_TOP_DAY`, `FAQ_TOP_HOUR`) the bot posts **one** "📚 FAQ der Woche" embed with the most used website FAQ entry of the past week (plus up to four more) to the weekly digest channel (`DISCORD_CHANNEL_FAQ_TOP` overrides it). It is based on anonymous counters (per day, FAQ entry and way of use; never who asked or what was typed). Without enough use nothing is posted.
+
 Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.
 
 Other high-volume status channels use the same principle where identity is reliable: Seerr issue comments/resolution update one issue card, GitHub pull requests and issues update one card from open to closed/reopened, and Sonarr/Radarr health restoration updates the original warning. Content feeds, imports, releases, and audit/moderation logs remain append-only so history is not lost.

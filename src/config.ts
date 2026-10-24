@@ -52,6 +52,8 @@ const schema = z.object({
   DISCORD_CHANNEL_PLEX_WEEKLY: z.string().optional(),
   /** Optional override for the weekly "Neu hinzugefügt" digest; default: newOnPlex channel, then weeklyDigest. */
   DISCORD_CHANNEL_NEW_ADDED: z.string().optional(),
+  /** Optional override for the weekly FAQ top embed; default is the weeklyDigest channel. */
+  DISCORD_CHANNEL_FAQ_TOP: z.string().optional(),
   DISCORD_CHANNEL_DOWNLOAD_LIVE: z.string().optional(),
   DISCORD_CHANNEL_MOVIE_NIGHT: z.string().optional(),
   DISCORD_CHANNEL_SUGGESTIONS: z.string().optional(),
@@ -88,6 +90,9 @@ const schema = z.object({
   PLEX_NEW_DIGEST_ENABLED: envBoolean(true),
   PLEX_NEW_DIGEST_DAY: z.coerce.number().int().min(0).max(6).default(5),
   PLEX_NEW_DIGEST_HOUR: z.coerce.number().int().min(0).max(23).default(18),
+  FAQ_TOP_ENABLED: envBoolean(true),
+  FAQ_TOP_DAY: z.coerce.number().int().min(0).max(6).default(1),
+  FAQ_TOP_HOUR: z.coerce.number().int().min(0).max(23).default(10),
   AUTOMATIC_BACKUP_ENABLED: envBoolean(true),
   AUTOMATIC_BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(4),
   AUTOMATIC_BACKUP_RETENTION: z.coerce.number().int().min(1).max(30).default(7),

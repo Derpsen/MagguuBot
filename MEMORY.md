@@ -2,6 +2,12 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 FAQ der Woche (Feature 1 of 3)
+
+- Request (Marco, via Buddy): weekly top FAQ entry as ONE embed, anonymous, only with data. Rollback branch `rollback/pre-faqtop-170d553`. Rules: AGENTS.md "FAQ der Woche".
+- Decisions: (1) data = `faq_usage_daily` (day, faq id, source, count), written by the hooks of the next commit (statistics feature); this commit only reads it, so before the hooks are live nothing is posted; (2) scheduling reuses the digest functions (`lastScheduledRun`, `catchUpDeadline`, `decideDigest`), own state table `faq_top_state`; (3) channel = override env, else `weeklyDigest`: NOT the `faq` key, because that channel holds the static FAQ content and no new key means `/doctor` stays quiet; (4) no question text is stored, titles are read from the website FAQ cache at post time and unknown ids are dropped; (5) minimum 3 uses per week.
+- Tested with real discord.js payloads (EmbedBuilder, MessagePayload.resolveBody), fake Discord and clock; the real first post is not yet seen. New optional envs: `FAQ_TOP_ENABLED` (true), `FAQ_TOP_DAY` (1 = Monday), `FAQ_TOP_HOUR` (10), `DISCORD_CHANNEL_FAQ_TOP` (empty).
+
 ## 2026-10-24 Plex cards per user + one-time cleanup
 
 - Request (Marco, via Buddy): one self-updating Plex card per Plex user instead of one shared card, then delete the old cards ("die ganzen vorherigen Posts, also die Karten, weg"). Rollback branch `rollback/pre-usercards-2290461`. Details/rules: AGENTS.md "Plex activity cards (one per Plex user)" and "One-time cleanup".
