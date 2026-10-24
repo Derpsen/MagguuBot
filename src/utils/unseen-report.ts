@@ -5,6 +5,12 @@ export const UNSEEN_TOP_N = 25;
 export const UNSEEN_TITLE_MAX = 60;
 export const UNSEEN_LIBRARY_MAX = 40;
 const DAY_MS = 86_400_000;
+/**
+ * Budget for the report inside the `/api/status` JSON. Home Assistant's recorder skips ALL attributes of a sensor
+ * once they exceed 16 KB in total (the state itself stays usable), and the same sensor carries the other bot fields,
+ * so the report gets at most 6 KB (UTF-8 bytes of its JSON).
+ */
+export const UNSEEN_MAX_BYTES = 6_000;
 
 /** One row of Tautulli `get_library_media_info` (only the fields we read; Tautulli sends numbers as number or string). */
 export interface MediaInfoRow {
@@ -38,6 +44,8 @@ export interface UnseenReportBlock {
   partial: boolean;
   /** Libraries (movie/show) the report covered. */
   libraries: number;
+  /** true when items were dropped at the end of the list to stay within `UNSEEN_MAX_BYTES`. */
+  clipped?: boolean;
   items: UnseenItem[];
 }
 
@@ -143,4 +151,24 @@ export function reportIsFresh(block: UnseenReportBlock | null, now: number, minA
   if (!block) return false;
   const at = Date.parse(block.generatedAt);
   return Number.isFinite(at) && now - at >= 0 && now - at < DAY_MS && block.minAgeDays === minAgeDays && block.staleDays === staleDays;
+}
+
+/** Size of a block as it goes out in the status JSON (UTF-8 bytes). */
+export function unseenBlockBytes(block: UnseenReportBlock): number {
+  return Buffer.byteLength(JSON.stringify(block), 'utf8');
+}
+
+/**
+ * The block as it is served: smallest items (the end of the size-ordered list) are dropped until the JSON fits
+ * `maxBytes`; `clipped` tells the dashboard. A block that already fits is returned unchanged (same object).
+ */
+export function clipUnseenBlock(block: UnseenReportBlock, maxBytes: number = UNSEEN_MAX_BYTES): UnseenReportBlock {
+  if (unseenBlockBytes(block) <= maxBytes) return block;
+  const items = [...block.items];
+  let out: UnseenReportBlock = { ...block, clipped: true, items };
+  while (items.length > 0 && unseenBlockBytes(out) > maxBytes) {
+    items.pop();
+    out = { ...block, clipped: true, items };
+  }
+  return out;
 }

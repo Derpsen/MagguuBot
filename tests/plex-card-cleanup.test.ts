@@ -449,6 +449,39 @@ test('F1 tick emergency brake: with PLEX_CARD_CLEANUP_ENABLED=false neither the 
   }
 });
 
+test('F8 production wiring: the tick hands the run a LIVE enabled check (reads the config on every call); flipping it off is seen by the run (fails if the wiring is removed or frozen)', async () => {
+  const { config } = await import('../src/config.ts');
+  const spy = spyClient('cw');
+  const seen: Array<(() => boolean) | undefined> = [];
+  let afterFlip: boolean | null = null;
+  const run = async (d: { enabled?: () => boolean }) => {
+    seen.push(d.enabled);
+    const before = d.enabled?.();
+    config.PLEX_CARD_CLEANUP_ENABLED = false; // the switch is turned off while the run is in progress
+    afterFlip = d.enabled?.() ?? null;
+    config.PLEX_CARD_CLEANUP_ENABLED = true;
+    assert.equal(before, true);
+    return okOutcome;
+  };
+  cleanup.resetCleanupGate();
+  const was = config.PLEX_CARD_CLEANUP_ENABLED;
+  const wasDry = config.PLEX_CARD_CLEANUP_DRY_RUN;
+  try {
+    config.PLEX_CARD_CLEANUP_DRY_RUN = false;
+    config.PLEX_CARD_CLEANUP_ENABLED = true;
+    await cleanup.runPlexCardCleanupTick('cw', liveSync, 1_000_000, run as never, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('cw', liveSync, 1_000_000 + 10 * 60_000, run as never, spy.resolve as never);
+    assert.equal(seen.length, 1, 'the run started');
+    assert.equal(typeof seen[0], 'function', 'the tick passes an enabled check to the run');
+    assert.equal(afterFlip, false, 'the check reads the live config, not a value frozen at the start');
+  } finally {
+    config.PLEX_CARD_CLEANUP_ENABLED = was;
+    config.PLEX_CARD_CLEANUP_DRY_RUN = wasDry;
+    cleanup.resetCleanupGate();
+    sqliteHandle.prepare("DELETE FROM plex_cleanup_state WHERE channel_id IN ('cw')").run();
+  }
+});
+
 test('tick wiring: final state and not-live state never start a run; 0 cards never reaches the client', async () => {
   const { config } = await import('../src/config.ts');
   let runs = 0;

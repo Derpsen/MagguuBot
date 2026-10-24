@@ -12,6 +12,7 @@ import {
   scoreRoleRefusal,
   serializeRioThresholds,
   type ParsedTiers,
+  rioText,
   type RioCharacterInput,
   type RioTier,
 } from '../utils/rio-roles.js';
@@ -236,6 +237,8 @@ export type RioLinkOutcome =
       added: boolean;
       removedRoleId: string | null;
       removeFailed: boolean;
+      /** The new role was withheld because the previous one could not be removed. */
+      addSkipped: boolean;
       nextTier: RioTier | null;
     };
 
@@ -308,18 +311,11 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
     }
   }
 
+  // The old bot-given role goes FIRST. If that fails the new role is not handed out and the tracking keeps pointing
+  // at the old role, so the next /rio-link retries the removal and the bot never loses track of a role it gave.
   let added = false;
   let removedRoleId: string | null = null;
   let removeFailed = false;
-  try {
-    if (addRole) {
-      await member.roles.add(addRole.id, 'Raider.IO score role (/rio-link)');
-      added = true;
-    }
-  } catch (err) {
-    if (discordErrorCode(err) === 50_013) return { kind: 'missing-permissions' };
-    throw err;
-  }
   if (removeRole) {
     try {
       await member.roles.remove(removeRole.id, 'Raider.IO score role changed (/rio-link)');
@@ -329,6 +325,15 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
       logger.warn({ err, code: discordErrorCode(err) }, 'rio-link: could not remove the previous score role');
     }
   }
+  try {
+    if (addRole && !removeFailed) {
+      await member.roles.add(addRole.id, 'Raider.IO score role (/rio-link)');
+      added = true;
+    }
+  } catch (err) {
+    if (discordErrorCode(err) === 50_013) return { kind: 'missing-permissions' };
+    throw err;
+  }
 
   store.upsert({
     guildId: guild.id,
@@ -337,7 +342,8 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
     realm: result.realm,
     region: result.region,
     lastScore: result.score,
-    lastRoleId: plan.botRole,
+    // only overwritten when the old role really went (or there was none): otherwise keep tracking it
+    lastRoleId: removeFailed ? (previous?.lastRoleId ?? null) : plan.botRole,
     updatedAt: now(),
   });
 
@@ -354,6 +360,7 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
     added,
     removedRoleId,
     removeFailed,
+    addSkipped: addRole !== null && !added,
     nextTier: next,
   };
 }
@@ -416,28 +423,33 @@ function apiErrorMessage(f: RioFailure): string {
 
 export const RIO_NOT_CONFIGURED_MESSAGE = 'ℹ️ Die Raider.IO-Rollen sind auf diesem Server noch nicht eingerichtet. Ein Admin muss zuerst Score-Schwellen und Rollen festlegen.';
 
+/** The link is not verified (no OAuth) and the roles carry no rights: say so in every successful answer. */
+export const RIO_DISCLAIMER = '_Hinweis: Der Charakter wird nicht verifiziert, die Score-Rolle ist nur eine Anzeige ohne Rechte._';
+
 export function rioLinkMessage(outcome: RioLinkOutcome, seasonLabel: string): string {
   switch (outcome.kind) {
     case 'not-configured': return RIO_NOT_CONFIGURED_MESSAGE;
     case 'missing-manage-roles': return '⚠️ Ich darf hier keine Rollen vergeben („Rollen verwalten“ fehlt). Bitte einen Admin, die Bot-Rechte zu prüfen.';
     case 'role-missing': return `⚠️ Die Score-Rolle ${roleMention(outcome.roleId)} gibt es nicht mehr. Bitte einen Admin, die Schwellen zu prüfen. Ich lege keine Rollen selbst an.`;
-    case 'role-hierarchy': return `⚠️ Ich kann die Rolle **${outcome.roleName}** nicht vergeben oder entfernen, weil sie über meiner eigenen Rolle liegt oder von einer Integration verwaltet wird. Bitte einen Admin, meine Rolle in der Rollenliste über die Score-Rollen zu schieben.`;
+    case 'role-hierarchy': return `⚠️ Ich kann die Rolle **${rioText(outcome.roleName, 100)}** nicht vergeben oder entfernen, weil sie über meiner eigenen Rolle liegt oder von einer Integration verwaltet wird. Bitte einen Admin, meine Rolle in der Rollenliste über die Score-Rollen zu schieben.`;
     case 'role-unsafe': return `⚠️ Die Score-Rolle ${roleMention(outcome.roleId)} vergebe ich nicht: ${outcome.reason}. Score-Rollen müssen reine Anzeige-Rollen ohne Rechte sein. Bitte einen Admin, die Schwellen zu prüfen.`;
     case 'missing-permissions': return '⚠️ Discord hat das Vergeben der Rolle abgelehnt (fehlende Rechte). Bitte einen Admin, die Bot-Rechte zu prüfen.';
     case 'member-missing': return '❌ Ich finde dich nicht auf dem Server.';
     case 'api-error': return apiErrorMessage(outcome.failure);
     case 'linked': {
-      const season = seasonLabel || outcome.season || 'aktuelle Season';
-      const lines = [`✅ **${outcome.name}** (${outcome.realm}, ${outcome.region.toUpperCase()}) hat **${outcome.score}** M+-Punkte (${season}).`];
+      const season = rioText(seasonLabel || outcome.season || 'aktuelle Season', 40);
+      const lines = [`✅ **${rioText(outcome.name, 24)}** (${rioText(outcome.realm, 40)}, ${rioText(outcome.region.toUpperCase(), 4)}) hat **${outcome.score}** M+-Punkte (${season}).`];
       if (outcome.roleId) {
-        lines.push(outcome.added ? `Du hast die Rolle ${roleMention(outcome.roleId)} bekommen.` : `Du hast die Rolle ${roleMention(outcome.roleId)} bereits.`);
+        if (outcome.addSkipped) lines.push(`Die Rolle ${roleMention(outcome.roleId)} vergebe ich erst, wenn die bisherige Score-Rolle entfernt werden konnte.`);
+        else lines.push(outcome.added ? `Du hast die Rolle ${roleMention(outcome.roleId)} bekommen.` : `Du hast die Rolle ${roleMention(outcome.roleId)} bereits.`);
       } else {
         lines.push('Dein Score liegt noch unter der niedrigsten Schwelle, es gibt noch keine Score-Rolle.');
       }
       if (outcome.removedRoleId) lines.push(`Die bisherige Score-Rolle ${roleMention(outcome.removedRoleId)} wurde entfernt.`);
-      if (outcome.removeFailed) lines.push('⚠️ Die bisherige Score-Rolle konnte nicht entfernt werden, bitte einen Moderator.');
+      if (outcome.removeFailed) lines.push('⚠️ Die bisherige Score-Rolle konnte nicht entfernt werden. Ich versuche es beim nächsten `/rio-link` erneut, oder bitte einen Moderator.');
       if (outcome.nextTier) lines.push(`Nächste Stufe ab ${outcome.nextTier.minScore} Punkten (${roleMention(outcome.nextTier.roleId)}).`);
       lines.push('Der Score wird nicht automatisch aktualisiert: Führe `/rio-link` später erneut aus. Mit `/rio-unlink` löschst du die Verknüpfung wieder.');
+      lines.push(RIO_DISCLAIMER);
       return lines.join('\n');
     }
   }

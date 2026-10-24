@@ -131,6 +131,49 @@ test('ActiveUserCounter: counters with different random keys are independent and
   assert.ok(!seenDigests.join('').includes(USER));
 });
 
+test('ActiveUserCounter: the week key rotates (new random key per week), digests are HMAC-SHA256 of the id (not the id), nothing is persisted but the number', async () => {
+  const { createHmac } = await import('node:crypto');
+  const keys = [Buffer.alloc(32, 1), Buffer.alloc(32, 2), Buffer.alloc(32, 3)];
+  let drawn = 0;
+  const saves: Array<[string, number]> = [];
+  const c = new pure.ActiveUserCounter({
+    loadBase: () => 0,
+    saveCount: (w, n) => { saves.push([w, n]); },
+    randomKey: () => keys[drawn++] ?? Buffer.alloc(32, 99),
+  });
+  const seenOf = () => [...(c as unknown as { seen: Set<string> }).seen];
+  const hmac = (key: Buffer, id: string) => createHmac('sha256', key).update(id).digest('hex').slice(0, 12);
+
+  c.record(USER, '2026-10-26');
+  assert.equal(drawn, 1, 'one key drawn when the week starts');
+  assert.deepEqual(seenOf(), [hmac(keys[0]!, USER)], 'digest = first 48 bits of HMAC-SHA256(week key, id)');
+  assert.notEqual(seenOf()[0], USER.slice(0, 12), 'not a plain slice of the id');
+  assert.ok(!seenOf()[0]!.includes(USER.slice(0, 6)));
+  c.record(USER, '2026-10-26');
+  assert.equal(drawn, 1, 'same week: the key stays');
+  assert.equal(c.count('2026-10-26'), 1);
+
+  // week change: key AND hashes are dropped, the same id counts again, with a different digest (new key)
+  const before = seenOf()[0]!;
+  c.record(USER, '2026-11-02');
+  assert.equal(drawn, 2, 'a new key per week');
+  assert.deepEqual(seenOf(), [hmac(keys[1]!, USER)]);
+  assert.notEqual(seenOf()[0], before, 'the old digest does not match the new week');
+  assert.ok(!seenOf().includes(before), 'old hashes are discarded');
+  assert.equal(c.count('2026-11-02'), 1, 'the same id counts anew in the new week');
+  c.record(OTHER, '2026-11-02');
+  assert.equal(c.count('2026-11-02'), 2);
+
+  // nothing but week + number was handed to storage: no id, no digest, no key
+  const persisted = JSON.stringify(saves);
+  for (const secret of [USER, OTHER, before, hmac(keys[1]!, USER), keys[0]!.toString('hex'), keys[1]!.toString('hex')]) {
+    assert.ok(!persisted.includes(secret), 'nothing secret reaches storage');
+  }
+  assert.ok(saves.every(([w, n]) => /^\d{4}-\d{2}-\d{2}$/.test(w) && Number.isInteger(n)));
+  // a different key really yields a different digest for the same id
+  assert.notEqual(hmac(keys[0]!, USER), hmac(keys[1]!, USER));
+});
+
 // ─── embed ──────────────────────────────────────────────────────────────────
 
 test('embed: real discord.js payload, three counters, top 5, no timestamp, no mentions, within limits', () => {

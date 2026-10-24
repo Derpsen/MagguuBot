@@ -4,6 +4,7 @@
  */
 
 import { PermissionFlagsBits } from 'discord.js';
+import { clipPlexText, escapePlexMarkdown } from './plex-card.js';
 
 export interface RioTier {
   minScore: number;
@@ -109,6 +110,16 @@ export interface ParsedTiers {
   problems: string[];
 }
 
+/** Scores are stored and compared with one decimal (the same rounding wherever a threshold is created or looked up). */
+export function roundRioScore(score: number): number {
+  return Math.round(score * 10) / 10;
+}
+
+/** Untrusted text (API names, realm, season, admin label) for Discord markdown: one line, clipped, mentions/markdown inert. */
+export function rioText(value: string | null | undefined, max = 60): string {
+  return escapePlexMarkdown(clipPlexText(value, max));
+}
+
 function normaliseTier(minScore: unknown, roleId: unknown, problems: string[], label: string): RioTier | null {
   const score = typeof minScore === 'number' ? minScore : typeof minScore === 'string' && minScore.trim() !== '' ? Number(minScore.trim()) : NaN;
   const role = typeof roleId === 'string' ? roleId.trim() : typeof roleId === 'number' ? String(roleId) : '';
@@ -120,7 +131,7 @@ function normaliseTier(minScore: unknown, roleId: unknown, problems: string[], l
     problems.push(`${label}: ungültige Rollen-ID`);
     return null;
   }
-  return { minScore: Math.round(score * 10) / 10, roleId: role };
+  return { minScore: roundRioScore(score), roleId: role };
 }
 
 /**

@@ -13,9 +13,18 @@ export const RIO_API_BASE = 'https://raider.io/api/v1/characters/profile';
 export const RIO_TIMEOUT_MS = 8_000;
 export const RIO_CACHE_TTL_MS = 2 * 60_000;
 export const RIO_MAX_RETRY_AFTER_SEC = 3_600;
-/** Own ceiling, far below the documented 300/min, for all users together. */
-export const RIO_GLOBAL_LIMIT = 30;
+/**
+ * Own ceiling for all users together, well below the documented 300/min. Every user is already held to one
+ * `/rio-link` per minute (cooldown), so this only matters when many members link at once.
+ */
+export const RIO_GLOBAL_LIMIT = 100;
 export const RIO_GLOBAL_WINDOW_MS = 60_000;
+/**
+ * A request that hits the ceiling (or a short Retry-After block) waits for the slot when it opens within this time
+ * instead of being turned away; only a longer wait answers rate-limited. At most `RIO_MAX_WAITERS` wait at once.
+ */
+export const RIO_MAX_QUEUE_WAIT_MS = 3_000;
+export const RIO_MAX_WAITERS = 10;
 
 export type RioFailure =
   | { ok: false; kind: 'not-found' }
@@ -43,6 +52,8 @@ export interface RioClientDeps {
   fetchFn?: typeof fetch;
   now?: () => number;
   timeoutMs?: number;
+  /** Test seam for the short queue wait. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 interface CacheEntry { at: number; value: RioScore }
@@ -50,12 +61,14 @@ interface CacheEntry { at: number; value: RioScore }
 const cache = new Map<string, CacheEntry>();
 let blockedUntil = 0;
 let windowCalls: number[] = [];
+let waiters = 0;
 
 /** Test seam. */
 export function resetRioClient(): void {
   cache.clear();
   blockedUntil = 0;
   windowCalls = [];
+  waiters = 0;
 }
 
 /** Retry-After: delta seconds or an HTTP date; clamped to 1..3600, default 60. */
@@ -99,18 +112,35 @@ export function parseRioProfile(body: unknown): Omit<RioScore, 'cached'> | null 
 export async function fetchRioScore(character: RioCharacterInput, deps: RioClientDeps = {}): Promise<RioResult> {
   const now = deps.now ?? Date.now;
   const fetchFn = deps.fetchFn ?? fetch;
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const key = rioCacheKey(character);
-  const t = now();
 
-  const hit = cache.get(key);
-  if (hit && t - hit.at < RIO_CACHE_TTL_MS) return { ...hit.value, cached: true };
-  if (t < blockedUntil) return { ok: false, kind: 'rate-limited', retryAfterSec: Math.max(1, Math.ceil((blockedUntil - t) / 1000)) };
-  windowCalls = windowCalls.filter((at) => t - at < RIO_GLOBAL_WINDOW_MS);
-  if (windowCalls.length >= RIO_GLOBAL_LIMIT) {
-    const oldest = windowCalls[0] ?? t;
-    return { ok: false, kind: 'rate-limited', retryAfterSec: Math.max(1, Math.ceil((oldest + RIO_GLOBAL_WINDOW_MS - t) / 1000)) };
+  // Cache, Retry-After block and the global ceiling are re-evaluated after every short wait (the cache may have
+  // been filled meanwhile by someone linking the same character).
+  for (let round = 0; ; round += 1) {
+    const t = now();
+    const hit = cache.get(key);
+    if (hit && t - hit.at < RIO_CACHE_TTL_MS) return { ...hit.value, cached: true };
+    windowCalls = windowCalls.filter((at) => t - at < RIO_GLOBAL_WINDOW_MS);
+    const blockWait = t < blockedUntil ? blockedUntil - t : 0;
+    const windowWait = windowCalls.length >= RIO_GLOBAL_LIMIT ? (windowCalls[0] ?? t) + RIO_GLOBAL_WINDOW_MS - t : 0;
+    const wait = Math.max(blockWait, windowWait);
+    if (wait <= 0) {
+      windowCalls.push(t);
+      break;
+    }
+    if (wait > RIO_MAX_QUEUE_WAIT_MS || round >= 5 || waiters >= RIO_MAX_WAITERS) {
+      return { ok: false, kind: 'rate-limited', retryAfterSec: Math.max(1, Math.ceil(wait / 1000)) };
+    }
+    waiters += 1;
+    try {
+      await sleep(wait);
+    } catch {
+      return { ok: false, kind: 'unavailable' };
+    } finally {
+      waiters = Math.max(0, waiters - 1);
+    }
   }
-  windowCalls.push(t);
 
   const url = new URL(RIO_API_BASE);
   url.searchParams.set('region', character.region);

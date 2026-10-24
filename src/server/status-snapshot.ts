@@ -4,6 +4,7 @@ import { webhookEvents } from '../db/schema.js';
 import { getCachedFaqEntries } from '../discord/faq-autoanswer.js';
 import { faqStatusBlock } from '../discord/faq-stats.js';
 import { currentUnseenReport } from '../services/unseen-report.js';
+import { clipUnseenBlock } from '../utils/unseen-report.js';
 import { readBuildInfo, type BuildInfo } from '../embeds/status.js';
 export { buildStatusSnapshot } from '../embeds/status.js';
 
@@ -41,7 +42,8 @@ export function currentFaqStatus(now: Date = new Date()) {
 /** Cached unseen-media report (no network, no Tautulli call per request); null when off or not computed yet. */
 export function currentUnseenStatus() {
   try {
-    return currentUnseenReport();
+    const block = currentUnseenReport();
+    return block ? clipUnseenBlock(block) : null;
   } catch {
     return null;
   }

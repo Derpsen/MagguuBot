@@ -717,3 +717,208 @@ test('wiring: the startup audit runs on clientReady', async () => {
   const src = readFileSync(new URL('../src/discord/client.ts', import.meta.url), 'utf8');
   assert.match(src, /c\.once\('clientReady'[\s\S]{0,200}auditRioTiers/);
 });
+
+// ─── Finding 3: tracking survives a failed removal ─────────────────────────────
+
+test('link: if the old bot role cannot be removed, tracking keeps pointing at it, the new role is withheld, and the next link retries and then tracks the new one', async () => {
+  const store = new MemStore();
+  store.upsert({ guildId: GUILD, userId: USER, characterName: 'Anna', realm: 'Blackrock', region: 'eu', lastScore: 1100, lastRoleId: R1, updatedAt: 1 });
+  const broken = rig({ held: [R1], removeError: 50_013 });
+  const out = await link(broken, store, 2500);
+  assert.equal(out.kind, 'linked');
+  assert.deepEqual(out.kind === 'linked' && [out.removeFailed, out.added, out.addSkipped], [true, false, true]);
+  assert.deepEqual([...broken.held], [R1], 'nothing changed on the member');
+  assert.equal(store.get(GUILD, USER)?.lastRoleId, R1, 'tracking still points at the role the bot gave');
+  assert.equal(store.get(GUILD, USER)?.lastScore, 2500, 'the score itself is stored');
+  const text = svc.rioLinkMessage(out, '');
+  assert.match(text, /nicht entfernt werden/);
+  assert.match(text, /erst, wenn die bisherige Score-Rolle entfernt/);
+  assert.doesNotMatch(text, /bereits|bekommen/);
+
+  // later (removal works again): the retry removes R1, adds R2 and now tracks R2
+  const healthy = rig({ held: [R1] });
+  const again = await link(healthy, store, 2500);
+  assert.equal(again.kind === 'linked' && again.removedRoleId, R1);
+  assert.deepEqual([...healthy.held].sort(), [R2]);
+  assert.equal(store.get(GUILD, USER)?.lastRoleId, R2);
+
+  // unlink after a failed removal still knows the role to take away
+  const store2 = new MemStore();
+  store2.upsert({ guildId: GUILD, userId: USER, characterName: 'Anna', realm: 'Blackrock', region: 'eu', lastScore: 1100, lastRoleId: R1, updatedAt: 1 });
+  const stuck = rig({ held: [R1], removeError: 50_013 });
+  await link(stuck, store2, 2500);
+  const ok = rig({ held: [R1] });
+  const un = await svc.unlinkRioCharacter({ guild: ok.guild as never, userId: USER, store: store2 });
+  assert.equal(un.kind === 'unlinked' && un.removedRoleId, R1);
+
+  // score drops below the lowest tier while the removal fails: tracking is kept, nothing is dropped from the member
+  const store3 = new MemStore();
+  store3.upsert({ guildId: GUILD, userId: USER, characterName: 'Anna', realm: 'Blackrock', region: 'eu', lastScore: 1100, lastRoleId: R1, updatedAt: 1 });
+  const down = rig({ held: [R1], removeError: 50_013 });
+  await link(down, store3, 10);
+  assert.equal(store3.get(GUILD, USER)?.lastRoleId, R1);
+  // a successful removal with nothing to add clears the tracking (as before)
+  const fine = rig({ held: [R1] });
+  await link(fine, store3, 10);
+  assert.equal(store3.get(GUILD, USER)?.lastRoleId, null);
+});
+
+// ─── Finding 4: the global ceiling queues briefly instead of locking users out ──
+
+test('client: a full window waits for the slot when it opens within a few seconds (no hard rejection), longer waits answer rate-limited with the real wait', async () => {
+  let t = 20_000_000;
+  const f = fakeFetch(() => json(200, profile(1)));
+  const sleeps: number[] = [];
+  const deps = { fetchFn: f.fn, now: () => t, sleep: async (ms: number) => { sleeps.push(ms); t += ms; } };
+  const name = (i: number) => `Name${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`;
+  // fill the window: the first call at t, the rest 1 s later, so the oldest slot frees up in 59 s... then shrink: use a window where it frees in 2 s
+  await client.fetchRioScore({ ...INPUT, name: name(0) }, deps);
+  t += client.RIO_GLOBAL_WINDOW_MS - 2_000; // the first call leaves the window in 2 s
+  for (let i = 1; i < client.RIO_GLOBAL_LIMIT; i += 1) assert.equal((await client.fetchRioScore({ ...INPUT, name: name(i) }, deps)).ok, true);
+  assert.equal(f.calls.length, client.RIO_GLOBAL_LIMIT);
+  const queued = await client.fetchRioScore({ ...INPUT, name: 'Zzzz' }, deps);
+  assert.equal(queued.ok, true, 'waited 2 s instead of being turned away');
+  assert.deepEqual(sleeps, [2_000]);
+  assert.equal(f.calls.length, client.RIO_GLOBAL_LIMIT + 1);
+
+  // the next slot is far away: no waiting, a clear rate-limited answer with the real seconds
+  sleeps.length = 0;
+  for (let i = 0; i < client.RIO_GLOBAL_LIMIT; i += 1) await client.fetchRioScore({ ...INPUT, name: `Fill${name(i)}` }, deps);
+  const far = await client.fetchRioScore({ ...INPUT, name: 'Yyyy' }, { ...deps, now: () => t });
+  assert.equal(far.ok, false);
+  assert.equal(far.ok ? null : far.kind, 'rate-limited');
+  assert.ok((far as { retryAfterSec: number }).retryAfterSec > 3);
+  assert.deepEqual(sleeps.filter((ms) => ms > client.RIO_MAX_QUEUE_WAIT_MS), [], 'never sleeps longer than the cap');
+});
+
+test('client: queue extras - a cached answer arriving while waiting wins, the waiter list is capped, Retry-After <= cap waits, longer is reported', async () => {
+  // Retry-After 2 s: the next call waits it out and succeeds; Retry-After 120 s: reported at once, no sleep
+  let t = 30_000_000;
+  const sleeps: number[] = [];
+  const base = { now: () => t, sleep: async (ms: number) => { sleeps.push(ms); t += ms; } };
+  const blockedFetch = fakeFetch(() => json(429, {}, { 'retry-after': '2' }));
+  const first = await client.fetchRioScore(INPUT, { ...base, fetchFn: blockedFetch.fn });
+  assert.deepEqual(first, { ok: false, kind: 'rate-limited', retryAfterSec: 2 });
+  const okFetch = fakeFetch(() => json(200, profile(5)));
+  const retried = await client.fetchRioScore({ ...INPUT, name: 'Bella' }, { ...base, fetchFn: okFetch.fn });
+  assert.equal(retried.ok, true, 'a 2 s Retry-After is waited out');
+  assert.deepEqual(sleeps, [2_000]);
+
+  client.resetRioClient();
+  sleeps.length = 0;
+  const long = fakeFetch(() => json(429, {}, { 'retry-after': '120' }));
+  await client.fetchRioScore(INPUT, { ...base, fetchFn: long.fn });
+  const rej = await client.fetchRioScore({ ...INPUT, name: 'Cora' }, { ...base, fetchFn: okFetch.fn });
+  assert.deepEqual(rej.ok ? null : [rej.kind, (rej as { retryAfterSec: number }).retryAfterSec], ['rate-limited', 120]);
+  assert.deepEqual(sleeps, [], 'no sleep for a long block');
+
+  // cached while waiting: the same character is filled by the first waiter, the second takes the cache (one fetch only)
+  client.resetRioClient();
+  t = 40_000_000;
+  const gate: Array<() => void> = [];
+  const f2 = fakeFetch(() => json(200, profile(7)));
+  const slow = { fetchFn: f2.fn, now: () => t, sleep: () => new Promise<void>((resolve) => { gate.push(() => { t += 2_000; resolve(); }); }) };
+  const fillName = (i: number) => `Fill${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`;
+  await client.fetchRioScore({ ...INPUT, name: 'Seed' }, slow);
+  t += client.RIO_GLOBAL_WINDOW_MS - 2_000;
+  for (let i = 1; i < client.RIO_GLOBAL_LIMIT; i += 1) await client.fetchRioScore({ ...INPUT, name: fillName(i) }, slow);
+  const a = client.fetchRioScore({ ...INPUT, name: 'Same' }, slow);
+  const b = client.fetchRioScore({ ...INPUT, name: 'Same' }, slow);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(gate.length, 2, 'both wait for the slot');
+  const callsBefore = f2.calls.length;
+  gate[0]!();
+  const ra = await a; // the first waiter fetches and fills the cache
+  gate[1]!();
+  const rb = await b; // the second one re-checks the cache after waking up: no slot needed
+  assert.deepEqual([ra.ok, rb.ok], [true, true]);
+  assert.equal(f2.calls.length, callsBefore + 1, 'the second waiter was served from the cache filled by the first');
+
+  // waiter cap: more than RIO_MAX_WAITERS simultaneous waiters -> the surplus is told to retry
+  client.resetRioClient();
+  t = 50_000_000;
+  gate.length = 0;
+  await client.fetchRioScore({ ...INPUT, name: 'Seed' }, slow);
+  t += client.RIO_GLOBAL_WINDOW_MS - 2_000;
+  for (let i = 1; i < client.RIO_GLOBAL_LIMIT; i += 1) await client.fetchRioScore({ ...INPUT, name: fillName(i) }, slow);
+  const pending = Array.from({ length: client.RIO_MAX_WAITERS + 3 }, (_, i) => client.fetchRioScore({ ...INPUT, name: `Wait${String.fromCharCode(97 + i)}${String.fromCharCode(97 + i)}` }, slow));
+  await new Promise((r) => setImmediate(r));
+  assert.equal(gate.length, client.RIO_MAX_WAITERS, 'only the cap waits');
+  gate.forEach((open) => open());
+  const results = await Promise.all(pending);
+  assert.equal(results.filter((r) => !r.ok && r.kind === 'rate-limited').length >= 3, true, 'the surplus got rate-limited');
+});
+
+// ─── Finding 7: untrusted text is inert, rounding is consistent ─────────────────
+
+test('link message: API name/realm/season and the admin season label cannot inject markdown or mentions', async () => {
+  const evil = '**x** [a](https://evil.example) <@123456789012345678> @everyone <#1234567890> `c` ||s|| ~~t~~';
+  const out = {
+    kind: 'linked' as const, score: 2500, season: evil, name: evil, realm: evil, region: 'eu', profileUrl: null,
+    roleId: R2, added: true, removedRoleId: null, removeFailed: false, addSkipped: false, nextTier: null,
+  };
+  for (const label of ['', evil]) {
+    const text = svc.rioLinkMessage(out, label);
+    const first = text.split('\n')[0]!;
+    assert.ok(!/(^|[^\\])\*\*x\*\*/.test(first.replace(/^✅ \*\*/, '')), 'bold not injectable');
+    for (const raw of ['[a](https://evil.example)', '<@123456789012345678>', '<#1234567890>', '`c`', '||s||', '~~t~~']) {
+      assert.ok(!first.includes(raw), `${raw} is escaped`);
+    }
+    assert.ok(first.includes('\\<\\@123456789012345678>') || first.includes('\\<\\@'), 'mention syntax escaped');
+    assert.ok(text.includes(`<@&${R2}>`), 'our own role mention stays real');
+  }
+  assert.match(svc.rioLinkMessage(out, ''), /nicht verifiziert/);
+  // the hierarchy message escapes a hostile role name too
+  const hier = svc.rioLinkMessage({ kind: 'role-hierarchy', roleId: R2, roleName: '**@everyone** [x](y)' }, '');
+  assert.ok(!hier.includes('[x](y)') && !hier.includes('**@everyone**'));
+  assert.equal(pure.rioText('a\nb\u200bc  d', 10), 'a b c d');
+  assert.ok(Array.from(pure.rioText('x'.repeat(200), 20).replace(/\\/g, '')).length <= 20);
+});
+
+test('/rio-config: season label is escaped in every reply; entfernen finds thresholds with the same rounding as setzen', async () => {
+  const was = config.RIO_ROLE_THRESHOLDS;
+  try {
+    config.RIO_ROLE_THRESHOLDS = '';
+    svc.resetRioConfig();
+    const evil = '**Boss** <@123456789012345678> [x](http://e)';
+    const season = fakeInteraction({}, { label: evil }, 'season');
+    await rioConfigCommand.execute(season.i);
+    const r1 = String(season.replies[0]!.content);
+    assert.ok(!r1.includes('<@123456789012345678>') && !r1.includes('[x](http://e)'));
+    assert.ok(!r1.includes('**Boss**'));
+    const show = fakeInteraction({}, {}, 'anzeigen');
+    await rioConfigCommand.execute(show.i);
+    const r2 = String(show.replies[0]!.content);
+    assert.ok(!r2.includes('<@123456789012345678>') && !r2.includes('[x](http://e)'));
+
+    // setzen 1234.56 stores 1234.6; entfernen with 1234.56 and 1234.6 both find it
+    const set = fakeInteraction({}, { score: 1234.56 }, 'setzen');
+    (set.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => ({ id: R1, managed: false, editable: true, permissions: '0' });
+    await rioConfigCommand.execute(set.i);
+    assert.deepEqual(svc.getRioTiers().tiers, [{ minScore: 1234.6, roleId: R1 }]);
+    assert.match(String(set.replies[0]!.content), /Ab 1234\.6 Punkten/);
+    const rm = fakeInteraction({}, { score: 1234.56 }, 'entfernen');
+    await rioConfigCommand.execute(rm.i);
+    assert.match(String(rm.replies[0]!.content), /Schwelle 1234\.6 entfernt/);
+    assert.deepEqual(svc.getRioTiers().tiers, []);
+    const set2 = fakeInteraction({}, { score: 1234.6 }, 'setzen');
+    (set2.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => ({ id: R1, managed: false, editable: true, permissions: '0' });
+    await rioConfigCommand.execute(set2.i);
+    const rm2 = fakeInteraction({}, { score: 1234.6 }, 'entfernen');
+    await rioConfigCommand.execute(rm2.i);
+    assert.deepEqual(svc.getRioTiers().tiers, []);
+  } finally {
+    config.RIO_ROLE_THRESHOLDS = was;
+    svc.resetRioConfig();
+  }
+});
+
+// ─── Finding 2: no verification, display-only roles - said in the command text ──
+
+test('docs in the product: /rio-link says it is unverified and the role carries no rights (command description + every success reply)', () => {
+  const desc = (commands.get('rio-link')!.data.toJSON() as { description: string }).description;
+  assert.match(desc, /nicht verifiziert/);
+  assert.match(desc, /ohne Rechte/);
+  assert.ok(desc.length <= 100, 'within the Discord limit');
+  assert.equal(svc.RIO_DISCLAIMER.includes('nicht verifiziert') && svc.RIO_DISCLAIMER.includes('ohne Rechte'), true);
+});

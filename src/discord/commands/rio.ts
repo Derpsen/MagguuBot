@@ -6,6 +6,8 @@ import {
   checkScoreRole,
   normaliseRioInput,
   parseRioThresholds,
+  rioText,
+  roundRioScore,
   scoreRoleRefusal,
   type RioTier,
 } from '../../utils/rio-roles.js';
@@ -41,7 +43,7 @@ export const rioLinkCommand: SlashCommand = {
   category: 'utility',
   data: new SlashCommandBuilder()
     .setName('rio-link')
-    .setDescription('Raider.IO-Charakter verknüpfen und Score-Rolle erhalten (auf Anfrage)')
+    .setDescription('Raider.IO-Score-Anzeigerolle erhalten (Charakter wird nicht verifiziert, Rolle ohne Rechte)')
     .addStringOption((o) => o.setName('charakter').setDescription('Charaktername').setRequired(true).setMinLength(2).setMaxLength(12))
     .addStringOption((o) => o.setName('realm').setDescription('Realm, z. B. Blackrock oder Tarren Mill').setRequired(true).setMinLength(2).setMaxLength(40))
     .addStringOption((o) => {
@@ -135,7 +137,7 @@ function describeTiers(tiers: readonly RioTier[], label: string, problems: reado
   const lines = tiers.length === 0
     ? ['Keine Schwellen gesetzt (die Funktion ist nicht eingerichtet).']
     : tiers.map((t) => `ab **${t.minScore}** → <@&${t.roleId}>`);
-  const head = `**Raider.IO-Rollen** (Quelle: ${source}${label ? `, Season-Label: ${label}` : ''})`;
+  const head = `**Raider.IO-Rollen** (Quelle: ${source}${label ? `, Season-Label: ${rioText(label, 40)}` : ''})`;
   const tail = problems.length ? [`⚠️ Probleme: ${problems.join('; ')}`] : [];
   return [head, ...lines, ...tail].join('\n');
 }
@@ -179,7 +181,7 @@ export const rioConfigCommand: SlashCommand = {
     if (sub === 'season') {
       const label = (interaction.options.getString('label') ?? '').trim();
       saveRioSeasonLabel(label);
-      await reply(label ? `✅ Season-Label: ${label}` : '✅ Season-Label gelöscht.');
+      await reply(label ? `✅ Season-Label: ${rioText(label, 40)}` : '✅ Season-Label gelöscht.');
       return;
     }
     if (sub === 'zuruecksetzen') {
@@ -187,7 +189,8 @@ export const rioConfigCommand: SlashCommand = {
       await reply('✅ Eigene Einstellungen gelöscht, es gelten wieder die Werte aus den Umgebungsvariablen. Bestehende Verknüpfungen bleiben.');
       return;
     }
-    const score = interaction.options.getNumber('score', true);
+    // one decimal, exactly like stored thresholds (parseRioThresholds), so entfernen finds what setzen stored
+    const score = roundRioScore(interaction.options.getNumber('score', true));
     const tiers = getRioTiers().tiers;
     if (sub === 'entfernen') {
       const next = tiers.filter((t) => t.minScore !== score);

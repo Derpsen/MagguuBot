@@ -263,3 +263,38 @@ test('GET /api/status: Bearer-gated, the unseen field comes from the cache and t
   assert.equal(body.unseen.items[0]!.title, 'Report Item (2019)');
   assert.ok(!text.includes('tautulli-secret-key-should-never-leak'));
 });
+
+test('size budget: a worst-case report (25 long non-ASCII titles) is clipped to the 6 KB budget at the end, smallest items first; a small report is served unchanged', async () => {
+  const wide = '漢'.repeat(80);
+  const items = Array.from({ length: 25 }, (_, i) => row({ title: `${i}${wide}`, file_size: 9_000_000_000 - i * 1000 }));
+  const full = (await svc.computeUnseenReport(deps({ pages: { '1': items } }).d))!;
+  assert.equal(full.items.length, 25);
+  assert.ok(pure.unseenBlockBytes(full) > pure.UNSEEN_MAX_BYTES, 'precondition: the worst case really is over budget');
+
+  const clipped = pure.clipUnseenBlock(full);
+  assert.ok(pure.unseenBlockBytes(clipped) <= pure.UNSEEN_MAX_BYTES, `clipped to ${pure.unseenBlockBytes(clipped)} bytes`);
+  assert.equal(clipped.clipped, true);
+  assert.ok(clipped.items.length > 0 && clipped.items.length < 25);
+  assert.deepEqual(clipped.items, full.items.slice(0, clipped.items.length), 'the biggest items stay, order unchanged');
+  assert.equal(full.clipped, undefined, 'the input is not mutated');
+  assert.equal(full.items.length, 25);
+
+  const small = (await svc.computeUnseenReport(deps({ pages: { '1': [row()] } }).d))!;
+  assert.equal(pure.clipUnseenBlock(small), small, 'fits: same object, no clipped flag');
+  assert.equal(small.clipped, undefined);
+  // a tiny budget empties the list but still returns a valid block
+  const none = pure.clipUnseenBlock(full, 200);
+  assert.deepEqual([none.items.length, none.clipped], [0, true]);
+
+  // the same budget applies to what /api/status serves (cache -> snapshot field)
+  await svc.runUnseenReportTick(deps({ pages: { '1': items } }).d);
+  const { currentUnseenStatus } = await import('../src/server/status-snapshot.ts');
+  const served = currentUnseenStatus()!;
+  assert.ok(pure.unseenBlockBytes(served) <= pure.UNSEEN_MAX_BYTES);
+  assert.equal(served.clipped, true);
+  const { buildApp } = await import('../src/server/app.ts');
+  const res = await buildApp().request('/api/status', { headers: { authorization: `Bearer ${process.env.STATUS_API_TOKEN}` } });
+  const body = JSON.parse(await res.text()) as { unseen: { items: unknown[]; clipped?: boolean } };
+  assert.equal(body.unseen.clipped, true);
+  assert.ok(Buffer.byteLength(JSON.stringify(body.unseen), 'utf8') <= pure.UNSEEN_MAX_BYTES);
+});
