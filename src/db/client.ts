@@ -530,6 +530,29 @@ export function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS server_health_card (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT,
+      content_hash TEXT,
+      posted_at INTEGER,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS server_health_week (
+      week TEXT PRIMARY KEY,
+      active_count INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS server_health_command (
+      week TEXT NOT NULL,
+      command TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (week, command)
+    );
+
     CREATE TABLE IF NOT EXISTS plex_new_digest (
       guild_id TEXT PRIMARY KEY,
       last_scheduled_at INTEGER,

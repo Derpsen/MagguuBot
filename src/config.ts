@@ -93,6 +93,9 @@ const schema = z.object({
   FAQ_TOP_ENABLED: envBoolean(true),
   FAQ_TOP_DAY: z.coerce.number().int().min(0).max(6).default(1),
   FAQ_TOP_HOUR: z.coerce.number().int().min(0).max(23).default(10),
+  /** Optional channel for the self-updating server health card; default is the health channel (silent skip without one). */
+  DISCORD_CHANNEL_SERVER_HEALTH: z.string().optional(),
+  SERVER_HEALTH_CARD_ENABLED: envBoolean(true),
   AUTOMATIC_BACKUP_ENABLED: envBoolean(true),
   AUTOMATIC_BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(4),
   AUTOMATIC_BACKUP_RETENTION: z.coerce.number().int().min(1).max(30).default(7),

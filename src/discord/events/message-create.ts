@@ -6,6 +6,7 @@ import { runAutomod } from '../automod.js';
 import { runAutoresponder } from '../autoresponder.js';
 import { runFaqAutoanswer } from '../faq-autoanswer.js';
 import { renderLevelUpCard } from '../cards/level-up-card.js';
+import { recordActiveUser } from '../server-health-stats.js';
 import { scheduleStickyRepost } from '../sticky.js';
 import { handleTicketMessage } from '../ticket-message-handler.js';
 import { grantXp } from '../xp.js';
@@ -17,6 +18,8 @@ export const messageCreateEvent: BotEvent<'messageCreate'> = {
     if (message.author.bot) return;
     if (!message.inGuild()) return;
     if (!message.member) return;
+    // Anonymous weekly active-user count for the server health card (hashed in memory, never stored).
+    recordActiveUser(message.author.id);
 
     try {
       await handleAfkMessage(message);

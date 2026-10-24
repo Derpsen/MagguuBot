@@ -2,6 +2,7 @@ import { type ChatInputCommandInteraction, MessageFlags } from 'discord.js';
 import { logger } from '../utils/logger.js';
 import { commandDenyReason } from './command-gate.js';
 import { commands as defaultCommands } from './commands/index.js';
+import { recordActiveUser, recordCommandUse } from './server-health-stats.js';
 
 export interface DispatchLog {
   warn(obj: Record<string, unknown>, msg: string): void;
@@ -40,6 +41,9 @@ export async function dispatchChatInputCommand(
     });
     return 'denied';
   }
+  // Anonymous weekly counters (command name only; the user id is hashed in memory and never stored).
+  recordCommandUse(interaction.commandName);
+  recordActiveUser(interaction.user?.id ?? '');
   await cmd.execute(interaction);
   return 'executed';
 }

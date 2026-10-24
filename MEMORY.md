@@ -2,6 +2,12 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Server health card (Feature 3 of 3)
+
+- Rollback branch `rollback/pre-serverhealth-3c0288e`. Rules: AGENTS.md "Server health card".
+- Decisions: (1) active users = distinct humans who wrote in the guild or ran a command this local week; the id is HMAC-hashed with a random per-week key kept ONLY in memory, only the resulting number is persisted (a persisted keyed hash would be reversible by anyone with the DB, so it was rejected); trade-off: after a restart the same user can be counted again (number can run high after deploys), accepted for privacy; (2) channel = `DISCORD_CHANNEL_SERVER_HEALTH`, else `health` (Marco: fallback like the digest, no new mandatory key): the card therefore appears on its own in the health channel once deployed, set `SERVER_HEALTH_CARD_ENABLED=false` to stop it; (3) commands counted after the permission gate (executed or failed, not unknown/denied), names only; (4) no boot tick (guild cache may not be ready), first edit after 15 minutes; (5) members come from the gateway cache, no REST call.
+- Tested with real discord.js payloads, fake Discord/clock, DB + file scan for ids; the real post is not yet seen.
+
 ## 2026-10-25 FAQ statistics + dashboard (Feature 2 of 3)
 
 - Rollback branches `rollback/pre-faqstats-31926a2` (bot) and one in Magguu-Dashboard. Rules: AGENTS.md "FAQ statistics".

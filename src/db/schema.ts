@@ -697,3 +697,36 @@ export const raidReminders = sqliteTable(
   },
   (t) => [index('idx_raid_reminders_due').on(t.nextDueAt), index('idx_raid_reminders_user').on(t.guildId, t.userId)],
 );
+
+// Server health card: the one self-updating message (id + content hash), like plex_weekly_card.
+export const serverHealthCard = sqliteTable(
+  'server_health_card',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id'),
+    contentHash: text('content_hash'),
+    postedAt: integer('posted_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
+// Counters of the current local week only (rows of older weeks are deleted at the rollover). `active_count` is
+// just a number: the hashed user ids behind it live in memory and are never written anywhere.
+export const serverHealthWeek = sqliteTable('server_health_week', {
+  week: text('week').primaryKey(),
+  activeCount: integer('active_count').notNull().default(0),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
+// Slash commands used this week: bot command name and a counter, nothing about who ran it.
+export const serverHealthCommand = sqliteTable(
+  'server_health_command',
+  {
+    week: text('week').notNull(),
+    command: text('command').notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.week, t.command] })],
+);
