@@ -18,7 +18,10 @@ export function clearRegisteredSecretsForTests(): void {
 }
 
 const PARAM = /(^|[?&;,\s"'(])((?:x-plex-token|api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|key)=)([^&\s"'<>)]*)/gi;
-const USERINFO = /(\b[a-z][a-z0-9+.-]*:\/\/)[^\s/@"'<>]+@/gi;
+// Anchored on the `://` and looking BACK for the scheme: a leading `(\b[a-z][a-z0-9+.-]*:\/\/)` retried the whole
+// scheme-charset run from every word boundary (`a.a.a.`/`-token-token` = quadratic, 200 kB ran into a timeout). A run can
+// only be re-scanned once per `://` and `://` cannot be part of a run, so the total work stays linear.
+const USERINFO = /(?<=\b[a-z][a-z0-9+.-]*)(:\/\/)[^\s/@"'<>]+@/gi;
 const BEARER = /\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{6,}/gi;
 // Bare credentials that show up in free text (error messages, response bodies), without any `key=` hint.
 const GITHUB_TOKEN = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})/g;
@@ -35,8 +38,20 @@ const FREETEXT_SECRET = /\b(password|passwd|passphrase|secret)\b(\s*[:=]\s*|\s+i
 // an optional `Bearer`/`Basic` scheme in front is part of the value.
 const FREETEXT_KEY = /(?<![\w-])(x-api-key|x-plex-token|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|token)(?![\w-])(\s*[:=]\s*)((?:(?:bearer|basic)\s+)?(?:"[^"]*"|'[^']*'|[^\s,;"'&]+))/gi;
 
+/**
+ * Upper bound of text one scrub call looks at (defence in depth against pathological inputs; real log lines are a few
+ * kB). Longer input is cut BEFORE any pattern runs and ends with a marker, so nothing past the cut can leak.
+ */
+export const MAX_SCRUB_LENGTH = 262_144;
+
 export function scrubString(input: string): string {
   let out = input;
+  if (out.length > MAX_SCRUB_LENGTH) {
+    let cut = MAX_SCRUB_LENGTH;
+    const last = out.charCodeAt(cut - 1);
+    if (last >= 0xd800 && last <= 0xdbff) cut -= 1; // never split a surrogate pair
+    out = `${out.slice(0, cut)}…[truncated ${input.length - cut} chars]`;
+  }
   for (const secret of literals) {
     if (out.includes(secret)) out = out.split(secret).join('[redacted]');
     const encoded = encodeURIComponent(secret);

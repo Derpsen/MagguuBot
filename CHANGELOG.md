@@ -5,6 +5,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Changed
+- `/faq` autocomplete: choice name and value are limited to 100 UTF-16 code units (not code points) and cut on grapheme boundaries (`clipChoiceValue` added).
+- Raid reminders to a channel re-check the subscriber's View + Send rights at send time (like the bot's); a subscriber who lost access or left pauses the subscription once (warn log, no alarm, no post, no ping).
+- Slash-command gate: denials are logged (`warn`, command name + reason category only); chat-input dispatch moved to `command-dispatch.ts`, `handleInteraction` exported (behaviour unchanged) and covered by tests.
 - "Neu hinzugefügt" digest follow-up: outage catch-up until Sunday 23:59 local (only after a previous run, once per slot, DST-safe, warn-once, no alarm); window upper bound `fetchedAt` so skewed Tautulli caches cannot repeat items; wiring tests (env/day/hour/channel order/enable switch/scheduler timers) and Plex card gateway tests against real discord.js payloads.
 - docker.yml: GitHub build-provenance attestation (`actions/attest-build-provenance` v4.2.2, SHA-pinned, `attestations: write` on the build job only, GitHub attestation store only). Image content, Cosign keyless signing and uid 99 unchanged; no SBOM attestation, no cosign verify.
 - Renovate: `helpers:pinGitHubActionDigests` added; satori lock updated from `~0.41.0` to `<0.48` (>=0.48 locked); h3/TS/@types/node locks unchanged.
@@ -17,6 +20,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - Renovate: automerge now as PR (`automergeType: pr`, no platform automerge; Renovate waits for all checks), patch/pin/digest and stable (non-0.x) minor only, 0.x minors and majors manual, groups non-major only, `internalChecksFilter: strict`, 3 day release age also for github-actions minor/patch; `fileMatch` migrated to `managerFilePatterns`. Locked majors unchanged.
 
 ### Security
+- Log scrubbing: `USERINFO` no longer has quadratic runtime (200 kB of `a.a.a.` took >20 s); scrub input is capped at 256 KiB with a marker; performance tests for every pattern (coverage unchanged, verified by differential fuzzing).
 - `/purge` and `/slowmode` now check the invoker's rights in the channel (View + Manage Messages + Read History / View + Manage Channels, fail closed when the member cannot be resolved); before, the Discord role permission alone decided although the bot (Administrator) executes the action, so a channel overwrite denying the moderator was ignored.
 - Central slash-command permission gate extracted to `command-gate.ts` (behaviour unchanged, now also fail-closed for an unparsable `default_member_permissions`); permission/hierarchy tests for all moderation commands and webhook-auth tests (token matrix, rate limit before auth, method/content-type, body limit, GitHub HMAC).
 - Log scrubbing: JSON `"password":"x"` style bodies, `token:`/`api_key:`/`X-Api-Key:` free text, Discord bot tokens and webhook URLs without `/api/` are redacted; Plex card/weekly managers, `pin.ts` log `{ err }` through the serializer instead of `String(err)`; blue-tracker enrich errors and RSS `last_error` are scrubbed.

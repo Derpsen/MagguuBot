@@ -41,6 +41,7 @@ const EXPECTED: Record<string, bigint> = {
   lockdown: P.Administrator,
   announce: P.ManageMessages,
   'schedule-announce': P.ManageMessages,
+  countdown: P.ManageMessages,
   snipe: P.ManageMessages,
   editsnipe: P.ManageMessages,
   sticky: P.ManageMessages,

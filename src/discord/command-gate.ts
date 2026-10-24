@@ -9,12 +9,23 @@ export function lacksCommandPermission(
   requiredPermissions: string | null | undefined,
   memberPermissions: Readonly<Pick<PermissionsBitField, 'has'>> | null | undefined,
 ): boolean {
-  if (!requiredPermissions) return false;
+  return commandDenyReason(requiredPermissions, memberPermissions) !== null;
+}
+
+/** Why the gate denies (category only, for the audit log); `null` = allowed. */
+export type CommandDenyReason = 'invalid-permission-spec' | 'no-member-context' | 'missing-permission';
+
+export function commandDenyReason(
+  requiredPermissions: string | null | undefined,
+  memberPermissions: Readonly<Pick<PermissionsBitField, 'has'>> | null | undefined,
+): CommandDenyReason | null {
+  if (!requiredPermissions) return null;
   let required: bigint;
   try {
     required = BigInt(requiredPermissions);
   } catch {
-    return true;
+    return 'invalid-permission-spec';
   }
-  return !memberPermissions?.has(required);
+  if (!memberPermissions) return 'no-member-context';
+  return memberPermissions.has(required) ? null : 'missing-permission';
 }

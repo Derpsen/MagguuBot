@@ -145,21 +145,34 @@ export function searchFaq(query: string, entries: readonly FaqEntry[], limit: nu
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 /**
- * Single-line, control-free text clipped to `max` characters (code points) with an ellipsis. The cut falls on a
- * grapheme boundary, so it never splits a surrogate pair, a flag, a keycap or a ZWJ emoji sequence.
+ * Cuts `text` to at most `max` UTF-16 code units (what `String#length` counts, and the safe reading of Discord's
+ * "100 characters" choice limit - an emoji is 2 units) at a grapheme boundary: never inside a surrogate pair, flag,
+ * keycap or skin-tone sequence. `reserve` units are kept free (for the ellipsis).
+ */
+function cutAtGrapheme(text: string, max: number, reserve: number): string {
+  let kept = '';
+  for (const { segment } of GRAPHEMES.segment(text)) {
+    if (kept.length + segment.length > max - reserve) break;
+    kept += segment;
+  }
+  return kept;
+}
+
+/**
+ * Single-line, control-free text clipped to `max` UTF-16 code units (default 100) with an ellipsis. The cut falls
+ * on a grapheme boundary, so it never splits a surrogate pair, a flag, a keycap or a skin-tone sequence; the result
+ * is also never longer than `max` code points.
  */
 export function clipChoiceText(text: string, max: number = FAQ_CHOICE_MAX): string {
   const clean = text.replace(CONTROL_AND_INVISIBLE, ' ').replace(/\s+/g, ' ').trim();
-  if (Array.from(clean).length <= max) return clean;
-  let kept = '';
-  let count = 0;
-  for (const { segment } of GRAPHEMES.segment(clean)) {
-    const size = Array.from(segment).length;
-    if (count + size > max - 1) break;
-    kept += segment;
-    count += size;
-  }
-  return `${kept.trimEnd()}…`;
+  if (clean.length <= max) return clean;
+  return `${cutAtGrapheme(clean, max, 1).trimEnd()}…`;
+}
+
+/** Choice value (an entry id): control-free, at most `max` UTF-16 code units, cut on a grapheme boundary, no ellipsis. */
+export function clipChoiceValue(value: string, max: number = FAQ_CHOICE_MAX): string {
+  const clean = value.replace(CONTROL_AND_INVISIBLE, '').trim();
+  return clean.length <= max ? clean : cutAtGrapheme(clean, max, 0);
 }
 
 export interface FaqChoice {
@@ -167,11 +180,11 @@ export interface FaqChoice {
   value: string;
 }
 
-/** Autocomplete choices: ≤25, name ≤100 chars (`category · question`), value = entry id as string. */
+/** Autocomplete choices: ≤25, name ≤100 UTF-16 units (`category · question`), value = entry id as string (≤100 units). */
 export function faqChoices(query: string, entries: readonly FaqEntry[]): FaqChoice[] {
   return searchFaq(query, entries, MAX_FAQ_CHOICES).map(({ entry }) => ({
     name: clipChoiceText(`${entry.category} · ${entry.question}`) || String(entry.id),
-    value: String(entry.id),
+    value: clipChoiceValue(String(entry.id)),
   }));
 }
 

@@ -44,7 +44,7 @@ process.env.DATABASE_PATH = dbPath;
 const { commands } = await import('../src/discord/commands/index.ts');
 const { raidReminderStore } = await import('../src/discord/raid-reminders.ts');
 const { sqliteHandle, ensureSchema, runMigrations } = await import('../src/db/client.ts');
-const { assertReminderChannelAllowed, createReminderGateway, REMINDER_CHANNEL_PERMISSIONS } = await import('../src/discord/raid-reminders.ts');
+const { assertReminderChannelAllowed, assertSubscriberChannelAllowed, createReminderGateway, REMINDER_CHANNEL_PERMISSIONS, SUBSCRIBER_CHANNEL_PERMISSIONS } = await import('../src/discord/raid-reminders.ts');
 const { guildMemberRemoveEvent } = await import('../src/discord/events/guild-member-remove.ts');
 const { saveChannel } = await import('../src/discord/channel-store.ts');
 const erinnerung = commands.get('erinnerung')!;
@@ -781,17 +781,39 @@ test('command: the invoker needs View AND Send in the target channel (clear ephe
   raidReminderStore.deleteAllByUser(guildId, uid);
 });
 
-function fakeGatewayClient(opts: { channel?: unknown; failChannelFetch?: boolean; dmFails?: boolean } = {}) {
-  const calls = { dm: [] as unknown[], channelSend: [] as unknown[], fetchMe: 0, userFetch: [] as string[] };
+interface SubscriberFake {
+  /** Permission set the subscriber has in the channel (default: everything). `null` = member cannot be resolved. */
+  perms?: bigint | null;
+  /** Error `members.fetch` throws instead (e.g. Unknown Member 10007 or a transient failure). */
+  fetchError?: unknown;
+}
+
+function fakeGatewayClient(opts: { channel?: unknown; failChannelFetch?: boolean; dmFails?: boolean; subscriber?: SubscriberFake } = {}) {
+  const calls = { dm: [] as unknown[], channelSend: [] as unknown[], fetchMe: 0, userFetch: [] as string[], memberFetch: [] as string[] };
+  const sub = opts.subscriber ?? {};
+  const subscriberHas = (bits: bigint): boolean => sub.perms === undefined || (sub.perms !== null && (sub.perms & bits) === bits);
   const channel =
     opts.channel === undefined
       ? {
           id: 'ch-1',
           isSendable: () => true,
           isDMBased: () => false,
-          permissionsFor: () => ({ has: () => true }),
+          // The bot ('me' / 'me-fetched') may do everything; the subscriber only what `opts.subscriber.perms` allows.
+          permissionsFor: (who: { id: string }) => ({
+            has: (bits: bigint) => (who.id === 'me' || who.id === 'me-fetched' ? true : subscriberHas(bits)),
+          }),
           send: async (payload: unknown) => void calls.channelSend.push(payload),
-          guild: { members: { me: { id: 'me' }, fetchMe: async () => ((calls.fetchMe += 1), { id: 'me-fetched' }) } },
+          guild: {
+            members: {
+              me: { id: 'me' },
+              fetchMe: async () => ((calls.fetchMe += 1), { id: 'me-fetched' }),
+              fetch: async (id: string) => {
+                calls.memberFetch.push(id);
+                if (sub.fetchError) throw sub.fetchError;
+                return { id: `member-${id}` };
+              },
+            },
+          },
         }
       : opts.channel;
   const client = {
@@ -873,4 +895,110 @@ test('gateway wiring: the real manager pauses only the channel subscription when
   assert.equal(store.rows[0]!.pausedReason, 'channel_unavailable');
   assert.equal(f.calls.channelSend.length, 0);
   assert.equal((await manager.tick()).paused, 0, 'paused once, no retry spam');
+});
+
+// ---- subscriber's own channel rights at send time ---------------------------------------------------------------
+
+const VIEW = PermissionFlagsBits.ViewChannel;
+const SEND = PermissionFlagsBits.SendMessages;
+
+test('gateway wiring: the subscriber is resolved and checked at send time; with View+Send the reminder goes out', async () => {
+  const f = fakeGatewayClient({ subscriber: { perms: VIEW | SEND } });
+  await createReminderGateway(() => f.client as never, () => undefined).sendChannel('ch-1', '4242', gwEmbed());
+  assert.deepEqual(f.calls.memberFetch, ['4242']);
+  assert.equal(f.calls.channelSend.length, 1);
+});
+
+test('gateway wiring: a subscriber who lost View or Send, or has no rights at all, is refused with the permanent 50013 - nothing posted, nobody pinged', async () => {
+  for (const [label, perms] of [['no View', SEND], ['no Send', VIEW], ['nothing', 0n]] as const) {
+    const f = fakeGatewayClient({ subscriber: { perms } });
+    await assert.rejects(
+      createReminderGateway(() => f.client as never, () => undefined).sendChannel('ch-1', '4242', gwEmbed()),
+      { code: 50013 },
+      label,
+    );
+    assert.equal(f.calls.channelSend.length, 0, label);
+  }
+});
+
+test('gateway wiring: a subscriber who left the guild (Unknown Member / Unknown User) counts as no rights (50013)', async () => {
+  for (const code of [10007, 10013]) {
+    const f = fakeGatewayClient({ subscriber: { fetchError: Object.assign(new Error('Unknown Member'), { code }) } });
+    await assert.rejects(createReminderGateway(() => f.client as never, () => undefined).sendChannel('ch-1', '1', gwEmbed()), { code: 50013 });
+    assert.equal(f.calls.channelSend.length, 0);
+  }
+});
+
+test('gateway wiring: a transient member lookup failure is NOT a permanent error (retried, never paused, never sent)', async () => {
+  for (const error of [Object.assign(new Error('rate limited'), { code: 429 }), new Error('socket hang up')]) {
+    const f = fakeGatewayClient({ subscriber: { fetchError: error } });
+    await assert.rejects(
+      createReminderGateway(() => f.client as never, () => undefined).sendChannel('ch-1', '1', gwEmbed()),
+      (err: unknown) => err === error,
+    );
+    assert.equal(f.calls.channelSend.length, 0);
+  }
+});
+
+test('gateway wiring: the bot check still comes first and the reserved channel is never subscriber-fetched', async () => {
+  const f = fakeGatewayClient({ subscriber: { perms: VIEW | SEND } });
+  await assert.rejects(createReminderGateway(() => f.client as never, () => 'ch-1').sendChannel('ch-1', '1', gwEmbed()), { code: 50013 });
+  assert.deepEqual(f.calls.memberFetch, []);
+});
+
+test('assertSubscriberChannelAllowed: pure check (null member, missing bits, Administrator via permissionsFor)', () => {
+  const channel = (has: boolean) => ({ id: 'c', permissionsFor: () => ({ has: () => has }) });
+  assert.throws(() => assertSubscriberChannelAllowed(channel(true), null), { code: 50013 });
+  assert.throws(() => assertSubscriberChannelAllowed(channel(false), { id: 'm' }), { code: 50013 });
+  assert.throws(() => assertSubscriberChannelAllowed({ id: 'c', permissionsFor: () => null }, { id: 'm' }), { code: 50013 });
+  assert.doesNotThrow(() => assertSubscriberChannelAllowed(channel(true), { id: 'm' }));
+  assert.equal(SUBSCRIBER_CHANNEL_PERMISSIONS, VIEW | SEND);
+});
+
+test('gateway wiring: the real manager pauses a channel subscription once when the subscriber lost access (one warn, no retry, no post)', async () => {
+  const f = fakeGatewayClient({ subscriber: { perms: VIEW } });
+  const logs: Array<{ level: string; msg: string; data?: Record<string, unknown> }> = [];
+  const { store, clock } = setup(NOW);
+  const manager = new RaidReminderManager({
+    store,
+    gateway: createReminderGateway(() => f.client as never, () => undefined),
+    timeZone: TZ,
+    now: () => clock.t,
+    log: (level, msg, data) => void logs.push({ level, msg, data }),
+  });
+  manager.add({ ...BASE, channelId: 'ch-1' });
+  clock.t = DUE + MIN;
+  assert.equal((await manager.tick()).paused, 1);
+  assert.equal(store.rows[0]!.pausedReason, 'channel_unavailable');
+  assert.equal(f.calls.channelSend.length, 0);
+  assert.equal((await manager.tick()).paused, 0);
+  clock.t += 5 * MIN;
+  await manager.tick();
+  assert.equal(f.calls.memberFetch.length, 1, 'no retry loop once paused');
+  assert.deepEqual(logs.filter((l) => l.level === 'warn').map((l) => l.msg), ['reminder subscription paused']);
+  assert.equal(logs.filter((l) => l.level === 'error').length, 0, 'no alarm');
+  assert.ok(!JSON.stringify(logs).includes(BASE.text ?? 'Hallo-never-matches'), 'no reminder text in logs');
+});
+
+test('gateway wiring: a transient member lookup failure leaves the row due (failed, not paused) and it is delivered on the next tick', async () => {
+  const f = fakeGatewayClient({ subscriber: { fetchError: new Error('socket hang up') } });
+  const { store, clock } = setup(NOW);
+  const manager = new RaidReminderManager({
+    store,
+    gateway: createReminderGateway(() => f.client as never, () => undefined),
+    timeZone: TZ,
+    now: () => clock.t,
+    log: () => undefined,
+  });
+  manager.add({ ...BASE, channelId: 'ch-1' });
+  clock.t = DUE + MIN;
+  const first = await manager.tick();
+  assert.equal(first.failed, 1);
+  assert.equal(first.paused, 0);
+  assert.equal(store.rows[0]!.pausedReason, null);
+  const sub = (f.channel.guild as { members: { fetch: (id: string) => Promise<unknown> } }).members;
+  sub.fetch = async (id: string) => ({ id: `member-${id}` });
+  clock.t += MIN;
+  assert.equal((await manager.tick()).sent, 1);
+  assert.equal(f.calls.channelSend.length, 1);
 });

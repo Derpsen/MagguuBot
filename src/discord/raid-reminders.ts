@@ -39,6 +39,35 @@ export function assertReminderChannelAllowed(channel: ReminderChannelLike, me: u
   }
 }
 
+/** What the subscriber must (still) be allowed to do in the target channel for the bot to post on their behalf. */
+export const SUBSCRIBER_CHANNEL_PERMISSIONS = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages;
+
+/** Discord: Unknown Member (left the guild) / Unknown User. */
+const UNKNOWN_MEMBER_CODES = new Set([10007, 10013]);
+
+/**
+ * Re-check at send time (the creation check can be stale): the bot may write everywhere, so without this a user who
+ * lost access (role/overwrite/mute change) or left the server could still make it post their text and ping them in
+ * that channel. A subscriber who is gone or lacks View/Send gets the same permanent, coded error as missing bot
+ * rights, so the manager pauses the subscription once (one warn log, no alarm, nothing is posted, nobody is pinged).
+ */
+export function assertSubscriberChannelAllowed(channel: ReminderChannelLike, member: unknown): void {
+  const perms = member ? channel.permissionsFor(member as never) : null;
+  if (!perms?.has(SUBSCRIBER_CHANNEL_PERMISSIONS)) {
+    throw Object.assign(new Error('subscriber lacks channel permissions'), { code: 50013 });
+  }
+}
+
+async function fetchSubscriber(channel: SendableGuildChannel, userId: string): Promise<unknown> {
+  try {
+    return await channel.guild.members.fetch(userId);
+  } catch (err) {
+    const code = (err as { code?: unknown } | null)?.code;
+    if (typeof code === 'number' && UNKNOWN_MEMBER_CODES.has(code)) return null; // gone = no rights
+    throw err; // transient (rate limit, network): retried within the 15 min grace
+  }
+}
+
 type Row = typeof raidReminders.$inferSelect;
 
 function toRow(r: Row): ReminderRow {
@@ -117,7 +146,7 @@ interface SendableGuildChannel extends ReminderChannelLike {
   isSendable(): boolean;
   isDMBased(): boolean;
   send(payload: never): Promise<unknown>;
-  guild: { members: { me: unknown; fetchMe(): Promise<unknown> } };
+  guild: { members: { me: unknown; fetchMe(): Promise<unknown>; fetch(id: string): Promise<unknown> } };
 }
 
 /** Builds the Discord delivery gateway; `discordReminderGateway` is this with the live client and `#updates` lock. */
@@ -137,6 +166,7 @@ export function createReminderGateway(
       }
       const me = channel.guild.members.me ?? (await channel.guild.members.fetchMe());
       assertReminderChannelAllowed(channel, me, getBlockedChannelId());
+      assertSubscriberChannelAllowed(channel, await fetchSubscriber(channel, userId));
       await channel.send(reminderChannelPayload(userId, embed) as never);
     },
   };

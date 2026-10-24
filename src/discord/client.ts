@@ -9,7 +9,7 @@ import {
 } from 'discord.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
-import { lacksCommandPermission } from './command-gate.js';
+import { dispatchChatInputCommand } from './command-dispatch.js';
 import { commands } from './commands/index.js';
 import { getFeatureState, setFeatureState } from './feature-state.js';
 import { commandsInSync, diffCommands, type CommandShape } from '../utils/command-diff.js';
@@ -86,106 +86,7 @@ export async function startDiscord(): Promise<void> {
     }
   }
 
-  c.on('interactionCreate', async (interaction: Interaction) => {
-    try {
-      if (interaction.isChatInputCommand()) {
-        const cmd = commands.get(interaction.commandName);
-        if (!cmd) {
-          await interaction.reply({ content: 'Unbekannter Befehl.', flags: MessageFlags.Ephemeral });
-          return;
-        }
-        const requiredPermissions = cmd.data.toJSON().default_member_permissions;
-        if (lacksCommandPermission(requiredPermissions, interaction.memberPermissions)) {
-          await interaction.reply({
-            content: 'Du hast keine Berechtigung für diesen Command.',
-            flags: MessageFlags.Ephemeral,
-          });
-          return;
-        }
-        await cmd.execute(interaction);
-      } else if (interaction.isAutocomplete()) {
-        if (interaction.commandName === 'tag' && interaction.guildId) {
-          const focused = interaction.options.getFocused();
-          const results = autocompleteTagNames(interaction.guildId, focused);
-          await interaction.respond(results);
-        } else if (interaction.commandName === 'faq') {
-          await handleFaqAutocomplete(interaction);
-        }
-      } else if (interaction.isButton()) {
-        if (interaction.customId.startsWith('seerr:')) {
-          await handleSeerrButton(interaction);
-        } else if (interaction.customId.startsWith('role-panel:')) {
-          await handleRolePanelButton(interaction);
-        } else if (interaction.customId.startsWith('role:')) {
-          await handleRoleButton(interaction);
-        } else if (interaction.customId.startsWith('ticket:')) {
-          await handleTicketButton(interaction);
-        } else if (interaction.customId.startsWith('suggestion:')) {
-          await handleSuggestionButton(interaction);
-        } else if (interaction.customId.startsWith('giveaway:')) {
-          await handleGiveawayButton(interaction);
-        } else if (interaction.customId.startsWith('neu:')) {
-          await handleNeuButton(interaction);
-        } else if (interaction.customId.startsWith('setup-server:')) {
-          await handleSetupServerButton(interaction);
-        } else {
-          await interaction.reply({
-            content: 'Diese Schaltfläche wird nicht mehr unterstützt.',
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      } else if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith('movie-night:')) {
-          await handleMovieNightVote(interaction);
-        } else if (interaction.customId.startsWith('ticket-category:')) {
-          await handleTicketCategorySelect(interaction);
-        } else {
-          await interaction.reply({
-            content: 'Dieses Auswahlmenü wird nicht mehr unterstützt.',
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      } else if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith('ticket-modal:')) {
-          await handleTicketModalSubmit(interaction);
-        } else {
-          await interaction.reply({
-            content: 'Dieses Formular wird nicht mehr unterstützt.',
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-      }
-    } catch (err) {
-      logger.error({ err }, 'interaction handler failed');
-      if (interaction.isRepliable() && interaction.deferred && interaction.isMessageComponent()) {
-        await interaction
-          .followUp({
-            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
-            flags: MessageFlags.Ephemeral,
-          })
-          .catch(() => {});
-      } else if (interaction.isRepliable() && interaction.deferred) {
-        await interaction
-          .editReply({
-            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
-            embeds: [],
-            components: [],
-          })
-          .catch(() => {});
-      } else if (interaction.isRepliable() && interaction.replied) {
-        await interaction
-          .followUp({
-            content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
-            flags: MessageFlags.Ephemeral,
-          })
-          .catch(() => {});
-      } else if (interaction.isRepliable()) {
-        await interaction
-          .reply({ content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral })
-          .catch(() => {});
-      }
-    }
-  });
+  c.on('interactionCreate', handleInteraction);
 
   c.once('clientReady', () => {
     setTimeout(() => {
@@ -195,6 +96,95 @@ export async function startDiscord(): Promise<void> {
 
   await registerCommands();
   await c.login(config.DISCORD_TOKEN);
+}
+
+/** All interactions (commands, autocomplete, buttons, selects, modals). Exported so the wiring can be tested. */
+export async function handleInteraction(interaction: Interaction): Promise<void> {
+  try {
+    if (interaction.isChatInputCommand()) {
+      await dispatchChatInputCommand(interaction);
+    } else if (interaction.isAutocomplete()) {
+      if (interaction.commandName === 'tag' && interaction.guildId) {
+        const focused = interaction.options.getFocused();
+        const results = autocompleteTagNames(interaction.guildId, focused);
+        await interaction.respond(results);
+      } else if (interaction.commandName === 'faq') {
+        await handleFaqAutocomplete(interaction);
+      }
+    } else if (interaction.isButton()) {
+      if (interaction.customId.startsWith('seerr:')) {
+        await handleSeerrButton(interaction);
+      } else if (interaction.customId.startsWith('role-panel:')) {
+        await handleRolePanelButton(interaction);
+      } else if (interaction.customId.startsWith('role:')) {
+        await handleRoleButton(interaction);
+      } else if (interaction.customId.startsWith('ticket:')) {
+        await handleTicketButton(interaction);
+      } else if (interaction.customId.startsWith('suggestion:')) {
+        await handleSuggestionButton(interaction);
+      } else if (interaction.customId.startsWith('giveaway:')) {
+        await handleGiveawayButton(interaction);
+      } else if (interaction.customId.startsWith('neu:')) {
+        await handleNeuButton(interaction);
+      } else if (interaction.customId.startsWith('setup-server:')) {
+        await handleSetupServerButton(interaction);
+      } else {
+        await interaction.reply({
+          content: 'Diese Schaltfläche wird nicht mehr unterstützt.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    } else if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('movie-night:')) {
+        await handleMovieNightVote(interaction);
+      } else if (interaction.customId.startsWith('ticket-category:')) {
+        await handleTicketCategorySelect(interaction);
+      } else {
+        await interaction.reply({
+          content: 'Dieses Auswahlmenü wird nicht mehr unterstützt.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    } else if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith('ticket-modal:')) {
+        await handleTicketModalSubmit(interaction);
+      } else {
+        await interaction.reply({
+          content: 'Dieses Formular wird nicht mehr unterstützt.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, 'interaction handler failed');
+    if (interaction.isRepliable() && interaction.deferred && interaction.isMessageComponent()) {
+      await interaction
+        .followUp({
+          content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => {});
+    } else if (interaction.isRepliable() && interaction.deferred) {
+      await interaction
+        .editReply({
+          content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+          embeds: [],
+          components: [],
+        })
+        .catch(() => {});
+    } else if (interaction.isRepliable() && interaction.replied) {
+      await interaction
+        .followUp({
+          content: '⚠️ Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => {});
+    } else if (interaction.isRepliable()) {
+      await interaction
+        .reply({ content: '⚠️ Something went wrong.', flags: MessageFlags.Ephemeral })
+        .catch(() => {});
+    }
+  }
 }
 
 const SLASH_HASH_KEY = 'slash_commands_hash';

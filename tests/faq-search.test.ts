@@ -13,7 +13,7 @@ Object.assign(process.env, {
   DATABASE_PATH: join(dir, 'test.db'),
 });
 
-const { searchFaq, faqChoices, clipChoiceText, neutralizeMentions, editDistance, searchTokens, MAX_FAQ_CHOICES } =
+const { searchFaq, faqChoices, clipChoiceText, clipChoiceValue, neutralizeMentions, editDistance, searchTokens, MAX_FAQ_CHOICES } =
   await import('../src/utils/faq-search.ts');
 const { buildFaqReply, resolveFaq, autocompleteFaq, faqCommand } = await import('../src/discord/commands/faq.ts');
 const { setFaqCacheForTests } = await import('../src/discord/faq-autoanswer.ts');
@@ -91,7 +91,7 @@ test('autocomplete choices: max 25, name and value <= 100, single line', () => {
   }
   assert.equal(faqChoices('', many).length, 25);
   assert.equal(clipChoiceText('ä'.repeat(150)).length, 100);
-  assert.equal(Array.from(clipChoiceText('😀'.repeat(150))).length, 100);
+  assert.equal(clipChoiceText('😀'.repeat(150)).length, 99, '49 emoji (98 units) + ellipsis, never above 100 UTF-16 units');
 });
 
 test('autocomplete reads only the in-memory cache (cold cache → empty, warm → results)', () => {
@@ -165,17 +165,19 @@ test('/faq is a registered utility command with an autocomplete string option an
 
 const noLoneSurrogates = (s: string): boolean => !/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(s);
 
-test('clipChoiceText: clips by code points at every cut position, never leaves a lone surrogate', () => {
+test('clipChoiceText: clips by UTF-16 units at every cut position, never leaves a lone surrogate', () => {
   for (let max = 2; max <= 12; max += 1) {
     for (const base of ['😀', 'a😀', 'ab😀c', '𝒳𝒴𝒵', 'ä😀ö']) {
       const out = clipChoiceText(base.repeat(30), max);
       assert.ok(noLoneSurrogates(out), `max=${max} base=${base}: ${JSON.stringify(out)}`);
+      assert.ok(out.length <= max, `max=${max} base=${base}`);
       assert.ok(Array.from(out).length <= max, `max=${max} base=${base}`);
       assert.ok(out.endsWith('…'));
     }
   }
-  assert.equal(clipChoiceText('😀😀😀😀', 4), '😀😀😀😀', 'exactly at the limit is not clipped');
-  assert.equal(clipChoiceText('😀😀😀😀😀', 4), '😀😀😀…');
+  assert.equal(clipChoiceText('😀😀', 4), '😀😀', 'exactly at the limit (4 units) is not clipped');
+  assert.equal(clipChoiceText('😀😀😀', 4), '😀…', '3 emoji = 6 units: 1 emoji + ellipsis = 3 units');
+  assert.equal(clipChoiceText('😀😀😀😀😀', 5), '😀😀…');
 });
 
 test('clipChoiceText: keeps flags, keycaps and skin-tone emoji whole (cut on grapheme boundaries)', () => {
@@ -186,7 +188,7 @@ test('clipChoiceText: keeps flags, keycaps and skin-tone emoji whole (cut on gra
       const out = clipChoiceText(`x${unit}`.repeat(10), max);
       const body = out.slice(0, -1);
       assert.ok(noLoneSurrogates(out));
-      assert.ok(Array.from(out).length <= max);
+      assert.ok(out.length <= max);
       // every kept grapheme is either an `x` or a complete unit
       const rest = body.split('x').join('');
       assert.ok(rest === '' || unit.repeat(rest.length / unit.length) === rest, `${JSON.stringify(unit)} max=${max}: ${JSON.stringify(out)}`);
@@ -212,4 +214,75 @@ test('truncate (embed titles/descriptions/fields used by /faq): no lone surrogat
     assert.ok(out.length <= max, 'UTF-16 length bound still holds (Discord counts conservatively)');
   }
   assert.equal(truncate('😀😀😀', 4), '😀…');
+});
+
+// ---- Discord choice limit: UTF-16 units AND grapheme boundaries -------------------------------------------------
+
+test('faqChoices: name and value stay <= 100 UTF-16 units for emoji-heavy, flag, keycap and combining-mark questions', () => {
+  const nasty = [
+    '😀'.repeat(150),
+    '🇩🇪'.repeat(80),
+    '1️⃣'.repeat(60),
+    '👍🏽'.repeat(70),
+    `e${'\u0301'.repeat(150)}`,
+    '𝒳'.repeat(120),
+    `${'a'.repeat(98)}😀tail`,
+    `${'a'.repeat(97)}🇩🇪tail`,
+    'frage '.repeat(40),
+  ];
+  const entries = nasty.map((question, i) => ({ id: i + 1, category: 'allgemein', question: `frage ${question}`, answer: 'x' }));
+  const choices = faqChoices('frage', entries);
+  assert.equal(choices.length, entries.length);
+  for (const c of choices) {
+    assert.ok(c.name.length <= 100, `name ${c.name.length} units`);
+    assert.ok(c.value.length <= 100);
+    assert.ok(c.name.length > 0);
+    assert.ok(noLoneSurrogates(c.name), JSON.stringify(c.name));
+  }
+});
+
+test('clipChoiceText: every cut position of mixed text is <= max UTF-16 units and on a grapheme boundary', () => {
+  const seg = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  const samples = ['a🇩🇪b😀1️⃣👍🏽ä'.repeat(20), `x${'\u0301'.repeat(40)}y`.repeat(10), '𝒳a'.repeat(60)];
+  for (const sample of samples) {
+    const whole = [...seg.segment(sample.replace(/\s+/g, ' ').trim())].map((g) => g.segment);
+    for (let max = 1; max <= 40; max += 1) {
+      const out = clipChoiceText(sample, max);
+      assert.ok(out.length <= max, `max=${max}: ${out.length} units`);
+      assert.ok(noLoneSurrogates(out));
+      if (!out.endsWith('…')) continue;
+      const body = out.slice(0, -1);
+      // the kept text is a whole-grapheme prefix of the input (nothing split in the middle)
+      let prefix = '';
+      let ok = body === '';
+      for (const g of whole) {
+        prefix += g;
+        if (prefix === body) {
+          ok = true;
+          break;
+        }
+        if (prefix.length > body.length) break;
+      }
+      assert.ok(ok, `max=${max}: ${JSON.stringify(out)} is not a grapheme prefix`);
+    }
+  }
+});
+
+test('clipChoiceText: a single grapheme larger than the limit degrades to just the ellipsis (never above max)', () => {
+  const zalgo = `e${'\u0301'.repeat(200)}`;
+  const out = clipChoiceText(zalgo, 100);
+  assert.equal(out, '…');
+  assert.ok(out.length <= 100);
+});
+
+test('clipChoiceValue: numeric ids pass through, anything longer is cut at a grapheme boundary to <= 100 units without ellipsis', () => {
+  assert.equal(clipChoiceValue('123456789'), '123456789');
+  assert.equal(clipChoiceValue('7\u0000\u200b'), '7');
+  const long = clipChoiceValue('😀'.repeat(150));
+  assert.equal(long.length, 100);
+  assert.ok(noLoneSurrogates(long));
+  assert.equal(clipChoiceValue('1'.repeat(150)).length, 100);
+  const flags = clipChoiceValue('🇩🇪'.repeat(40));
+  assert.ok(flags.length <= 100);
+  assert.equal(flags.length % 4, 0, 'only whole flags');
 });
