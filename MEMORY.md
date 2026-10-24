@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-24 Plex weekly statistics card (Welle a)
+
+- Request (Marco): weekly Tautulli statistics as ONE edited card. Rollback branch `rollback/pre-wochenstatistik-4c7b538`. Details/rules: AGENTS.md "Plex weekly statistics card".
+- Decisions: (1) no new `ChannelKey`: a new catalog key would show up as "stored id missing" in `/doctor`/daily self-check (ops alarm) and needs new live-id fixtures, so the card uses the `weeklyDigest` channel (`neu-auf-plex`) with optional env override `DISCORD_CHANNEL_PLEX_WEEKLY`; (2) own table `plex_weekly_card` with a `message_id` column so `protectedMessageIds` (rollout cleanup) never deletes the card, and footer `MagguuBot · Plex-Wochenstatistik` is classified as `weeklyDigest` for the acceptance scan; (3) totals come from `get_plays_by_date` (plays + duration series, sums over all media types); the per-row `total_plays` of home stats only cover the top rows, so they are only the fallback; (4) only 10008/50005 repost, everything else is a quiet retry on the next 30 min tick (a weekly card must not flood); (5) `/wochenstatistik` needs Manage Server, ephemeral reply, shares the 10 min stats cache.
+- Tested only with fakes/fixtures (hand-written Tautulli shapes, in-memory store, recording gateway); the real Tautulli payload of `get_plays_by_date`/`get_home_stats` and real Discord edits are not yet seen. First live check: `/wochenstatistik` after the deploy.
+- Deploy: green Docker publish → Unraid pull. New optional envs: `PLEX_WEEKLY_ENABLED`, `PLEX_WEEKLY_DAY`, `PLEX_WEEKLY_HOUR`, `DISCORD_CHANNEL_PLEX_WEEKLY`; defaults work without setting anything (needs Tautulli URL/key and the weeklyDigest channel). Slash command count 52 → 53 (re-registered automatically at boot). On first start after deploy the card is posted once (period of the last Monday is due).
+
 ## 2026-10-24 Plex card flood → single card
 
 - Symptom (Marco): "wieder hunderte" Plex cards in `🎬・plex-aktivität`. No earlier fix for this exact flood in MEMORY/git log: lifecycle cards (75fe681, 73c4b76) and the stale-session tick (4f4582c) only limited cards per session; the 2026-10-22 flood fix (0ee51f2) covered Arr deletes/grabs/imports/neu-auf-plex, not playback. Rollback branch `rollback/pre-plex-card-76f2c9b`.

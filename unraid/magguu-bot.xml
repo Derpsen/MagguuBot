@@ -100,6 +100,14 @@
 
   <Config Name="WEEKLY_DIGEST_HOUR" Target="WEEKLY_DIGEST_HOUR" Default="10" Mode="" Description="Local hour (0-23) after which the weekly digest is posted." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
 
+  <Config Name="PLEX_WEEKLY_ENABLED" Target="PLEX_WEEKLY_ENABLED" Default="true" Mode="" Description="Enable the weekly Plex statistics card (Tautulli, one edited message)." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="PLEX_WEEKLY_DAY" Target="PLEX_WEEKLY_DAY" Default="1" Mode="" Description="Plex statistics weekday: 0=Sunday, 1=Monday through 6=Saturday." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+
+  <Config Name="PLEX_WEEKLY_HOUR" Target="PLEX_WEEKLY_HOUR" Default="8" Mode="" Description="Local hour (0-23, TIME_ZONE) after which the Plex statistics card is refreshed." Type="Variable" Display="advanced" Required="false" Mask="false">8</Config>
+
+  <Config Name="DISCORD_CHANNEL_PLEX_WEEKLY" Target="DISCORD_CHANNEL_PLEX_WEEKLY" Default="" Mode="" Description="Optional channel ID for the Plex statistics card (default: weekly digest channel)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
   <Config Name="AUTOMATIC_BACKUP_ENABLED" Target="AUTOMATIC_BACKUP_ENABLED" Default="true" Mode="" Description="Create one automatic SQLite backup per day." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
 
   <Config Name="AUTOMATIC_BACKUP_HOUR" Target="AUTOMATIC_BACKUP_HOUR" Default="4" Mode="" Description="Local hour (0-23) after which the daily database backup runs." Type="Variable" Display="advanced" Required="false" Mask="false">4</Config>

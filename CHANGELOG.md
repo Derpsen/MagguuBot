@@ -11,6 +11,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - Webhook rate limit split: pre-auth flood limit (300 unauthenticated req/min per IP, authenticated requests refunded/bypass) plus a per-webhook limit after auth (600 req/min per route source + credential hash; raw token never logged). An unauthenticated flood no longer throttles real *arr/GitHub webhooks.
 - Webhook rate-limit client IP: forwarded headers are only trusted from peers listed in the new `TRUSTED_PROXIES` (IP/CIDR allowlist, X-Forwarded-For walked right-to-left). `TRUST_PROXY=true` alone no longer trusts headers (startup warning).
 
+### Added
+- Plex weekly statistics card: one embed (top movies/series, most active users, plays, watch hours of the last 7 days from Tautulli) in `#neu-auf-plex`, edited in place (message id in SQLite `plex_weekly_card`, content-hash dedupe, repost only if the message is gone). Weekly schedule via `PLEX_WEEKLY_ENABLED/DAY/HOUR` (default Monday 08:00, `TIME_ZONE`), channel override `DISCORD_CHANNEL_PLEX_WEEKLY`, manual refresh with `/wochenstatistik`. Tautulli errors are logged quietly, no Discord alarm.
+
 ### Fixed
 - Plex activity channel flood: playback events no longer post a card each. One card in `🎬・plex-aktivität` lists running sessions and the last finished ones and is edited in place (message id persisted in SQLite, debounced, skipped when unchanged, reposted only when the message is gone or edits keep failing). Discord-format Tautulli events are correlated by user + player instead of the notification text.
 - Discord Seerr Approve/Decline failed with HTTP 403 because MagguuBot used a stale Seerr API key. Doctor and service health now probe `/api/v1/request/count` (authenticated) instead of the public `/status` endpoint.
