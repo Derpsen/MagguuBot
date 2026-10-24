@@ -3,6 +3,7 @@ import { getRadarrLibrary } from '../services/radarr.js';
 import { getSonarrLibrary } from '../services/sonarr.js';
 import { getRecentlyAdded, type TautulliRecentRaw } from '../services/tautulli.js';
 import { logger } from '../utils/logger.js';
+import { daysForWindow, filterRawSince } from '../utils/plex-new-digest.js';
 import {
   NEU_ERROR_TEXT,
   NEU_FETCH_COUNT,
@@ -44,6 +45,10 @@ export interface PlexNewDeps {
 
 export type PlexNewResult =
   | { ok: true; items: NeuItem[]; truncated: boolean }
+  | { ok: false; reason: 'not-configured' | 'unavailable' };
+
+export type PlexNewSinceResult =
+  | { ok: true; items: NeuItem[]; truncated: boolean; fetchedAt: number }
   | { ok: false; reason: 'not-configured' | 'unavailable' };
 
 interface CacheEntry {
@@ -109,6 +114,27 @@ export class PlexNewService {
     const items = prepareNeuItems([...movies, ...shows], { now: this.now(), days, type });
     const truncated = (wantMovies && movies.length >= NEU_FETCH_COUNT) || (wantShows && shows.length >= NEU_FETCH_COUNT);
     return { ok: true, items, truncated };
+  }
+
+  /**
+   * Everything added after `sinceMs` (both types, series grouped by title) for the weekly digest. `fetchedAt` is
+   * the time of the underlying Tautulli data (the next digest starts there); data older than `maxAgeMs` — e.g. a
+   * stale fallback after failed fetches — counts as unavailable so no window is silently skipped.
+   */
+  async getSince(sinceMs: number, maxAgeMs = this.ttlMs * 2): Promise<PlexNewSinceResult> {
+    if (!this.deps.configured()) return { ok: false, reason: 'not-configured' };
+    const [movies, shows] = await Promise.all([this.raw('movie'), this.raw('show')]);
+    if (movies === null || shows === null) return { ok: false, reason: 'unavailable' };
+    const now = this.now();
+    const fetchedAt = Math.min(this.cache.get('movie')?.at ?? 0, this.cache.get('show')?.at ?? 0);
+    if (now - fetchedAt > maxAgeMs) return { ok: false, reason: 'unavailable' };
+    const items = prepareNeuItems(filterRawSince([...movies, ...shows], sinceMs), {
+      now,
+      days: daysForWindow(now, sinceMs),
+      type: 'all',
+    });
+    const truncated = movies.length >= NEU_FETCH_COUNT || shows.length >= NEU_FETCH_COUNT;
+    return { ok: true, items, truncated, fetchedAt };
   }
 
   /** Poster of the first item on the page, or null. Never throws; any failure is a quiet `warn` log. */

@@ -506,6 +506,19 @@ export const plexWeeklyCard = sqliteTable(
   (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
 );
 
+// "Neu hinzugefügt" digest: which schedule slot was handled last, so restarts never post twice.
+export const plexNewDigest = sqliteTable('plex_new_digest', {
+  guildId: text('guild_id').primaryKey(),
+  /** Scheduled instant (epoch ms) of the last handled run (posted or nothing new). */
+  lastScheduledAt: integer('last_scheduled_at', { mode: 'timestamp_ms' }),
+  /** Data time of the last successful run: the next digest covers everything added after it. */
+  lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+  lastPostedAt: integer('last_posted_at', { mode: 'timestamp_ms' }),
+  lastMessageId: text('last_message_id'),
+  pausedUntil: integer('paused_until', { mode: 'timestamp_ms' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+
 // One persistent Plex activity card per channel; the message id survives restarts.
 export const plexActivityCard = sqliteTable(
   'plex_activity_card',

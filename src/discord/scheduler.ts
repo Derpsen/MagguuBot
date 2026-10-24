@@ -25,6 +25,7 @@ import { runPlexActivityCleanupTick } from './plex-activity-cleanup.js';
 import { runPlexPauseFlushTick } from './plex-activity-pause.js';
 import { runPlexCardTick } from './plex-card.js';
 import { runRaidReminderTick } from './raid-reminders.js';
+import { runPlexNewDigestTick } from './plex-new-digest.js';
 import { plexWeeklyNextRun, runPlexWeeklyTick } from './plex-weekly.js';
 import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
 import { runDailySelfCheckTick } from './self-check.js';
@@ -51,6 +52,8 @@ const PLEX_ACTIVITY_CLEANUP_TICK_MS = 60 * 60_000;
 const PLEX_PAUSE_FLUSH_TICK_MS = 30_000;
 const PLEX_CARD_TICK_MS = 30_000;
 const PLEX_WEEKLY_TICK_MS = 30 * 60_000;
+/** Well below the 15 minute catch-up window of the new-added digest, so a transient failure is retried. */
+const PLEX_NEW_DIGEST_TICK_MS = 5 * 60_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
 const SELF_CHECK_TICK_MS = 60 * 60_000;
 
@@ -75,6 +78,7 @@ let plexActivityCleanupTimer: NodeJS.Timeout | null = null;
 let plexPauseFlushTimer: NodeJS.Timeout | null = null;
 let plexCardTimer: NodeJS.Timeout | null = null;
 let plexWeeklyTimer: NodeJS.Timeout | null = null;
+let plexNewDigestTimer: NodeJS.Timeout | null = null;
 let plexStaleSessionTimer: NodeJS.Timeout | null = null;
 let selfCheckTimer: NodeJS.Timeout | null = null;
 const activeTicks = new Set<string>();
@@ -174,6 +178,10 @@ export function startScheduler(): void {
     runTick('plex-weekly', () => runPlexWeeklyTick(), 'Plex weekly card tick failed');
   }, PLEX_WEEKLY_TICK_MS);
 
+  plexNewDigestTimer = setInterval(() => {
+    runTick('plex-new-digest', runPlexNewDigestTick, 'Plex new-added digest tick failed');
+  }, PLEX_NEW_DIGEST_TICK_MS);
+
   plexStaleSessionTimer = setInterval(() => {
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session tick failed');
   }, PLEX_STALE_SESSION_TICK_MS);
@@ -202,6 +210,7 @@ export function startScheduler(): void {
     runTick('plex-card', runPlexCardTick, 'Plex card boot tick failed');
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session boot tick failed');
     runTick('plex-weekly', () => runPlexWeeklyTick(), 'Plex weekly card boot tick failed');
+    runTick('plex-new-digest', runPlexNewDigestTick, 'Plex new-added digest boot tick failed');
     if (config.WOW_BLUE_TRACKER_URL) {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
     }
@@ -233,6 +242,7 @@ export function startScheduler(): void {
       plexPauseFlushMs: PLEX_PAUSE_FLUSH_TICK_MS,
       plexCardMs: PLEX_CARD_TICK_MS,
       plexWeeklyMs: config.PLEX_WEEKLY_ENABLED ? PLEX_WEEKLY_TICK_MS : 'disabled',
+      plexNewDigestMs: config.PLEX_NEW_DIGEST_ENABLED ? PLEX_NEW_DIGEST_TICK_MS : 'disabled',
       plexWeeklyNext: config.PLEX_WEEKLY_ENABLED ? plexWeeklyNextRun()?.toISOString() : 'disabled',
       plexStaleSessionMs: config.PLEX_STALE_SESSION_MINUTES > 0 ? PLEX_STALE_SESSION_TICK_MS : 'disabled',
     },
@@ -273,6 +283,7 @@ export function stopScheduler(): void {
   if (plexPauseFlushTimer) clearInterval(plexPauseFlushTimer);
   if (plexCardTimer) clearInterval(plexCardTimer);
   if (plexWeeklyTimer) clearInterval(plexWeeklyTimer);
+  if (plexNewDigestTimer) clearInterval(plexNewDigestTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   if (selfCheckTimer) clearInterval(selfCheckTimer);
   remindersTimer = null;
@@ -296,6 +307,7 @@ export function stopScheduler(): void {
   plexPauseFlushTimer = null;
   plexCardTimer = null;
   plexWeeklyTimer = null;
+  plexNewDigestTimer = null;
   plexStaleSessionTimer = null;
   selfCheckTimer = null;
 }

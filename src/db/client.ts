@@ -501,6 +501,16 @@ export function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS plex_new_digest (
+      guild_id TEXT PRIMARY KEY,
+      last_scheduled_at INTEGER,
+      last_run_at INTEGER,
+      last_posted_at INTEGER,
+      last_message_id TEXT,
+      paused_until INTEGER,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS raid_reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,
