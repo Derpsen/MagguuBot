@@ -11,7 +11,9 @@
     "dependencies"
   ],
   "prConcurrentLimit": 5,
-  "platformAutomerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "internalChecksFilter": "strict",
   "ignoreTests": false,
   "configMigration": true,
   "vulnerabilityAlerts": {
@@ -29,14 +31,14 @@
     {
       "customType": "regex",
       "description": "Dockerfile base image digest (ARG NODE_DIGEST, FROM uses variables)",
-      "fileMatch": [
-        "(^|/)Dockerfile$"
-      ],
       "matchStrings": [
         "#\\s*renovate: image=(?<depName>[^:\\s]+):(?<currentValue>\\S+)\\nARG NODE_VERSION=\\S+\\nARG NODE_DIGEST=(?<currentDigest>sha256:[a-f0-9]{64})"
       ],
       "datasourceTemplate": "docker",
-      "versioningTemplate": "docker"
+      "versioningTemplate": "docker",
+      "managerFilePatterns": [
+        "/(^|/)Dockerfile$/"
+      ]
     }
   ],
   "packageRules": [
@@ -59,22 +61,54 @@
       "groupName": "npm non-major"
     },
     {
-      "description": "GitHub Actions in one PR (digest pins kept)",
+      "description": "GitHub Actions: minor/patch/pin/digest in one PR (digest pins kept); majors get their own PR and are never merged automatically",
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "github-actions"
-    },
-    {
-      "description": "Automerge minor/patch/pin/digest only after green required status checks; lands directly on main (branch automerge)",
       "matchUpdateTypes": [
         "minor",
         "patch",
         "pin",
         "digest"
       ],
-      "automerge": true,
-      "automergeType": "branch"
+      "groupName": "github-actions non-major"
+    },
+    {
+      "description": "GitHub Actions: wait 3 days after a new release (pin/digest refreshes of an already used tag are not delayed)",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Automerge patch/pin/digest as a PR once ALL checks are green (Renovate itself waits for the checks, ignoreTests=false; no branch protection needed)",
+      "matchUpdateTypes": [
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Automerge minor only for stable (non-0.x) versions; 0.x minors can break and get their own PR for review",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "0.x minors: separate PR per package, no automerge",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "matchCurrentVersion": "/^0/",
+      "groupName": "npm 0.x minor",
+      "automerge": false
     },
     {
       "description": "Majors never automerge",

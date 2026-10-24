@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Changed
+- Renovate: automerge now as PR (`automergeType: pr`, no platform automerge; Renovate waits for all checks), patch/pin/digest and stable (non-0.x) minor only, 0.x minors and majors manual, groups non-major only, `internalChecksFilter: strict`, 3 day release age also for github-actions minor/patch; `fileMatch` migrated to `managerFilePatterns`. Locked majors unchanged.
+
 ### Security
 - `/purge` and `/slowmode` now check the invoker's rights in the channel (View + Manage Messages + Read History / View + Manage Channels, fail closed when the member cannot be resolved); before, the Discord role permission alone decided although the bot (Administrator) executes the action, so a channel overwrite denying the moderator was ignored.
 - Central slash-command permission gate extracted to `command-gate.ts` (behaviour unchanged, now also fail-closed for an unparsable `default_member_permissions`); permission/hierarchy tests for all moderation commands and webhook-auth tests (token matrix, rate limit before auth, method/content-type, body limit, GitHub HMAC).
