@@ -415,6 +415,161 @@ test('manager: concurrent ticks do not double-post', async () => {
   assert.equal(h.posts.length, 1);
 });
 
+// ---- window: snapshot time as the upper bound (no loss, no duplicates) ---------------------------------
+
+test('filterRawSince with untilMs: entries after the snapshot time are left for the next digest', () => {
+  const raw = [movie('Old', SLOT - DAY), movie('At', SLOT), movie('After', SLOT + 1000)];
+  assert.deepEqual(util.filterRawSince(raw, SLOT - 2 * DAY, SLOT).map((e) => e.title), ['Old', 'At']);
+  assert.deepEqual(util.filterRawSince(raw, SLOT, SLOT + 60_000).map((e) => e.title), ['After']);
+  assert.deepEqual(util.filterRawSince(raw, SLOT - 2 * DAY).map((e) => e.title), ['Old', 'At', 'After'], 'unbounded without untilMs');
+});
+
+test('PlexNewService.getSince: movie and series lists fetched at different times - the next window loses nothing and repeats nothing', async () => {
+  let now = SLOT;
+  const lists: { movie: Raw[]; show: Raw[] } = {
+    movie: [movie('Film A', SLOT - 5 * 60_000)],
+    show: [episode('Serie A', 1, 1, SLOT - 6 * 60_000)],
+  };
+  const service = new PlexNewService({
+    configured: () => true,
+    fetchRecent: async (type) => structuredClone(lists[type]),
+    now: () => now,
+    ttlMs: 5 * 60_000,
+  });
+  // Movies are fetched at SLOT, the series list 4 minutes later; a late episode lands in between.
+  await service.get('movies', 7);
+  now = SLOT + 4 * 60_000;
+  lists.show.push(episode('Serie B', 1, 1, SLOT + 2 * 60_000));
+  await service.get('shows', 7);
+  now = SLOT + 4.5 * 60_000;
+  const first = await service.getSince(SLOT - 7 * DAY);
+  assert.ok(first.ok);
+  if (!first.ok) return;
+  assert.equal(first.fetchedAt, SLOT, 'the older snapshot defines the data time');
+  assert.deepEqual(first.items.map((i) => i.title).sort(), ['Film A', 'Serie A'], 'Serie B (after the snapshot time) is held back');
+
+  // Next digest: window starts at the stored data time (what the manager persists as lastRunAt).
+  lists.movie.push(movie('Film B', SLOT + 3 * 60_000));
+  now = NEXT_SLOT;
+  const second = await service.getSince(first.fetchedAt);
+  assert.ok(second.ok);
+  if (!second.ok) return;
+  assert.deepEqual(second.items.map((i) => i.title).sort(), ['Film B', 'Serie B'], 'nothing lost, nothing reported twice');
+  // Using "now" (SLOT + 4.5 min) as lastRunAt instead would lose Film B (added SLOT + 3 min, not yet in the movie snapshot).
+});
+
+// ---- catch-up until Sunday 23:59 ----------------------------------------------------------------------
+
+const PRIOR: Record_ = {
+  lastScheduledAt: SLOT - 7 * DAY, lastRunAt: SLOT - 7 * DAY, lastPostedAt: SLOT - 7 * DAY, lastMessageId: 'old', pausedUntil: null,
+};
+// Monday 2026-10-26 00:00 CET (after the DST end on Sunday 25th) = Sunday 23:00Z.
+const WEEK_END = Date.UTC(2026, 9, 25, 23, 0, 0);
+
+test('catchUpDeadline: start of the next local Monday, DST aware', () => {
+  assert.equal(util.catchUpDeadline(SLOT, TZ), WEEK_END, 'Friday slot, week with the autumn DST change on Sunday');
+  // Friday 2027-03-26 18:00 CET = 17:00Z; Monday 2027-03-29 00:00 CEST = Sunday 22:00Z (spring forward on the Sunday).
+  assert.equal(util.catchUpDeadline(Date.UTC(2027, 2, 26, 17, 0, 0), TZ), Date.UTC(2027, 2, 28, 22, 0, 0));
+  // A Sunday slot may be caught up until that evening's end; a Monday slot until the following Monday.
+  assert.equal(util.catchUpDeadline(Date.UTC(2026, 9, 25, 16, 0, 0), TZ), WEEK_END);
+  assert.equal(util.catchUpDeadline(Date.UTC(2026, 9, 26, 7, 0, 0), TZ), Date.UTC(2026, 10, 1, 23, 0, 0));
+  // Other zone: Friday 18:00 in Tokyo -> Monday 00:00 JST = Sunday 15:00Z.
+  assert.equal(util.catchUpDeadline(Date.UTC(2026, 9, 23, 9, 0, 0), 'Asia/Tokyo'), Date.UTC(2026, 9, 25, 15, 0, 0));
+});
+
+test('decideDigest with catch-up: run until the deadline, stale from it on, done wins', () => {
+  assert.equal(util.decideDigest(SLOT + DAY, SLOT, null, WEEK_END), 'run');
+  assert.equal(util.decideDigest(WEEK_END - 1, SLOT, null, WEEK_END), 'run');
+  assert.equal(util.decideDigest(WEEK_END, SLOT, null, WEEK_END), 'stale');
+  assert.equal(util.decideDigest(SLOT + DAY, SLOT, SLOT, WEEK_END), 'done');
+  assert.equal(util.decideDigest(SLOT + DAY, SLOT, null), 'stale', 'without a deadline only the grace window counts');
+});
+
+test('manager: an outage over the slot is caught up on Saturday, once, and the window starts at the previous run', async () => {
+  const h = harness(SLOT + 20 * 3_600_000); // Saturday 12:00 CEST
+  h.state.record = { ...PRIOR };
+  const m = h.make();
+  assert.equal(await m.tick(), 'posted');
+  assert.equal(h.fetches[0], SLOT - 7 * DAY);
+  assert.equal(h.state.record?.lastScheduledAt, SLOT, 'persisted slot is the scheduled one, not the late time');
+  assert.ok(h.logs.some((l) => l.level === 'info' && /late/.test(l.msg)));
+  for (const later of [5 * 60_000, 3_600_000, DAY]) {
+    h.clock.now += later;
+    assert.equal(await m.tick(), 'done');
+  }
+  assert.equal(await h.make().tick(), 'done', 'a restart (persisted slot) does not post it again either');
+  assert.equal(h.posts.length, 1);
+  // The following week is a normal slot with its own window.
+  h.clock.now = NEXT_SLOT + 60_000;
+  h.fetches.length = 0;
+  assert.equal(await h.make().tick(), 'posted');
+  assert.equal(h.fetches[0], SLOT + 20 * 3_600_000, 'window starts at the data time of the catch-up run');
+});
+
+test('manager: catch-up ends Sunday 23:59 local (Monday 00:00 CET is too late)', async () => {
+  const lastMinute = harness(WEEK_END - 60_000);
+  lastMinute.state.record = { ...PRIOR };
+  assert.equal(await lastMinute.make().tick(), 'posted');
+  const tooLate = harness(WEEK_END);
+  tooLate.state.record = { ...PRIOR };
+  assert.equal(await tooLate.make().tick(), 'stale');
+  assert.equal(tooLate.posts.length + tooLate.fetches.length, 0);
+});
+
+test('manager: the very first digest keeps the strict 15 minute window (no surprise post after deploy or a schedule change)', async () => {
+  const h = harness(SLOT + 20 * 3_600_000);
+  assert.equal(await h.make().tick(), 'stale');
+  assert.equal(h.posts.length + h.fetches.length, 0);
+});
+
+test('manager: Tautulli down for days is warned about once per slot, then the digest arrives when it is back', async () => {
+  const h = harness(SLOT + 16 * 60_000);
+  h.state.record = { ...PRIOR };
+  h.data.ok = false;
+  const m = h.make();
+  for (let i = 0; i < 40; i += 1) {
+    assert.equal(await m.tick(), 'unavailable');
+    h.clock.now += 5 * 60_000;
+  }
+  assert.equal(h.logs.filter((l) => l.level === 'warn').length, 1, 'one warning, not one per tick');
+  assert.ok(h.logs.filter((l) => l.level === 'debug').length >= 39);
+  assert.equal(h.logs.filter((l) => l.level === 'error').length, 0, 'never an alarm');
+  h.data.ok = true;
+  assert.equal(await m.tick(), 'posted');
+});
+
+test('manager: a permanent Discord error pause (30 min) no longer costs the week once a digest has run before', async () => {
+  const h = harness();
+  h.state.record = { ...PRIOR };
+  h.post.error = Object.assign(new Error('missing perms'), { code: 50013 });
+  const m = h.make();
+  assert.equal(await m.tick(), 'paused');
+  h.post.error = null;
+  h.clock.now = SLOT + 31 * 60_000;
+  assert.equal(await m.tick(), 'posted');
+  assert.equal(h.logs.filter((l) => l.level === 'warn').length, 1);
+});
+
+test('manager: a Saturday slot after DST-free weeks and a Sunday slot are each delivered once (day 0)', async () => {
+  const slot = Date.UTC(2026, 9, 25, 17, 0, 0); // Sunday 18:00 CET
+  const h = harness(slot + 3_600_000);
+  const m = new PlexNewDigestManager({
+    store: { load: () => h.state.record, save: (r) => { h.state.record = r; } },
+    post: async (channelId, embed) => { h.posts.push({ channelId, embed }); return 'm'; },
+    fetchSince: async (): Promise<SinceResult> => ({ ok: true, items: h.data.items, truncated: false, fetchedAt: h.clock.now }),
+    posterFor: async () => null,
+    channelId: () => 'c',
+    timeZone: TZ,
+    day: 0,
+    hour: 18,
+    now: () => h.clock.now,
+  });
+  h.state.record = { ...PRIOR, lastScheduledAt: slot - 7 * DAY, lastRunAt: slot - 7 * DAY };
+  assert.equal(await m.tick(), 'posted');
+  h.clock.now = slot + 5 * 3_600_000; // still Sunday 23:00 CET
+  assert.equal(await m.tick(), 'done');
+});
+
 // ---- persistence ---------------------------------------------------------------------------------------
 
 test('SQLite store: table is created idempotently and the record survives a reload', () => {

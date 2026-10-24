@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Changed
+- "Neu hinzugefügt" digest follow-up: outage catch-up until Sunday 23:59 local (only after a previous run, once per slot, DST-safe, warn-once, no alarm); window upper bound `fetchedAt` so skewed Tautulli caches cannot repeat items; wiring tests (env/day/hour/channel order/enable switch/scheduler timers) and Plex card gateway tests against real discord.js payloads.
 - docker.yml: GitHub build-provenance attestation (`actions/attest-build-provenance` v4.2.2, SHA-pinned, `attestations: write` on the build job only, GitHub attestation store only). Image content, Cosign keyless signing and uid 99 unchanged; no SBOM attestation, no cosign verify.
 - Renovate: `helpers:pinGitHubActionDigests` added; satori lock updated from `~0.41.0` to `<0.48` (>=0.48 locked); h3/TS/@types/node locks unchanged.
 - Drift guard: `tools/magguu-drift.py` (+ `tools/drift-allow.txt`) replaces `tools/drift-check.sh`; own `drift` job in `quality.yml` (alarm `needs` it) and a step in `.githooks/pre-push`; `quality.yml` no longer ignores `**/*.md`, so doc-only changes are checked too.

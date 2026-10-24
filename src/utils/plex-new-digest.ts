@@ -38,19 +38,49 @@ export function lastScheduledRun(now: number, timeZone: string, day: number, hou
 
 export type DigestDecision = 'run' | 'done' | 'stale' | 'none';
 
-/** `run` once per slot, only within the grace window; `done` after it was handled; `stale` when too late. */
-export function decideDigest(now: number, scheduledAt: number | null, lastScheduledAt: number | null): DigestDecision {
+/**
+ * End (exclusive) of the catch-up period for a slot: the start of the next local Monday, i.e. the slot may still be
+ * delivered until Sunday 23:59 (local time) of its week. Scans forward in 15 minute steps, so it follows DST and
+ * half-hour zones. Falls back to the plain grace window if no Monday is found (cannot happen for a real zone).
+ */
+export function catchUpDeadline(scheduledAt: number, timeZone: string): number {
+  const isMonday = (ms: number): boolean => localScheduleParts(new Date(ms), timeZone).day === 1;
+  let t = scheduledAt + STEP;
+  for (let i = 0; i < 8 * 24 * 4 + 8; i += 1, t += STEP) {
+    if (isMonday(t) && !isMonday(t - STEP)) return t;
+  }
+  return scheduledAt + DIGEST_GRACE_MS;
+}
+
+/**
+ * `run` once per slot: in the slot or the 15 minute grace window after it, or (when `catchUpUntil` is given) any
+ * time before it; `done` after the slot was handled; `stale` when too late.
+ */
+export function decideDigest(
+  now: number,
+  scheduledAt: number | null,
+  lastScheduledAt: number | null,
+  catchUpUntil?: number,
+): DigestDecision {
   if (scheduledAt === null) return 'none';
   if (lastScheduledAt !== null && scheduledAt <= lastScheduledAt) return 'done';
-  if (now - scheduledAt > DIGEST_GRACE_MS) return 'stale';
+  const inGrace = now - scheduledAt <= DIGEST_GRACE_MS;
+  const inCatchUp = catchUpUntil !== undefined && now < catchUpUntil;
+  if (!inGrace && !inCatchUp) return 'stale';
   return 'run';
 }
 
-/** Raw Tautulli entries strictly newer than `sinceMs` (the previous digest), so shows group only their new parts. */
-export function filterRawSince(raw: readonly TautulliRecentRaw[], sinceMs: number): TautulliRecentRaw[] {
+/**
+ * Raw Tautulli entries strictly newer than `sinceMs` (the previous digest), so shows group only their new parts.
+ * With `untilMs` (the time of the data snapshot) entries added after it are left for the next digest: the next
+ * window starts at that snapshot time, so nothing is lost and nothing is reported twice.
+ */
+export function filterRawSince(raw: readonly TautulliRecentRaw[], sinceMs: number, untilMs?: number): TautulliRecentRaw[] {
   return raw.filter((e) => {
     const added = Number(e.added_at);
-    return Number.isFinite(added) && added * 1000 > sinceMs;
+    if (!Number.isFinite(added)) return false;
+    const ms = added * 1000;
+    return ms > sinceMs && (untilMs === undefined || ms <= untilMs);
   });
 }
 

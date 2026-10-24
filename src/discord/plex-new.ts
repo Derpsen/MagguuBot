@@ -118,7 +118,8 @@ export class PlexNewService {
 
   /**
    * Everything added after `sinceMs` (both types, series grouped by title) for the weekly digest. `fetchedAt` is
-   * the time of the underlying Tautulli data (the next digest starts there); data older than `maxAgeMs` — e.g. a
+   * the time of the underlying Tautulli data (the next digest starts there, and entries added after it are held back
+   * for that digest, because the movie and series lists may have been fetched at different times); data older than `maxAgeMs` — e.g. a
    * stale fallback after failed fetches — counts as unavailable so no window is silently skipped.
    */
   async getSince(sinceMs: number, maxAgeMs = this.ttlMs * 2): Promise<PlexNewSinceResult> {
@@ -128,7 +129,7 @@ export class PlexNewService {
     const now = this.now();
     const fetchedAt = Math.min(this.cache.get('movie')?.at ?? 0, this.cache.get('show')?.at ?? 0);
     if (now - fetchedAt > maxAgeMs) return { ok: false, reason: 'unavailable' };
-    const items = prepareNeuItems(filterRawSince([...movies, ...shows], sinceMs), {
+    const items = prepareNeuItems(filterRawSince([...movies, ...shows], sinceMs, fetchedAt), {
       now,
       days: daysForWindow(now, sinceMs),
       type: 'all',

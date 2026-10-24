@@ -2,7 +2,9 @@ import type { EmbedBuilder } from 'discord.js';
 import {
   DIGEST_FIRST_WINDOW_MS,
   DIGEST_PAUSE_MS,
+  DIGEST_GRACE_MS,
   buildDigestEmbed,
+  catchUpDeadline,
   decideDigest,
   lastScheduledRun,
 } from '../utils/plex-new-digest.js';
@@ -58,10 +60,14 @@ const EMPTY: PlexNewDigestRecord = {
 };
 
 /**
- * Weekly "Neu hinzugefügt" digest. One run per schedule slot (persisted), delivered at the slot or within the
- * 15 minute grace window after it (restart catch-up), otherwise skipped quietly. Nothing new = nothing posted.
- * A Tautulli/Discord hiccup is not recorded, so the next tick retries inside the grace window; permanent Discord
- * errors pause the digest for 30 minutes (warn log only, never an alarm).
+ * Weekly "Neu hinzugefügt" digest. One run per schedule slot (persisted by slot start, DST-safe), delivered at the
+ * slot or within the 15 minute grace window after it. Once a digest has run before (stored `lastRunAt` /
+ * `lastScheduledAt`), an outage no longer loses the week: the slot is still delivered until Sunday 23:59 local time
+ * (`catchUpDeadline`), exactly once. The very first digest keeps the strict 15 minute window (no surprise post on
+ * deploy or after changing day/hour). Later it is skipped quietly; the next digest then covers the longer window.
+ * Nothing new = nothing posted. A Tautulli/Discord hiccup is not recorded, so every tick retries; warn logs are
+ * written once per slot and kind (then debug), permanent Discord errors pause the digest for 30 minutes
+ * (warn log only, never an alarm).
  */
 export class PlexNewDigestManager {
   private readonly now: () => number;
@@ -69,6 +75,8 @@ export class PlexNewDigestManager {
   private running = false;
   /** Fallback when the DB write after a successful post failed: this process still never posts the slot twice. */
   private memory: PlexNewDigestRecord | null = null;
+  /** Slots/kinds already warned about: a multi-day catch-up must not log a warning every 5 minutes. */
+  private readonly warned = new Set<string>();
 
   constructor(private readonly deps: PlexNewDigestDeps) {
     this.now = deps.now ?? Date.now;
@@ -77,6 +85,17 @@ export class PlexNewDigestManager {
 
   private log(level: 'debug' | 'info' | 'warn', msg: string, data?: Record<string, unknown>): void {
     this.deps.log?.(level, msg, data);
+  }
+
+  private warnOnce(slot: number | null, kind: string, msg: string, data?: Record<string, unknown>): void {
+    const key = `${slot ?? 'none'}|${kind}`;
+    if (this.warned.has(key)) {
+      this.log('debug', msg, data);
+      return;
+    }
+    if (this.warned.size >= 50) this.warned.clear();
+    this.warned.add(key);
+    this.log('warn', msg, data);
   }
 
   async tick(): Promise<PlexNewDigestResult> {
@@ -95,7 +114,9 @@ export class PlexNewDigestManager {
     const record =
       this.memory && (stored.lastScheduledAt ?? 0) < (this.memory.lastScheduledAt ?? 0) ? this.memory : stored;
     const scheduledAt = lastScheduledRun(now, this.deps.timeZone, this.deps.day, this.deps.hour);
-    const decision = decideDigest(now, scheduledAt, record.lastScheduledAt);
+    const ranBefore = record.lastRunAt !== null || record.lastScheduledAt !== null;
+    const catchUpUntil = scheduledAt !== null && ranBefore ? catchUpDeadline(scheduledAt, this.deps.timeZone) : undefined;
+    const decision = decideDigest(now, scheduledAt, record.lastScheduledAt, catchUpUntil);
     if (decision === 'none') return 'not-due';
     if (decision === 'done') return 'done';
     if (decision === 'stale') return 'stale';
@@ -111,7 +132,9 @@ export class PlexNewDigestManager {
     const result = await this.deps.fetchSince(since);
     if (!result.ok) {
       if (result.reason === 'not-configured') return 'unavailable';
-      this.log('warn', 'New-added digest: Tautulli data unavailable, retrying next tick', { reason: result.reason });
+      this.warnOnce(scheduledAt, 'unavailable', 'New-added digest: Tautulli data unavailable, retrying next tick', {
+        reason: result.reason,
+      });
       return 'unavailable';
     }
 
@@ -133,7 +156,7 @@ export class PlexNewDigestManager {
     } catch (err) {
       if (isPermanentDiscordError(err)) {
         this.deps.store.save({ ...record, pausedUntil: now + this.pauseMs });
-        this.log('warn', 'New-added digest paused after a permanent Discord error', {
+        this.warnOnce(scheduledAt, 'paused', 'New-added digest paused after a permanent Discord error', {
           channelId,
           code: discordErrorCode(err),
           pauseMinutes: Math.round(this.pauseMs / 60_000),
@@ -141,10 +164,15 @@ export class PlexNewDigestManager {
         });
         return 'paused';
       }
-      this.log('warn', 'New-added digest post failed, retrying next tick', { channelId, err });
+      this.warnOnce(scheduledAt, 'post-failed', 'New-added digest post failed, retrying next tick', { channelId, err });
       return 'error';
     }
 
+    if (now - scheduledAt > DIGEST_GRACE_MS) {
+      this.log('info', 'New-added digest delivered late (catch-up within the week)', {
+        lateMinutes: Math.round((now - scheduledAt) / 60_000),
+      });
+    }
     const posted: PlexNewDigestRecord = {
       lastScheduledAt: scheduledAt,
       lastRunAt: result.fetchedAt,

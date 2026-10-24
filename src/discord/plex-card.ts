@@ -1,4 +1,4 @@
-import type { EmbedBuilder } from 'discord.js';
+import type { EmbedBuilder, MessageCreateOptions, MessageEditOptions } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '../config.js';
@@ -95,26 +95,43 @@ async function textChannel(channelId: string) {
   return channel;
 }
 
-/** Shared Discord gateway for single-card features (post / PATCH-edit by id). */
-export const discordCardGateway: PlexCardGateway = {
-  async post(channelId, embed: EmbedBuilder) {
-    const channel = await textChannel(channelId);
-    if (!channel.isSendable()) throw new Error(`channel ${channelId} is not sendable`);
-    enforceEmbedTotalSize(embed);
-    const message = await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
-    return message.id;
-  },
-  async edit(channelId, messageId, embed: EmbedBuilder) {
-    const channel = await textChannel(channelId);
-    enforceEmbedTotalSize(embed);
-    // PATCH by id: no fetch round trip, and Discord answers 10008 when the message is gone.
-    await channel.messages.edit(messageId, { embeds: [embed], components: [] });
-  },
-  async delete(channelId, messageId) {
-    const channel = await textChannel(channelId);
-    await channel.messages.delete(messageId);
-  },
-};
+type CardChannel = Awaited<ReturnType<typeof textChannel>>;
+
+/** Exactly what is sent for a new card: one embed (trimmed to Discord's 6000 total), no content, no pings at all. */
+export function cardPostOptions(embed: EmbedBuilder): MessageCreateOptions {
+  enforceEmbedTotalSize(embed);
+  return { embeds: [embed], allowedMentions: { parse: [] } };
+}
+
+/** Exactly what is sent when a card is edited in place. */
+export function cardEditOptions(embed: EmbedBuilder): MessageEditOptions {
+  enforceEmbedTotalSize(embed);
+  return { embeds: [embed], components: [], allowedMentions: { parse: [] } };
+}
+
+/** Gateway for single-card features (post / PATCH-edit by id); the channel lookup is injectable for tests. */
+export function createDiscordCardGateway(resolveChannel: (channelId: string) => Promise<CardChannel> = textChannel): PlexCardGateway {
+  return {
+    async post(channelId, embed: EmbedBuilder) {
+      const channel = await resolveChannel(channelId);
+      if (!channel.isSendable()) throw new Error(`channel ${channelId} is not sendable`);
+      const message = await channel.send(cardPostOptions(embed));
+      return message.id;
+    },
+    async edit(channelId, messageId, embed: EmbedBuilder) {
+      const channel = await resolveChannel(channelId);
+      // PATCH by id: no fetch round trip, and Discord answers 10008 when the message is gone.
+      await channel.messages.edit(messageId, cardEditOptions(embed));
+    },
+    async delete(channelId, messageId) {
+      const channel = await resolveChannel(channelId);
+      await channel.messages.delete(messageId);
+    },
+  };
+}
+
+/** Shared Discord gateway for single-card features. */
+export const discordCardGateway: PlexCardGateway = createDiscordCardGateway();
 
 let manager: PlexCardManager | null = null;
 

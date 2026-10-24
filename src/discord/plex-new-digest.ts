@@ -8,6 +8,7 @@ import { discordCardGateway } from './plex-card.js';
 import { plexNewService } from './plex-new.js';
 import {
   PlexNewDigestManager,
+  type PlexNewDigestDeps,
   type PlexNewDigestRecord,
   type PlexNewDigestStore,
 } from './plex-new-digest-manager.js';
@@ -45,8 +46,9 @@ export const plexNewDigestStore: PlexNewDigestStore = {
 
 let manager: PlexNewDigestManager | null = null;
 
-export function getPlexNewDigest(): PlexNewDigestManager {
-  manager ??= new PlexNewDigestManager({
+/** Dependencies of the production manager. Day/hour are read from the config when the manager is created. */
+export function plexNewDigestDeps(overrides: Partial<PlexNewDigestDeps> = {}): PlexNewDigestDeps {
+  return {
     store: plexNewDigestStore,
     post: (channelId, embed) => discordCardGateway.post(channelId, embed),
     fetchSince: (sinceMs) => plexNewService.getSince(sinceMs),
@@ -56,8 +58,18 @@ export function getPlexNewDigest(): PlexNewDigestManager {
     day: config.PLEX_NEW_DIGEST_DAY,
     hour: config.PLEX_NEW_DIGEST_HOUR,
     log: (level, msg, data) => logger[level](data ?? {}, msg),
-  });
+    ...overrides,
+  };
+}
+
+export function getPlexNewDigest(): PlexNewDigestManager {
+  manager ??= new PlexNewDigestManager(plexNewDigestDeps());
   return manager;
+}
+
+/** Test seam: replaces (or with `null` resets) the process-wide manager that the scheduler tick drives. */
+export function setPlexNewDigestForTests(replacement: Pick<PlexNewDigestManager, 'tick'> | null): void {
+  manager = replacement as PlexNewDigestManager | null;
 }
 
 export async function runPlexNewDigestTick(): Promise<void> {
