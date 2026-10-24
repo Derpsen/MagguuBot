@@ -160,3 +160,56 @@ test('/faq is a registered utility command with an autocomplete string option an
   assert.match(String(replies[1]?.content), /warte/);
   setFaqCacheForTests(null);
 });
+
+// ─── Welle f: clipping never cuts inside a surrogate pair / emoji sequence ───
+
+const noLoneSurrogates = (s: string): boolean => !/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/.test(s);
+
+test('clipChoiceText: clips by code points at every cut position, never leaves a lone surrogate', () => {
+  for (let max = 2; max <= 12; max += 1) {
+    for (const base of ['😀', 'a😀', 'ab😀c', '𝒳𝒴𝒵', 'ä😀ö']) {
+      const out = clipChoiceText(base.repeat(30), max);
+      assert.ok(noLoneSurrogates(out), `max=${max} base=${base}: ${JSON.stringify(out)}`);
+      assert.ok(Array.from(out).length <= max, `max=${max} base=${base}`);
+      assert.ok(out.endsWith('…'));
+    }
+  }
+  assert.equal(clipChoiceText('😀😀😀😀', 4), '😀😀😀😀', 'exactly at the limit is not clipped');
+  assert.equal(clipChoiceText('😀😀😀😀😀', 4), '😀😀😀…');
+});
+
+test('clipChoiceText: keeps flags, keycaps and skin-tone emoji whole (cut on grapheme boundaries)', () => {
+  // (ZWJ is stripped by the invisible-character filter on purpose, so family emoji arrive as separate emoji.)
+  const flag = '🇩🇪'; // 2 code points
+  for (const unit of [flag, '1️⃣', '👍🏽']) {
+    for (let max = 2; max <= 10; max += 1) {
+      const out = clipChoiceText(`x${unit}`.repeat(10), max);
+      const body = out.slice(0, -1);
+      assert.ok(noLoneSurrogates(out));
+      assert.ok(Array.from(out).length <= max);
+      // every kept grapheme is either an `x` or a complete unit
+      const rest = body.split('x').join('');
+      assert.ok(rest === '' || unit.repeat(rest.length / unit.length) === rest, `${JSON.stringify(unit)} max=${max}: ${JSON.stringify(out)}`);
+    }
+  }
+});
+
+test('faqChoices: a long emoji-heavy question is clipped to a valid, whole-character name ≤ 100 code points', () => {
+  const entries = [{ id: 1, category: 'general', question: `Wie geht ${'😀'.repeat(120)} das`, answer: 'x' }];
+  const [choice] = faqChoices('wie geht', entries as never);
+  assert.ok(choice);
+  assert.ok(noLoneSurrogates(choice.name));
+  assert.ok(Array.from(choice.name).length <= 100);
+});
+
+test('truncate (embed titles/descriptions/fields used by /faq): no lone surrogate when the cut falls inside an emoji', async () => {
+  const { truncate } = await import('../src/embeds/colors.ts');
+  assert.equal(truncate('abcdef', 4), 'abc…');
+  assert.equal(truncate('abc', 4), 'abc');
+  for (let max = 2; max <= 9; max += 1) {
+    const out = truncate('a😀'.repeat(20), max);
+    assert.ok(noLoneSurrogates(out), `max=${max}: ${JSON.stringify(out)}`);
+    assert.ok(out.length <= max, 'UTF-16 length bound still holds (Discord counts conservatively)');
+  }
+  assert.equal(truncate('😀😀😀', 4), '😀…');
+});

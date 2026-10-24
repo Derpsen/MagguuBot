@@ -7,6 +7,7 @@ import {
 } from 'discord.js';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
+import { ANNOUNCE_CHANNEL_PERMS, invokerChannelError, missingChannelPermissions } from '../channel-authority.js';
 import { getChannel } from '../channel-store.js';
 import { getRaidReminders } from '../raid-reminders.js';
 import { reminderCooldownLeft } from '../raid-reminder-manager.js';
@@ -204,13 +205,27 @@ export const erinnerungCommand: SlashCommand = {
         return;
       }
       const channel = await interaction.guild.channels.fetch(channelOption.id).catch(() => null);
-      const member = await interaction.guild.members.fetch(userId).catch(() => null);
-      const me = interaction.guild.members.me;
-      const needed = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages;
-      if (!channel || channel.isThread() || !member || !channel.permissionsFor(member)?.has(needed)) {
-        await reply(interaction, '❌ In diesem Kanal darfst du selbst nicht schreiben.');
+      if (!channel) {
+        await reply(interaction, '❌ Kanal nicht gefunden.');
         return;
       }
+      if (channel.isThread()) {
+        await reply(interaction, '❌ In Threads sind keine Erinnerungen möglich. Wähle einen Textkanal oder DM.');
+        return;
+      }
+      // The invoker needs View + Send there themselves (an unresolvable member counts as "nothing"): otherwise the
+      // bot (which may write everywhere) would post for someone who cannot speak in that channel.
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      const denied = invokerChannelError(
+        channel.toString(),
+        missingChannelPermissions(member ? channel.permissionsFor(member) : null, ANNOUNCE_CHANNEL_PERMS),
+      );
+      if (denied) {
+        await reply(interaction, denied);
+        return;
+      }
+      const needed = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages;
+      const me = interaction.guild.members.me;
       if (!me || !channel.permissionsFor(me)?.has(needed | PermissionFlagsBits.EmbedLinks)) {
         await reply(interaction, '❌ Der Bot darf in diesem Kanal nicht schreiben (Rechte: Ansehen, Senden, Links einbetten).');
         return;

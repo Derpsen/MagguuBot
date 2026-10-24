@@ -4,6 +4,7 @@ const LABELS = new Map<bigint, string>([
   [PermissionFlagsBits.ViewChannel, 'Kanal ansehen'],
   [PermissionFlagsBits.SendMessages, 'Nachrichten senden'],
   [PermissionFlagsBits.ManageMessages, 'Nachrichten verwalten'],
+  [PermissionFlagsBits.ManageChannels, 'Kanäle verwalten'],
   [PermissionFlagsBits.ReadMessageHistory, 'Nachrichtenverlauf lesen'],
   [PermissionFlagsBits.MentionEveryone, 'Erwähne @everyone, @here und alle Rollen'],
 ]);
@@ -17,6 +18,11 @@ export const PURGE_CHANNEL_PERMS = [
   PermissionFlagsBits.ViewChannel,
   PermissionFlagsBits.ManageMessages,
   PermissionFlagsBits.ReadMessageHistory,
+] as const;
+
+export const SLOWMODE_CHANNEL_PERMS = [
+  PermissionFlagsBits.ViewChannel,
+  PermissionFlagsBits.ManageChannels,
 ] as const;
 
 /** Permissions from `required` the member lacks in the channel (null perms = all missing). */

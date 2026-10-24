@@ -6,6 +6,7 @@ import {
   type Message,
   type TextChannel,
 } from 'discord.js';
+import { invokerChannelError, missingChannelPermissions, PURGE_CHANNEL_PERMS } from '../channel-authority.js';
 import { postModLog } from '../mod-log.js';
 import type { SlashCommand } from './index.js';
 
@@ -50,6 +51,17 @@ export const purgeCommand: SlashCommand = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const channel = interaction.channel as TextChannel;
+    // The bot holds Administrator: the moderator must hold the rights in THIS channel themselves
+    // (a channel overwrite can strip ManageMessages that the guild-wide role grants).
+    const invoker = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    const denied = invokerChannelError(
+      channel.toString(),
+      missingChannelPermissions(invoker ? channel.permissionsFor(invoker) : null, PURGE_CHANNEL_PERMS),
+    );
+    if (denied) {
+      await interaction.editReply(denied);
+      return;
+    }
     let totalDeleted = 0;
     let hitFloor = false;
 

@@ -142,11 +142,24 @@ export function searchFaq(query: string, entries: readonly FaqEntry[], limit: nu
   return hits.slice(0, cap);
 }
 
-/** Single-line, control-free text clipped to `max` characters (code points) with an ellipsis. */
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/**
+ * Single-line, control-free text clipped to `max` characters (code points) with an ellipsis. The cut falls on a
+ * grapheme boundary, so it never splits a surrogate pair, a flag, a keycap or a ZWJ emoji sequence.
+ */
 export function clipChoiceText(text: string, max: number = FAQ_CHOICE_MAX): string {
   const clean = text.replace(CONTROL_AND_INVISIBLE, ' ').replace(/\s+/g, ' ').trim();
-  const chars = Array.from(clean);
-  return chars.length <= max ? clean : `${chars.slice(0, max - 1).join('').trimEnd()}…`;
+  if (Array.from(clean).length <= max) return clean;
+  let kept = '';
+  let count = 0;
+  for (const { segment } of GRAPHEMES.segment(clean)) {
+    const size = Array.from(segment).length;
+    if (count + size > max - 1) break;
+    kept += segment;
+    count += size;
+  }
+  return `${kept.trimEnd()}…`;
 }
 
 export interface FaqChoice {

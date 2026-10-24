@@ -70,7 +70,12 @@ export function progressBar(pct: number, width = 14): string {
 
 export function truncate(s: string | undefined, max = 1024): string {
   if (!s) return '';
-  return s.length <= max ? s : s.slice(0, max - 1) + '…';
+  if (s.length <= max) return s;
+  // Never cut inside a surrogate pair (emoji): a lone high surrogate renders as garbage in Discord.
+  let end = max - 1;
+  const last = s.charCodeAt(end - 1);
+  if (end > 0 && last >= 0xd800 && last <= 0xdbff) end -= 1;
+  return s.slice(0, Math.max(0, end)) + '…';
 }
 
 // Discord rejects an embed whose combined character count exceeds 6000.

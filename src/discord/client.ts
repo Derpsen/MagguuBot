@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { lacksCommandPermission } from './command-gate.js';
 import { commands } from './commands/index.js';
 import { getFeatureState, setFeatureState } from './feature-state.js';
 import { commandsInSync, diffCommands, type CommandShape } from '../utils/command-diff.js';
@@ -94,10 +95,7 @@ export async function startDiscord(): Promise<void> {
           return;
         }
         const requiredPermissions = cmd.data.toJSON().default_member_permissions;
-        if (
-          requiredPermissions &&
-          !interaction.memberPermissions?.has(BigInt(requiredPermissions))
-        ) {
+        if (lacksCommandPermission(requiredPermissions, interaction.memberPermissions)) {
           await interaction.reply({
             content: 'Du hast keine Berechtigung für diesen Command.',
             flags: MessageFlags.Ephemeral,

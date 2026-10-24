@@ -107,21 +107,45 @@ export const raidReminderStore: ReminderStore = {
   },
 };
 
-export const discordReminderGateway: ReminderGateway = {
-  async sendDm(userId: string, embed: EmbedBuilder) {
-    const user = await getClient().users.fetch(userId);
-    await user.send(reminderDmPayload(embed));
-  },
-  async sendChannel(channelId: string, userId: string, embed: EmbedBuilder) {
-    const channel = await getClient().channels.fetch(channelId);
-    if (!channel || !channel.isSendable() || channel.isDMBased()) {
-      throw Object.assign(new Error('channel not sendable'), { code: 10003 });
-    }
-    const me = channel.guild.members.me ?? (await channel.guild.members.fetchMe());
-    assertReminderChannelAllowed(channel, me, getChannel('addonUpdates'));
-    await channel.send(reminderChannelPayload(userId, embed));
-  },
-};
+/** The slice of the discord.js client the gateway touches (kept narrow so the wiring is testable with fakes). */
+export interface ReminderClientLike {
+  users: { fetch(id: string): Promise<{ send(payload: never): Promise<unknown> }> };
+  channels: { fetch(id: string): Promise<unknown> };
+}
+
+interface SendableGuildChannel extends ReminderChannelLike {
+  isSendable(): boolean;
+  isDMBased(): boolean;
+  send(payload: never): Promise<unknown>;
+  guild: { members: { me: unknown; fetchMe(): Promise<unknown> } };
+}
+
+/** Builds the Discord delivery gateway; `discordReminderGateway` is this with the live client and `#updates` lock. */
+export function createReminderGateway(
+  getReminderClient: () => ReminderClientLike,
+  getBlockedChannelId: () => string | undefined,
+): ReminderGateway {
+  return {
+    async sendDm(userId: string, embed: EmbedBuilder) {
+      const user = await getReminderClient().users.fetch(userId);
+      await user.send(reminderDmPayload(embed) as never);
+    },
+    async sendChannel(channelId: string, userId: string, embed: EmbedBuilder) {
+      const channel = (await getReminderClient().channels.fetch(channelId)) as SendableGuildChannel | null;
+      if (!channel || !channel.isSendable() || channel.isDMBased()) {
+        throw Object.assign(new Error('channel not sendable'), { code: 10003 });
+      }
+      const me = channel.guild.members.me ?? (await channel.guild.members.fetchMe());
+      assertReminderChannelAllowed(channel, me, getBlockedChannelId());
+      await channel.send(reminderChannelPayload(userId, embed) as never);
+    },
+  };
+}
+
+export const discordReminderGateway: ReminderGateway = createReminderGateway(
+  () => getClient() as unknown as ReminderClientLike,
+  () => getChannel('addonUpdates'),
+);
 
 let manager: RaidReminderManager | null = null;
 

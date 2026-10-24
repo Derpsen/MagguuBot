@@ -157,3 +157,107 @@ test('call sites log through the serializer instead of raw strings (index.ts rea
   assert.doesNotMatch(poster, /logger\.(error|warn)\(\{[^}]*\berror \}/);
   assert.match(poster, /scrubString\(err instanceof Error/);
 });
+
+// ─── Welle f: JSON bodies, header-style free text, Discord bot tokens, webhook URLs without /api/ ───
+
+// Shaped like a Discord bot token (24-27 chars . 6 . 27+), made up at runtime.
+const FAKE_BOT_TOKEN = `M${'T'.repeat(23)}.${'Ab1Cd2'}.${'x9Y8z7W6'.repeat(4)}`;
+
+test('scrubString: JSON "password":"x" and friends (spacing, escaped quotes, nested), keys stay for diagnosis', () => {
+  assert.equal(scrubString('{"password":"hunter2"}'), '{"password":"[redacted]"}');
+  assert.equal(scrubString('{"user":"bob", "password" : "p\\"w with space", "ok":1}'), '{"user":"bob", "password" : "[redacted]", "ok":1}');
+  for (const key of ['passwd', 'secret', 'client_secret', 'token', 'access_token', 'refresh_token', 'api_key', 'apikey', 'x-api-key', 'Authorization']) {
+    const out = scrubString(`{"${key}":"VALUE-${key}-123"}`);
+    assert.ok(!out.includes('VALUE-'), out);
+    assert.match(out, new RegExp(`"${key}":"\\[redacted\\]"`, 'i'));
+  }
+  const nested = scrubString('response body: {"data":{"auth":{"token":"abcdef123456"}},"status":401}');
+  assert.equal(nested, 'response body: {"data":{"auth":{"token":"[redacted]"}},"status":401}');
+  assert.equal(scrubString('{"tokens":"keep","username":"keep"}'), '{"tokens":"keep","username":"keep"}');
+  const once = scrubString('{"password":"hunter2"}');
+  assert.equal(scrubString(once), once);
+});
+
+test('scrubString: token:/api_key:/X-Api-Key: free text (colon or equals, optional Bearer/Basic scheme, quotes)', () => {
+  assert.equal(scrubString('upstream said token: abc123XYZ and stopped'), 'upstream said token: [redacted] and stopped');
+  assert.equal(scrubString('api_key = "k-123 456" ok'), 'api_key = [redacted] ok');
+  assert.equal(scrubString('X-Api-Key: SuperSecretValue1'), 'X-Api-Key: [redacted]');
+  assert.equal(scrubString('x-api-key=SuperSecretValue1'), 'x-api-key=[redacted]');
+  assert.equal(scrubString('apikey: AAA111'), 'apikey: [redacted]');
+  assert.equal(scrubString('access_token: AAA111 refresh_token: BBB222'), 'access_token: [redacted] refresh_token: [redacted]');
+  assert.equal(scrubString('client_secret: AAA111'), 'client_secret: [redacted]');
+  assert.equal(scrubString('token: Bearer abcdef123456'), 'token: [redacted]', 'scheme + value are one credential');
+  assert.equal(scrubString("X-Plex-Token: 'PLEX 123'"), 'X-Plex-Token: [redacted]');
+  const once = scrubString('token: abc123XYZ');
+  assert.equal(scrubString(once), once);
+  // ordinary prose stays readable
+  assert.equal(scrubString('the token expired, tokens are rotated; keyboard shortcut'), 'the token expired, tokens are rotated; keyboard shortcut');
+  assert.equal(scrubString('my-token-bucket: 5 per minute'), 'my-token-bucket: 5 per minute');
+});
+
+test('scrubString: Discord bot tokens (xxx.yyy.zzz) are redacted anywhere, similar-looking text is not', () => {
+  for (const text of [`login failed with ${FAKE_BOT_TOKEN}`, `Authorization: Bot ${FAKE_BOT_TOKEN}`, `{"x":"${FAKE_BOT_TOKEN}"}`, `(${FAKE_BOT_TOKEN})`]) {
+    const out = scrubString(text);
+    assert.ok(!out.includes(FAKE_BOT_TOKEN) && !out.includes('x9Y8z7W6'), out);
+  }
+  assert.equal(scrubString(`login failed with ${FAKE_BOT_TOKEN}.`), 'login failed with [redacted].');
+  for (const harmless of ['src.discord.client.ts is fine', 'version 1.22.333', 'Mozilla/5.0.some.thing', 'a.b.c', `${'M'.repeat(30)}.short.${'z'.repeat(5)}`]) {
+    assert.equal(scrubString(harmless), harmless);
+  }
+  const err = Object.assign(new Error(`invalid token ${FAKE_BOT_TOKEN}`, { cause: new Error(`gateway ${FAKE_BOT_TOKEN}`) }), { code: 'TokenInvalid' });
+  const out = JSON.stringify(errSerializer(err));
+  assert.ok(!out.includes('x9Y8z7W6'), out);
+  assert.match(out, /TokenInvalid/);
+});
+
+test('scrubString: Discord webhook URLs are scrubbed without /api/ too (relative, proxied, other hosts)', () => {
+  const tok = `${FAKE}_-x`;
+  for (const text of [
+    `POST https://discord.com/webhooks/123456789012345678/${tok} failed`,
+    `https://proxy.example/webhooks/123456789012345678/${tok}?wait=true`,
+    `request to /webhooks/123456789012345678/${tok}/github failed`,
+    `https://discord.com/api/v10/webhooks/123456789012345678/${tok}`,
+  ]) {
+    const out = scrubString(text);
+    assert.ok(!out.includes(FAKE), out);
+    assert.match(out, /webhooks\/123456789012345678\/\[redacted\]/);
+  }
+  assert.equal(scrubString('/webhooks/123456789012345678/[redacted]'), '/webhooks/123456789012345678/[redacted]');
+  assert.equal(scrubString('see docs at /webhooks and /webhooks/overview'), 'see docs at /webhooks and /webhooks/overview');
+});
+
+test('log call sites hand the error itself to the serializer ({ err }) instead of String(err)', () => {
+  const root = new URL('../src/', import.meta.url);
+  for (const file of ['discord/plex-weekly-manager.ts', 'discord/plex-card-manager.ts', 'discord/pin.ts']) {
+    const src = readFileSync(new URL(file, root), 'utf8');
+    assert.doesNotMatch(src, /String\(err\)|error: errMsg/, `${file} still logs a raw error string`);
+  }
+  // Values that are stored / returned instead of logged are scrubbed at the source.
+  for (const file of ['services/blue-tracker-enrich.ts', 'discord/rss-manager.ts']) {
+    assert.match(readFileSync(new URL(file, root), 'utf8'), /scrubString\(err instanceof Error/, file);
+  }
+});
+
+test('plex weekly manager: a failing Tautulli fetch logs { err } and the line is clean after the serializer', async () => {
+  const { PlexWeeklyManager } = await import('../src/discord/plex-weekly-manager.ts');
+  const entries: Array<Record<string, unknown>> = [];
+  const manager = new PlexWeeklyManager({
+    store: { load: () => null, save: () => undefined },
+    gateway: { post: async () => 'm1', edit: async () => undefined } as never,
+    fetchRaw: async () => {
+      throw leakyError();
+    },
+    timeZone: 'Europe/Berlin',
+    log: (_level, _msg, data) => void entries.push(data ?? {}),
+  });
+  assert.equal(await manager.refresh('c1', { force: true }), 'error');
+  const failed = entries.find((e) => 'err' in e);
+  assert.ok(failed, 'the error is passed as { err } so the logger serializer applies');
+  assert.ok(!('error' in failed));
+  let written = '';
+  const stream = new Writable({ write(chunk, _enc, cb) { written += String(chunk); cb(); } });
+  pino({ serializers: { err: errSerializer } }, stream).warn(failed, 'Plex weekly stats fetch failed');
+  assert.ok(written.length > 0);
+  assert.ok(!written.includes(KEY) && !written.includes('PLEXFAKE123456'), written);
+  assert.match(written, /ECONNREFUSED/);
+});

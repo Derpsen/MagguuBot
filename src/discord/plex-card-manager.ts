@@ -216,7 +216,7 @@ export class PlexCardManager {
     const timer = this.timers.setTimeout(() => {
       this.pending.delete(channelId);
       void this.flush(channelId).catch((err: unknown) => {
-        this.log('warn', 'Plex card flush failed', { channelId, error: String(err) });
+        this.log('warn', 'Plex card flush failed', { channelId, err });
       });
     }, delay);
     this.pending.set(channelId, { timer, firstAt });
@@ -286,7 +286,7 @@ export class PlexCardManager {
     this.failures.set(channelId, count);
     const delay = Math.min(this.retryMs * 2 ** (count - 1), Math.max(this.retryMs, PLEX_CARD_MAX_BACKOFF_MS));
     this.backoffUntil.set(channelId, this.now() + delay);
-    this.log('warn', `Plex card ${op} failed`, { channelId, attempt: count, retryInMs: delay, error: String(err) });
+    this.log('warn', `Plex card ${op} failed`, { channelId, attempt: count, retryInMs: delay, err });
     this.schedule(channelId, delay);
     return count;
   }

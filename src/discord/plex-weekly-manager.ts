@@ -1,5 +1,4 @@
 import type { EmbedBuilder } from 'discord.js';
-import { scrubString } from '../utils/scrub.js';
 import {
   aggregatePlexWeekly,
   buildPlexWeeklyEmbed,
@@ -84,7 +83,7 @@ export class PlexWeeklyManager {
     try {
       raw = await this.opts.fetchRaw();
     } catch (err) {
-      this.log('warn', 'Plex weekly stats fetch failed', { error: scrubString(String(err)) });
+      this.log('warn', 'Plex weekly stats fetch failed', { err });
       return null;
     }
     if (!raw) return null;
@@ -136,7 +135,7 @@ export class PlexWeeklyManager {
       } catch (err) {
         if (!isMessageGone(err)) {
           if (this.pauseOnPermanent(channelId, 'edit', err)) return 'paused';
-          this.log('warn', 'Plex weekly card edit failed', { channelId, error: String(err) });
+          this.log('warn', 'Plex weekly card edit failed', { channelId, err });
           return 'error';
         }
         this.log('info', 'Plex weekly card message is gone, posting a new one', { channelId, code: discordErrorCode(err) });
@@ -158,7 +157,7 @@ export class PlexWeeklyManager {
       return result;
     } catch (err) {
       if (this.pauseOnPermanent(channelId, 'post', err)) return 'paused';
-      this.log('warn', 'Plex weekly card post failed', { channelId, error: String(err) });
+      this.log('warn', 'Plex weekly card post failed', { channelId, err });
       return 'error';
     }
   }

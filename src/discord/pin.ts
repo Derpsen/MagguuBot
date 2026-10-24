@@ -3,12 +3,8 @@ import { logger } from '../utils/logger.js';
 
 const MAX_PINS_REACHED_CODE = 30003;
 
-function describeDiscordError(err: unknown): { code?: number; message: string } {
-  if (err && typeof err === 'object') {
-    const e = err as { code?: number; message?: string; rawError?: { message?: string } };
-    return { code: e.code, message: e.rawError?.message ?? e.message ?? String(err) };
-  }
-  return { message: String(err) };
+function discordErrorCodeOf(err: unknown): number | undefined {
+  return err && typeof err === 'object' ? (err as { code?: number }).code : undefined;
 }
 
 /** Pin a bot message (idempotent) and delete the "pinned a message" notice. */
@@ -19,11 +15,11 @@ export async function ensurePinned(message: Message, reason = 'MagguuBot card'):
     await deletePinNotification(message);
     return true;
   } catch (err) {
-    const { code, message: errMsg } = describeDiscordError(err);
+    const code = discordErrorCodeOf(err);
     const isMaxPins = code === MAX_PINS_REACHED_CODE;
     if (!isMaxPins) {
       logger.warn(
-        { code, error: errMsg, messageId: message.id, channelId: message.channelId, channelName: 'name' in message.channel ? message.channel.name : '?' },
+        { code, err, messageId: message.id, channelId: message.channelId, channelName: 'name' in message.channel ? message.channel.name : '?' },
         'pin failed — bot likely lacks ManageMessages globally; grant it on the bot role in Server Settings -> Roles',
       );
       return false;

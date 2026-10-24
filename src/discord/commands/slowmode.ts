@@ -5,6 +5,7 @@ import {
   SlashCommandBuilder,
   type TextChannel,
 } from 'discord.js';
+import { invokerChannelError, missingChannelPermissions, SLOWMODE_CHANNEL_PERMS } from '../channel-authority.js';
 import { postModLog } from '../mod-log.js';
 import type { SlashCommand } from './index.js';
 
@@ -42,6 +43,17 @@ export const slowmodeCommand: SlashCommand = {
     const seconds = interaction.options.getInteger('seconds', true);
     const reason = interaction.options.getString('reason') ?? undefined;
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // The bot holds Administrator: the moderator must be allowed to manage THIS channel themselves.
+    const invoker = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    const denied = invokerChannelError(
+      channel.toString(),
+      missingChannelPermissions(invoker ? (channel as TextChannel).permissionsFor(invoker) : null, SLOWMODE_CHANNEL_PERMS),
+    );
+    if (denied) {
+      await interaction.editReply({ content: denied });
+      return;
+    }
 
     try {
       await (channel as TextChannel).setRateLimitPerUser(seconds, reason ?? `slowmode by ${interaction.user.displayName}`);

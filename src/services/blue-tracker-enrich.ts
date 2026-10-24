@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { AnyNode, Element } from 'domhandler';
 import { logger } from '../utils/logger.js';
 import { safeFetch } from '../utils/safe-fetch.js';
+import { scrubString } from '../utils/scrub.js';
 
 export interface EnrichedBluePost {
   body: string;
@@ -73,7 +74,7 @@ export async function enrichBluePost(
     logger.debug({ url, err }, 'blue-tracker enrich: fetch error');
     return {
       status: 'transient-error',
-      error: err instanceof Error ? err.message : String(err),
+      error: scrubString(err instanceof Error ? err.message : String(err)),
     };
   } finally {
     clearTimeout(timer);

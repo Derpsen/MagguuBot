@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import Database from 'better-sqlite3';
-import { PermissionFlagsBits, type EmbedBuilder } from 'discord.js';
+import { MessageFlags, PermissionFlagsBits, type EmbedBuilder } from 'discord.js';
 import {
   RaidReminderManager,
   reminderCooldownLeft,
@@ -44,7 +44,7 @@ process.env.DATABASE_PATH = dbPath;
 const { commands } = await import('../src/discord/commands/index.ts');
 const { raidReminderStore } = await import('../src/discord/raid-reminders.ts');
 const { sqliteHandle, ensureSchema, runMigrations } = await import('../src/db/client.ts');
-const { assertReminderChannelAllowed, REMINDER_CHANNEL_PERMISSIONS } = await import('../src/discord/raid-reminders.ts');
+const { assertReminderChannelAllowed, createReminderGateway, REMINDER_CHANNEL_PERMISSIONS } = await import('../src/discord/raid-reminders.ts');
 const { guildMemberRemoveEvent } = await import('../src/discord/events/guild-member-remove.ts');
 const { saveChannel } = await import('../src/discord/channel-store.ts');
 const erinnerung = commands.get('erinnerung')!;
@@ -401,25 +401,42 @@ function fakeInteraction(opts: {
   bools?: Record<string, boolean | null>;
   channel?: { id: string } | null;
   memberCanWrite?: boolean;
+  /** member sees the channel but lacks SendMessages */
+  memberViewOnly?: boolean;
+  memberUnresolvable?: boolean;
+  channelMissing?: boolean;
+  channelIsThread?: boolean;
   botCanWrite?: boolean;
   targetUser?: { id: string } | null;
   canManageGuild?: boolean;
 }) {
   const replies: Array<{ content: string; flags?: unknown; allowedMentions?: unknown }> = [];
   const guildId = opts.guildId === undefined ? process.env.DISCORD_GUILD_ID! : opts.guildId;
-  const perms = (can: boolean) => ({ has: (p: bigint) => can && (p & PermissionFlagsBits.ViewChannel) !== 0n });
+  const FULL = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks;
+  const perms = (mask: bigint) => ({ has: (p: bigint) => (mask & p) === p });
+  const memberMask = opts.memberCanWrite === false ? 0n : opts.memberViewOnly ? PermissionFlagsBits.ViewChannel : FULL;
   const interaction = {
     inGuild: () => guildId !== null,
     guildId,
     guild: {
       channels: {
-        fetch: async (id: string) => ({
-          id,
-          isThread: () => false,
-          permissionsFor: (who: { me?: boolean }) => perms(who.me ? opts.botCanWrite !== false : opts.memberCanWrite !== false),
-        }),
+        fetch: async (id: string) => {
+          if (opts.channelMissing) throw new Error('Unknown Channel');
+          return {
+            id,
+            toString: () => `<#${id}>`,
+            isThread: () => opts.channelIsThread === true,
+            permissionsFor: (who: { me?: boolean }) => perms(who.me ? (opts.botCanWrite !== false ? FULL : 0n) : memberMask),
+          };
+        },
       },
-      members: { fetch: async () => ({ me: false }), me: { me: true } },
+      members: {
+        fetch: async () => {
+          if (opts.memberUnresolvable) throw new Error('Unknown Member');
+          return { me: false };
+        },
+        me: { me: true },
+      },
     },
     user: { id: opts.userId ?? 'cmd-user' },
     memberPermissions: { has: (p: bigint) => opts.canManageGuild === true && p === PermissionFlagsBits.ManageGuild },
@@ -488,7 +505,7 @@ test('command: validation (bad time, cooldown, outside the guild / wrong guild, 
 
   const noWrite = fakeInteraction({ ...base, channel: { id: '5551' }, memberCanWrite: false });
   await erinnerung.execute(noWrite.interaction);
-  assert.match(noWrite.replies[0]!.content, /darfst du selbst nicht schreiben/);
+  assert.match(noWrite.replies[0]!.content, /Dir fehlen in <#5551> die Rechte: `Kanal ansehen`, `Nachrichten senden`/);
 
   resetReminderCooldown();
   const botNoWrite = fakeInteraction({ ...base, channel: { id: '5551' }, botCanWrite: false });
@@ -729,4 +746,131 @@ test('migration: a DB created before pause_notified_at gets the column added wit
   assert.equal(kept.user_id, 'mig-user-2');
   assert.equal(kept.pause_notified_at, null);
   raidReminderStore.delete(row.id);
+});
+
+// ─── Welle f: creation-time channel authority of the invoker + gateway wiring ───
+
+test('command: the invoker needs View AND Send in the target channel (clear ephemeral message, nothing stored)', async () => {
+  resetReminderCooldown();
+  const uid = 'cmd-user-perm';
+  const guildId = process.env.DISCORD_GUILD_ID!;
+  const base = { sub: 'an', userId: uid, strings: { art: 'raid', uhrzeit: '19:45' }, ints: { tag: 4 }, channel: { id: '7771' } };
+  const cases: Array<[string, Parameters<typeof fakeInteraction>[0], RegExp]> = [
+    ['view only (no SendMessages)', { ...base, memberViewOnly: true }, /Dir fehlen in <#7771> die Rechte: `Nachrichten senden`\./],
+    ['no rights at all', { ...base, memberCanWrite: false }, /`Kanal ansehen`, `Nachrichten senden`/],
+    ['member cannot be resolved (fail closed)', { ...base, memberUnresolvable: true }, /Dir fehlen in <#7771>/],
+    ['channel gone', { ...base, channelMissing: true }, /Kanal nicht gefunden/],
+    ['thread', { ...base, channelIsThread: true }, /Threads/],
+    ['bot lacks rights', { ...base, botCanWrite: false }, /Bot darf in diesem Kanal nicht schreiben/],
+  ];
+  for (const [label, opts, expected] of cases) {
+    resetReminderCooldown();
+    const f = fakeInteraction(opts);
+    await erinnerung.execute(f.interaction);
+    assert.equal(f.replies.length, 1, label);
+    assert.match(f.replies[0]!.content, expected, label);
+    assert.equal(f.replies[0]!.flags, MessageFlags.Ephemeral, label);
+    assert.deepEqual(f.replies[0]!.allowedMentions, { parse: [] }, label);
+    assert.equal(raidReminderStore.listByUser(guildId, uid).length, 0, `${label}: nothing stored`);
+  }
+  resetReminderCooldown();
+  const ok = fakeInteraction(base);
+  await erinnerung.execute(ok.interaction);
+  assert.match(ok.replies[0]!.content, /angelegt/);
+  assert.equal(raidReminderStore.listByUser(guildId, uid).length, 1);
+  raidReminderStore.deleteAllByUser(guildId, uid);
+});
+
+function fakeGatewayClient(opts: { channel?: unknown; failChannelFetch?: boolean; dmFails?: boolean } = {}) {
+  const calls = { dm: [] as unknown[], channelSend: [] as unknown[], fetchMe: 0, userFetch: [] as string[] };
+  const channel =
+    opts.channel === undefined
+      ? {
+          id: 'ch-1',
+          isSendable: () => true,
+          isDMBased: () => false,
+          permissionsFor: () => ({ has: () => true }),
+          send: async (payload: unknown) => void calls.channelSend.push(payload),
+          guild: { members: { me: { id: 'me' }, fetchMe: async () => ((calls.fetchMe += 1), { id: 'me-fetched' }) } },
+        }
+      : opts.channel;
+  const client = {
+    users: {
+      fetch: async (id: string) => {
+        calls.userFetch.push(id);
+        return { send: async (payload: unknown) => void calls.dm.push(payload) };
+      },
+    },
+    channels: { fetch: async () => channel },
+  };
+  return { client, calls, channel: channel as Record<string, unknown> };
+}
+const gwEmbed = () => buildReminderEmbed({ kind: "raid", text: "Hallo", recurring: false }) as EmbedBuilder;
+
+test('gateway wiring: sendChannel fetches the channel, gates it, and sends a payload that pings only the subscriber', async () => {
+  const f = fakeGatewayClient();
+  const gw = createReminderGateway(() => f.client as never, () => undefined);
+  const embed = gwEmbed();
+  await gw.sendChannel('ch-1', '4242', embed);
+  assert.equal(f.calls.channelSend.length, 1);
+  assert.deepEqual(f.calls.channelSend[0], reminderChannelPayload('4242', embed));
+  assert.deepEqual((f.calls.channelSend[0] as { allowedMentions: unknown }).allowedMentions, { parse: [], users: ['4242'] });
+  assert.equal(f.calls.fetchMe, 0, 'cached members.me is used when present');
+});
+
+test('gateway wiring: members.me missing falls back to fetchMe; a failed permission check never sends', async () => {
+  const f = fakeGatewayClient();
+  (f.channel.guild as { members: { me: unknown } }).members.me = null;
+  const gw = createReminderGateway(() => f.client as never, () => undefined);
+  await gw.sendChannel('ch-1', '1', gwEmbed());
+  assert.equal(f.calls.fetchMe, 1);
+  assert.equal(f.calls.channelSend.length, 1);
+
+  const denied = fakeGatewayClient();
+  denied.channel.permissionsFor = () => ({ has: () => false });
+  await assert.rejects(createReminderGateway(() => denied.client as never, () => undefined).sendChannel('ch-1', '1', gwEmbed()), { code: 50013 });
+  assert.equal(denied.calls.channelSend.length, 0);
+});
+
+test('gateway wiring: the reserved #updates channel is refused with a permanent code before anything is sent', async () => {
+  const f = fakeGatewayClient();
+  const gw = createReminderGateway(() => f.client as never, () => 'ch-1');
+  await assert.rejects(gw.sendChannel('ch-1', '1', gwEmbed()), { code: 50013 });
+  assert.equal(f.calls.channelSend.length, 0);
+});
+
+test('gateway wiring: unknown, non-sendable and DM-based channels give the permanent 10003, never a send', async () => {
+  const sendable = fakeGatewayClient().channel;
+  for (const channel of [null, { ...sendable, isSendable: () => false }, { ...sendable, isDMBased: () => true }]) {
+    const f = fakeGatewayClient({ channel });
+    await assert.rejects(createReminderGateway(() => f.client as never, () => undefined).sendChannel('ch-1', '1', gwEmbed()), { code: 10003 });
+    assert.equal(f.calls.channelSend.length, 0);
+  }
+});
+
+test('gateway wiring: sendDm resolves the user and sends the DM payload (no mentions)', async () => {
+  const f = fakeGatewayClient();
+  const embed = gwEmbed();
+  await createReminderGateway(() => f.client as never, () => undefined).sendDm('9001', embed);
+  assert.deepEqual(f.calls.userFetch, ['9001']);
+  assert.deepEqual(f.calls.dm, [reminderDmPayload(embed)]);
+});
+
+test('gateway wiring: the real manager pauses only the channel subscription when the gateway reports the permanent channel error', async () => {
+  const f = fakeGatewayClient();
+  const { store, clock } = setup(NOW);
+  const manager = new RaidReminderManager({
+    store,
+    gateway: createReminderGateway(() => f.client as never, () => 'ch-1'), // ch-1 is the reserved channel here
+    timeZone: TZ,
+    now: () => clock.t,
+    log: () => undefined,
+  });
+  manager.add({ ...BASE, channelId: 'ch-1' });
+  clock.t = DUE + MIN;
+  const s = await manager.tick();
+  assert.equal(s.paused, 1);
+  assert.equal(store.rows[0]!.pausedReason, 'channel_unavailable');
+  assert.equal(f.calls.channelSend.length, 0);
+  assert.equal((await manager.tick()).paused, 0, 'paused once, no retry spam');
 });

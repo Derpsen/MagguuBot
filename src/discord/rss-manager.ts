@@ -9,6 +9,7 @@ import { fetchRss, type RssItem } from '../services/rss.js';
 import { logger } from '../utils/logger.js';
 import { normalizeFeedTitle, rememberDeliveredFeedItem, wasEmbedDelivered } from './feed-delivery.js';
 import { htmlToText } from '../utils/html.js';
+import { scrubString } from '../utils/scrub.js';
 
 const MAX_SEEN = 200;
 const MAX_POST_PER_RUN = 5;
@@ -32,7 +33,7 @@ export async function runRssFeedTick(): Promise<void> {
           .run();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = scrubString(err instanceof Error ? err.message : String(err));
       db.update(rssFeeds)
         .set({ lastError: message.slice(0, 500), lastErrorAt: new Date() })
         .where(eq(rssFeeds.id, feed.id))

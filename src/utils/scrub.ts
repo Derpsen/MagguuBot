@@ -23,9 +23,17 @@ const BEARER = /\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{6,}/gi;
 // Bare credentials that show up in free text (error messages, response bodies), without any `key=` hint.
 const GITHUB_TOKEN = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})/g;
 const JWT = /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}(?:\.[A-Za-z0-9_-]*)?/g;
-const DISCORD_WEBHOOK = /(\/api(?:\/v\d+)?\/webhooks\/\d+\/)[A-Za-z0-9._-]+/gi;
+// `/webhooks/<id>/<token>` with or without the `/api[/vN]` prefix (relative paths, proxies, `discord.com/webhooks/...`).
+const DISCORD_WEBHOOK = /(\/webhooks\/\d+\/)[A-Za-z0-9._-]+/gi;
+// Discord bot token: base64(user id) `.` timestamp `.` hmac, e.g. `MTIz...abc.GhIjKl.xxxxxxxx...` (first char M/N/O for numeric ids).
+const DISCORD_BOT_TOKEN = /\b[MNO][A-Za-z0-9_-]{23,27}\.[A-Za-z0-9_-]{6,7}\.[A-Za-z0-9_-]{27,40}(?![A-Za-z0-9_-])/g;
+// JSON bodies: `"password":"x"`, `"api_key": "x"` (string values only; escaped quotes handled).
+const JSON_SECRET = /("(?:password|passwd|passphrase|secret|client[_-]?secret|token|access[_-]?token|refresh[_-]?token|api[_-]?key|apikey|x-api-key|x-plex-token|authorization)"\s*:\s*)"(?:[^"\\]|\\.)*"/gi;
 // `password: xyz`, `secret = "xyz"`, `passwd is xyz` (a following already-redacted value stays redacted).
 const FREETEXT_SECRET = /\b(password|passwd|passphrase|secret)\b(\s*[:=]\s*|\s+is\s+)("[^"]*"|'[^']*'|[^\s,;"'&]+)/gi;
+// Header/field style free text: `token: xyz`, `api_key = xyz`, `X-Api-Key: xyz` (colon or equals only, so "token expired" stays readable);
+// an optional `Bearer`/`Basic` scheme in front is part of the value.
+const FREETEXT_KEY = /(?<![\w-])(x-api-key|x-plex-token|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|token)(?![\w-])(\s*[:=]\s*)((?:(?:bearer|basic)\s+)?(?:"[^"]*"|'[^']*'|[^\s,;"'&]+))/gi;
 
 export function scrubString(input: string): string {
   let out = input;
@@ -36,10 +44,13 @@ export function scrubString(input: string): string {
   }
   return out
     .replace(DISCORD_WEBHOOK, '$1[redacted]')
+    .replace(DISCORD_BOT_TOKEN, '[redacted]')
     .replace(GITHUB_TOKEN, '[redacted]')
     .replace(JWT, '[redacted]')
+    .replace(JSON_SECRET, '$1"[redacted]"')
     .replace(PARAM, '$1$2[redacted]')
     .replace(FREETEXT_SECRET, '$1$2[redacted]')
+    .replace(FREETEXT_KEY, '$1$2[redacted]')
     .replace(USERINFO, '$1[redacted]@')
     .replace(BEARER, '$1 [redacted]');
 }
