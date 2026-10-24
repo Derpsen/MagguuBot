@@ -2,6 +2,14 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Raider.IO score roles (Step B, Marco Go)
+
+- Rollback branch `rollback/pre-rio-roles-60e9173`. Rules: AGENTS.md "Raider.IO score roles".
+- API verified live before coding: unknown character = HTTP 400 (not 404), `mythic_plus_scores_by_season:current` gives `scores.all`; handled both.
+- Decisions: thresholds/season in raw `bot_settings` keys (not the SettingKey enum), env as fallback, a stored empty value overrides; the module avoids client imports (a first version imported `plex-card-manager` and created an import cycle with `events/index`; existing cycle: import `commands/index.ts` before `events/guild-member-remove.ts` in tests).
+- Marco must in Discord: create the score roles (e.g. one per tier), place the bot's role ABOVE them, give the bot Manage Roles, then set thresholds with `/rio-config setzen` (or `RIO_ROLE_THRESHOLDS`). Nothing is created by the bot.
+- Residual risk: no ownership proof (anyone can link any public character); roles only refresh on a new `/rio-link`.
+
 ## 2026-10-25 Plex cleanup follow-ups (code review)
 
 - Request (Marco, via Buddy): F1 make the emergency-brake test effective, F2 Unraid template envs, F3 `done` with errors, F4 test gaps. Rollback branch `rollback/pre-plexcleanup-followups-1ecbf48`.

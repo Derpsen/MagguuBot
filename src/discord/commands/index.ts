@@ -36,6 +36,7 @@ import { autoresponderCommand } from './autoresponder.js';
 import { erinnerungCommand } from './erinnerung.js';
 import { remindmeCommand } from './remindme.js';
 import { repCommand } from './rep.js';
+import { rioConfigCommand, rioLinkCommand, rioUnlinkCommand } from './rio.js';
 import { rolesPanelCommand } from './roles-panel.js';
 import { scheduleAnnounceCommand } from './schedule-announce.js';
 import { statusCommand } from './status.js';
@@ -119,6 +120,9 @@ const all: SlashCommand[] = [
   birthdayCommand,
   wrappedCommand,
   jtcCommand,
+  rioLinkCommand,
+  rioUnlinkCommand,
+  rioConfigCommand,
 ];
 
 export const commands = new Map<string, SlashCommand>(all.map((c) => [c.data.name, c]));

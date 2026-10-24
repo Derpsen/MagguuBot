@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
 export const webhookEvents = sqliteTable('webhook_events', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -595,6 +595,23 @@ export const plexCleanupState = sqliteTable(
     finishedAt: integer('finished_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
+// Raider.IO score roles on request (/rio-link): Discord user id -> the character they linked, last score and the
+// score role the bot gave (only that role may ever be removed by the bot). Nothing else, no OAuth, no tokens.
+export const rioLink = sqliteTable(
+  'rio_link',
+  {
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    characterName: text('character_name').notNull(),
+    realm: text('realm').notNull(),
+    region: text('region').notNull(),
+    lastScore: real('last_score').notNull().default(0),
+    lastRoleId: text('last_role_id'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.userId] })],
 );
 
 export const eventLifecycleMessages = sqliteTable(

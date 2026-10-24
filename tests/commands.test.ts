@@ -61,7 +61,7 @@ const ADMINISTRATOR = 8n;
 /** Server-changing commands: only Administrator may see them. */
 const ADMIN_ONLY = ['setup-server', 'cleanup-server', 'db-backup', 'db-restore', 'doctor', 'downloads-live', 'lockdown', 'roles-panel', 'autoresponder', 'ticket-panel', 'jtc'];
 /** Moderation/staff commands: hidden behind a permission. */
-const STAFF = ['warn', 'timeout', 'kick', 'ban', 'unban', 'purge', 'purge-user', 'slowmode', 'announce', 'countdown', 'schedule-announce', 'sticky', 'suggestion-status', 'snipe', 'editsnipe', 'giveaway'];
+const STAFF = ['warn', 'timeout', 'kick', 'ban', 'unban', 'purge', 'purge-user', 'slowmode', 'announce', 'countdown', 'schedule-announce', 'sticky', 'suggestion-status', 'snipe', 'editsnipe', 'giveaway', 'rio-config'];
 
 test('admin and moderator commands are hidden by default_member_permissions', () => {
   const byName = new Map(all.map(({ json }) => [json.name, json]));

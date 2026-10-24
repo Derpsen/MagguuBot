@@ -6,6 +6,7 @@ import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
 import { getRaidReminders } from '../raid-reminders.js';
+import { forgetRioLink } from '../rio-roles.js';
 import type { BotEvent } from './types.js';
 
 export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
@@ -25,6 +26,12 @@ export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
       if (removed > 0) logger.info({ userId: member.id, removed }, 'deleted raid reminders of the member who left');
     } catch (err) {
       logger.warn({ err, userId: member.id }, 'raid reminder cleanup on leave failed');
+    }
+
+    try {
+      if (forgetRioLink(member.guild.id, member.id)) logger.info({ userId: member.id }, 'deleted the Raider.IO link of the member who left');
+    } catch (err) {
+      logger.warn({ err, userId: member.id }, 'Raider.IO link cleanup on leave failed');
     }
 
     try {

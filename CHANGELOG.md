@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added
+- `/rio-link charakter realm region`, `/rio-unlink` and admin `/rio-config` (Manage Server): voluntary Raider.IO score roles on request (no Battle.net OAuth, no background sync). Score from the public `characters/profile?fields=mythic_plus_scores_by_season:current` API (8 s timeout, 2 min cache, global 30/min ceiling, Retry-After honoured, clear messages for not found / 429 / 5xx / timeout), thresholds from `RIO_ROLE_THRESHOLDS` (JSON or `score=roleId,…`) or `/rio-config`, `RIO_SEASON_LABEL`. Never creates roles; missing roles / Manage Roles / role hierarchy give an ephemeral message; only bot-assigned score roles are added or removed. Table `rio_link` (`CREATE TABLE IF NOT EXISTS`), mapping deleted on `guildMemberRemove`. Not set up = a friendly hint, no error.
+
 ### Changed
 - Plex card cleanup follow-ups: a run with delete errors is no longer persisted as `done` but retried (bounded: 6 h spacing, max 3 attempts, then `failed`); `PLEX_CARD_CLEANUP_ENABLED` is re-checked before every delete; the emergency-brake test now uses a client spy and fails without the check; new tests for channel id, 0 cards, repost without unsynced, once-flag beyond 6 h; `unraid/magguu-bot.xml` lists the optional Plex card, cleanup, new-digest, FAQ top and server health envs.
 - Server health card: one self-updating "📊 Server-Health" message (edit in place every 15 min, content-hash dedupe, repost only on 10008/50005, pause on 10003/50001/50013, debounce + backoff) with members, active users of the week and commands of the week (total, top 5). Anonymous: ids are hashed in memory with a weekly random key and never persisted (only the count, tables `server_health_week`/`server_health_command`, purged weekly). Envs `SERVER_HEALTH_CARD_ENABLED` (default true) and `DISCORD_CHANNEL_SERVER_HEALTH` (fallback: health channel, silent skip without a channel).

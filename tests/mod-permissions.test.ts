@@ -58,6 +58,7 @@ const EXPECTED: Record<string, bigint> = {
   autoresponder: P.Administrator,
   jtc: P.Administrator,
   'downloads-live': P.Administrator,
+  'rio-config': P.ManageGuild,
 };
 
 describe('moderation command inventory', () => {

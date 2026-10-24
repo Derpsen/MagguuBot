@@ -110,6 +110,10 @@ const schema = z.object({
   PLEX_CARD_CLEANUP_ENABLED: envBoolean(true),
   PLEX_CARD_CLEANUP_DRY_RUN: envBoolean(false),
   PLEX_CARD_CLEANUP_SCAN_LIMIT: z.coerce.number().int().min(100).max(2000).default(1000),
+  /** Raider.IO score roles on request: "minScore=roleId,..." or JSON [{minScore, roleId}]; empty = not set up. */
+  RIO_ROLE_THRESHOLDS: z.string().default(''),
+  /** Optional display label of the season the thresholds are meant for (e.g. "Season 2"). */
+  RIO_SEASON_LABEL: z.string().max(40).default(''),
   STATUS_STALE_HOURS: z.coerce.number().positive().max(8760).default(24),
 
   OPENAI_API_KEY: z.string().optional(),

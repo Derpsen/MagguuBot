@@ -520,6 +520,18 @@ export function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS rio_link (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      character_name TEXT NOT NULL,
+      realm TEXT NOT NULL,
+      region TEXT NOT NULL,
+      last_score REAL NOT NULL DEFAULT 0,
+      last_role_id TEXT,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, user_id)
+    );
+
     CREATE TABLE IF NOT EXISTS plex_weekly_card (
       guild_id TEXT NOT NULL,
       channel_id TEXT NOT NULL,
