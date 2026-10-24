@@ -1,15 +1,12 @@
 import { Hono } from 'hono';
 import { EmbedBuilder } from 'discord.js';
-import { and, desc, eq } from 'drizzle-orm';
-import { config } from '../../config.js';
-import { db } from '../../db/client.js';
-import { plexActivityMessages, type PlexActivityMessage } from '../../db/schema.js';
 import { getChannel, type ChannelKey } from '../../discord/channel-store.js';
+import { getPlexCard } from '../../discord/plex-card.js';
 import { Colors, truncate, FOOTER_ICONS } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
-import { decidePlexActivityEvent, plexActivityCorrelationKey } from '../../utils/plex-activity.js';
+import { plexActivityCorrelationKey, plexPlayerCorrelationKey } from '../../utils/plex-activity.js';
 import { resolveTautulliEventName } from '../../utils/tautulli-event.js';
-import { editEmbed, postEmbed } from '../discord-poster.js';
+import { postEmbed, recordHandledWebhook } from '../discord-poster.js';
 import { submitFeed } from '../feed-bursts.js';
 import {
   tautulliPayloadSchema,
@@ -91,29 +88,29 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
   }
   const meta = classified;
 
-  const buildEmbed = (displayMeta: EventMeta): EmbedBuilder => {
-    const rebuilt = new EmbedBuilder()
-      .setColor(typeof source?.color === 'number' ? source.color : displayMeta.color)
-      .setAuthor({ name: `Plex · ${body.username ?? 'Tautulli'}` })
-      .setTitle(`${displayMeta.emoji} ${meta.kind === 'recently_added' && source?.title ? truncate(source.title, 240) : displayMeta.label}`)
-      .setTimestamp(new Date())
-      .setFooter({ text: `MagguuBot · ${displayMeta.kind}` });
-
-    if (source?.description) rebuilt.setDescription(truncate(source.description, 2000));
-    else if (body.content) rebuilt.setDescription(truncate(body.content, 2000));
-    if (source?.thumbnail?.url) rebuilt.setThumbnail(source.thumbnail.url);
-    if (source?.image?.url) rebuilt.setImage(source.image.url);
-    if (source?.fields?.length) {
-      rebuilt.addFields(source.fields.slice(0, 25).map((f) => ({
-        name: f.name.slice(0, 256),
-        value: f.value.slice(0, 1024),
-        inline: f.inline ?? false,
-      })));
-    }
-    return rebuilt;
-  };
-
   if (meta.kind === 'recently_added') {
+    const buildEmbed = (displayMeta: EventMeta): EmbedBuilder => {
+      const rebuilt = new EmbedBuilder()
+        .setColor(typeof source?.color === 'number' ? source.color : displayMeta.color)
+        .setAuthor({ name: `Plex · ${body.username ?? 'Tautulli'}` })
+        .setTitle(`${displayMeta.emoji} ${meta.kind === 'recently_added' && source?.title ? truncate(source.title, 240) : displayMeta.label}`)
+        .setTimestamp(new Date())
+        .setFooter({ text: `MagguuBot · ${displayMeta.kind}` });
+
+      if (source?.description) rebuilt.setDescription(truncate(source.description, 2000));
+      else if (body.content) rebuilt.setDescription(truncate(body.content, 2000));
+      if (source?.thumbnail?.url) rebuilt.setThumbnail(source.thumbnail.url);
+      if (source?.image?.url) rebuilt.setImage(source.image.url);
+      if (source?.fields?.length) {
+        rebuilt.addFields(source.fields.slice(0, 25).map((f) => ({
+          name: f.name.slice(0, 256),
+          value: f.value.slice(0, 1024),
+          inline: f.inline ?? false,
+        })));
+      }
+      return rebuilt;
+    };
+
     const title = source?.title ?? body.content ?? 'Neu auf Plex';
     await submitFeed('newOnPlex', {
       service: 'Plex',
@@ -132,17 +129,17 @@ async function handleDiscord(body: TautulliDiscordPayload): Promise<void> {
   }
 
   const mediaType = discordField(source?.fields, /^(type|typ)$/i);
-  await publishActivityCard({
-    correlationKey: plexActivityCorrelationKey({
-      user: discordField(source?.fields, /^(user|nutzer|benutzer)$/i),
-      player: discordField(source?.fields, /^player$/i),
-      title: source?.description ?? body.content,
-      mediaType,
-    }),
-    incomingMeta: meta,
+  const user = discordField(source?.fields, /^(user|nutzer|benutzer)$/i);
+  const player = discordField(source?.fields, /^player$/i);
+  const text = source?.description ?? body.content;
+  publishActivityCard({
+    kind: meta.kind,
+    correlationKey: plexPlayerCorrelationKey({ user, player, mediaType }),
+    user,
+    player,
+    title: firstLine(text),
+    mediaType,
     payload: body,
-    buildEmbed,
-    reuseOnPlay: mediaType?.toLowerCase() === 'track',
   });
 }
 
@@ -187,143 +184,71 @@ async function handleCustom(body: TautulliCustomPayload): Promise<void> {
     ? `${body.showTitle} — ${body.season ?? ''}${body.episode ? `E${body.episode}` : ''} · ${body.title ?? ''}`
     : `${body.title ?? 'Unbekannt'}${body.year ? ` (${body.year})` : ''}`;
 
-  await publishActivityCard({
+  publishActivityCard({
+    kind: meta.kind,
     correlationKey: plexActivityCorrelationKey(body),
-    incomingMeta: meta,
+    sessionKey: body.sessionKey === undefined ? null : String(body.sessionKey).trim() || null,
+    user: body.user,
+    player: body.player,
+    title: fullTitle,
+    mediaType: body.mediaType,
     payload: body,
-    sessionKey: body.sessionKey,
-    reuseOnPlay: body.mediaType?.toLowerCase() === 'track',
-    buildEmbed: (displayMeta) => {
-      const embed = new EmbedBuilder()
-        .setColor(displayMeta.color)
-        .setAuthor({ name: `Plex-Aktivität · ${body.serverName ?? 'Server'}` })
-        .setTitle(`${displayMeta.emoji} ${displayMeta.label}`)
-        .setDescription(truncate(fullTitle, 500))
-        .setTimestamp(new Date())
-        .setFooter({ text: 'MagguuBot · Plex-Aktivität', iconURL: FOOTER_ICONS.bot });
-
-      if (body.user) embed.addFields({ name: 'Nutzer', value: body.user, inline: true });
-      if (body.player) embed.addFields({ name: 'Player', value: body.player, inline: true });
-      if (body.progress && body.duration) {
-        embed.addFields({
-          name: 'Fortschritt',
-          value: `${body.progress} / ${body.duration}${body.progressPercent ? ` (${body.progressPercent}%)` : ''}`,
-          inline: true,
-        });
-      }
-      if (body.mediaType) embed.addFields({ name: 'Typ', value: body.mediaType, inline: true });
-      if (body.posterUrl) embed.setThumbnail(body.posterUrl);
-      return embed;
-    },
   });
 }
 
 interface ActivityCardArgs {
+  kind: string;
   correlationKey: string | null;
-  incomingMeta: EventMeta;
+  sessionKey?: string | null;
+  user?: string;
+  player?: string;
+  title?: string;
+  mediaType?: string;
   payload: TautulliPayload;
-  buildEmbed: (meta: EventMeta) => EmbedBuilder;
-  sessionKey?: string | number;
-  reuseOnPlay?: boolean;
 }
 
-async function publishActivityCard(args: ActivityCardArgs): Promise<void> {
-  const { correlationKey, incomingMeta, payload, buildEmbed, reuseOnPlay = false } = args;
+/**
+ * Plex playback events never post a message of their own: they fold into the
+ * single activity card (`discord/plex-card.ts`), which edits its stored message
+ * after a short debounce and only when the rendered content changed.
+ */
+function publishActivityCard(args: ActivityCardArgs): void {
   const channelId = getChannel('plexActivity');
-  const existing = correlationKey ? latestActivity(correlationKey) : undefined;
-  const sessionKey = args.sessionKey === undefined ? null : String(args.sessionKey).trim() || null;
-  if (
-    reuseOnPlay
-    && incomingMeta.kind !== 'play'
-    && existing?.sessionKey
-    && sessionKey
-    && existing.sessionKey !== sessionKey
-  ) {
-    logger.debug(
-      { correlationKey, staleSession: sessionKey, activeSession: existing.sessionKey, event: incomingMeta.kind },
-      'stale music playback event ignored',
-    );
-    return;
-  }
-  const decision = decidePlexActivityEvent({
-    currentState: existing?.state,
-    incoming: incomingMeta.kind,
-    pausedAt: existing?.pausedAt,
-  });
-  if (decision.action === 'defer-pause') {
-    if (existing) {
-      db.update(plexActivityMessages)
-        .set({ pausedAt: decision.pausedAt })
-        .where(eq(plexActivityMessages.id, existing.id))
-        .run();
-    }
-    return;
-  }
-  if (decision.action === 'ignore') {
-    if (existing && existing.pausedAt?.getTime() !== decision.pausedAt?.getTime()) {
-      db.update(plexActivityMessages)
-        .set({ pausedAt: decision.pausedAt })
-        .where(eq(plexActivityMessages.id, existing.id))
-        .run();
-    }
-    return;
-  }
-
-  const duplicatePlay = incomingMeta.kind === 'play'
-    && existing
-    && existing.updatedAt.getTime() >= Date.now() - 2 * 60_000;
-  const shouldEdit = Boolean(existing && (incomingMeta.kind !== 'play' || duplicatePlay || reuseOnPlay));
-  const displayKind = decision.displayKind;
-  const displayMeta = EVENT_META[displayKind] ?? incomingMeta;
-  const embed = buildEmbed(displayMeta);
-
-  if (shouldEdit && existing && channelId === existing.channelId) {
-    const edited = await editEmbed({
-      channelId: existing.channelId,
-      messageId: existing.messageId,
-      embed,
+  if (!channelId) {
+    recordHandledWebhook({
       source: 'tautulli',
-      eventType: incomingMeta.kind,
-      payload,
+      eventType: args.kind,
+      payload: args.payload,
+      channelId: undefined,
+      status: 'skipped',
+      error: 'no channel configured',
     });
-    if (edited) {
-      db.update(plexActivityMessages)
-        .set({ state: displayKind, sessionKey, pausedAt: decision.pausedAt, updatedAt: new Date() })
-        .where(eq(plexActivityMessages.id, existing.id))
-        .run();
-      return;
-    }
+    logger.warn({ eventType: args.kind }, 'no channel configured for Plex activity, skipping');
+    return;
   }
-
-  const posted = await postEmbed({
-    channelId,
-    embed,
-    source: 'tautulli',
-    eventType: incomingMeta.kind,
-    payload,
+  const changed = getPlexCard().handleEvent(channelId, {
+    kind: args.kind,
+    key: args.correlationKey,
+    sessionKey: args.sessionKey ?? null,
+    user: args.user,
+    player: args.player,
+    title: args.title,
+    mediaType: args.mediaType,
+    at: Date.now(),
   });
-  if (posted && correlationKey) {
-    db.insert(plexActivityMessages).values({
-      guildId: config.DISCORD_GUILD_ID,
-      correlationKey,
-      sessionKey,
-      channelId: posted.channelId,
-      messageId: posted.id,
-      state: displayKind,
-      pausedAt: decision.pausedAt,
-    }).run();
-  }
+  recordHandledWebhook({
+    source: 'tautulli',
+    eventType: args.kind,
+    payload: args.payload,
+    channelId,
+    status: 'posted',
+    error: changed ? undefined : 'unchanged, no card update',
+  });
 }
 
-function latestActivity(correlationKey: string): PlexActivityMessage | undefined {
-  return db.select().from(plexActivityMessages)
-    .where(and(
-      eq(plexActivityMessages.guildId, config.DISCORD_GUILD_ID),
-      eq(plexActivityMessages.correlationKey, correlationKey),
-    ))
-    .orderBy(desc(plexActivityMessages.updatedAt), desc(plexActivityMessages.id))
-    .limit(1)
-    .get();
+function firstLine(text: string | undefined): string | undefined {
+  const line = text?.split('\n').map((l) => l.trim()).find(Boolean);
+  return line ? truncate(line.replace(/\*\*|__/g, ''), 150) : undefined;
 }
 
 function discordField(

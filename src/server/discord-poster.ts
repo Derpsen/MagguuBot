@@ -111,6 +111,25 @@ export async function editEmbed(args: EditArgs): Promise<Message | null> {
   }
 }
 
+/** Logs an inbound webhook that was merged into an existing Discord card (no message of its own). */
+export function recordHandledWebhook(args: {
+  source: string;
+  eventType: string;
+  payload: unknown;
+  channelId: string | undefined;
+  status: 'posted' | 'skipped';
+  error?: string;
+}): void {
+  logWebhookEvent({
+    source: args.source,
+    eventType: args.eventType,
+    payload: sanitizePayload(args.payload) as object,
+    channelId: args.channelId,
+    status: args.status,
+    error: args.error,
+  });
+}
+
 function logWebhookEvent(values: NewWebhookEvent): void {
   try {
     const replay = getWebhookReplayContext();

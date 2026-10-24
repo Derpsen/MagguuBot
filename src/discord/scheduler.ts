@@ -23,6 +23,7 @@ import { runDownloadLiveTick } from './download-live.js';
 import { runAutomaticBackupTick } from './automatic-backup.js';
 import { runPlexActivityCleanupTick } from './plex-activity-cleanup.js';
 import { runPlexPauseFlushTick } from './plex-activity-pause.js';
+import { runPlexCardTick } from './plex-card.js';
 import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
 import { runDailySelfCheckTick } from './self-check.js';
 import { runWebhookRetryTick } from '../server/webhook-retry.js';
@@ -45,6 +46,7 @@ const AUTOMATIC_BACKUP_TICK_MS = 60 * 60_000;
 const WEBHOOK_RETRY_TICK_MS = 60_000;
 const PLEX_ACTIVITY_CLEANUP_TICK_MS = 60 * 60_000;
 const PLEX_PAUSE_FLUSH_TICK_MS = 30_000;
+const PLEX_CARD_TICK_MS = 30_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
 const SELF_CHECK_TICK_MS = 60 * 60_000;
 
@@ -66,6 +68,7 @@ let automaticBackupTimer: NodeJS.Timeout | null = null;
 let webhookRetryTimer: NodeJS.Timeout | null = null;
 let plexActivityCleanupTimer: NodeJS.Timeout | null = null;
 let plexPauseFlushTimer: NodeJS.Timeout | null = null;
+let plexCardTimer: NodeJS.Timeout | null = null;
 let plexStaleSessionTimer: NodeJS.Timeout | null = null;
 let selfCheckTimer: NodeJS.Timeout | null = null;
 const activeTicks = new Set<string>();
@@ -154,6 +157,10 @@ export function startScheduler(): void {
     runTick('plex-pause-flush', runPlexPauseFlushTick, 'Plex pause flush tick failed');
   }, PLEX_PAUSE_FLUSH_TICK_MS);
 
+  plexCardTimer = setInterval(() => {
+    runTick('plex-card', runPlexCardTick, 'Plex card tick failed');
+  }, PLEX_CARD_TICK_MS);
+
   plexStaleSessionTimer = setInterval(() => {
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session tick failed');
   }, PLEX_STALE_SESSION_TICK_MS);
@@ -178,6 +185,7 @@ export function startScheduler(): void {
     runTick('webhook-retry', runWebhookRetryTick, 'webhook retry boot tick failed');
     runTick('plex-activity-cleanup', runPlexActivityCleanupTick, 'Plex activity cleanup boot tick failed');
     runTick('plex-pause-flush', runPlexPauseFlushTick, 'Plex pause flush boot tick failed');
+    runTick('plex-card', runPlexCardTick, 'Plex card boot tick failed');
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session boot tick failed');
     if (config.WOW_BLUE_TRACKER_URL) {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
@@ -209,6 +217,7 @@ export function startScheduler(): void {
       webhookRetryMs: config.WEBHOOK_RETRY_ENABLED ? WEBHOOK_RETRY_TICK_MS : 'disabled',
       plexActivityCleanupMs: config.PLEX_ACTIVITY_RETENTION_DAYS > 0 ? PLEX_ACTIVITY_CLEANUP_TICK_MS : 'disabled',
       plexPauseFlushMs: PLEX_PAUSE_FLUSH_TICK_MS,
+      plexCardMs: PLEX_CARD_TICK_MS,
       plexStaleSessionMs: config.PLEX_STALE_SESSION_MINUTES > 0 ? PLEX_STALE_SESSION_TICK_MS : 'disabled',
     },
     'scheduler started',
@@ -245,6 +254,7 @@ export function stopScheduler(): void {
   if (webhookRetryTimer) clearInterval(webhookRetryTimer);
   if (plexActivityCleanupTimer) clearInterval(plexActivityCleanupTimer);
   if (plexPauseFlushTimer) clearInterval(plexPauseFlushTimer);
+  if (plexCardTimer) clearInterval(plexCardTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   if (selfCheckTimer) clearInterval(selfCheckTimer);
   remindersTimer = null;
@@ -265,6 +275,7 @@ export function stopScheduler(): void {
   webhookRetryTimer = null;
   plexActivityCleanupTimer = null;
   plexPauseFlushTimer = null;
+  plexCardTimer = null;
   plexStaleSessionTimer = null;
   selfCheckTimer = null;
 }

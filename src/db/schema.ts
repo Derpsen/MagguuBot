@@ -492,6 +492,21 @@ export const plexActivityMessages = sqliteTable(
   ],
 );
 
+// One persistent Plex activity card per channel; the message id survives restarts.
+export const plexActivityCard = sqliteTable(
+  'plex_activity_card',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id'),
+    contentHash: text('content_hash'),
+    stateJson: text('state_json').notNull(),
+    postedAt: integer('posted_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
 export const eventLifecycleMessages = sqliteTable(
   'event_lifecycle_messages',
   {
@@ -554,6 +569,7 @@ export type JtcRoom = typeof jtcRooms.$inferSelect;
 export type TicketCategory = typeof ticketCategories.$inferSelect;
 export type LivePanel = typeof livePanels.$inferSelect;
 export type PlexActivityMessage = typeof plexActivityMessages.$inferSelect;
+export type PlexActivityCard = typeof plexActivityCard.$inferSelect;
 export type EventLifecycleMessage = typeof eventLifecycleMessages.$inferSelect;
 export type MovieNight = typeof movieNights.$inferSelect;
 export type MovieNightNomination = typeof movieNightNominations.$inferSelect;

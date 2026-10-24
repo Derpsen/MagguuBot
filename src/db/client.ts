@@ -477,6 +477,17 @@ function ensureSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_plex_activity_updated
       ON plex_activity_messages(updated_at);
 
+    CREATE TABLE IF NOT EXISTS plex_activity_card (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT,
+      content_hash TEXT,
+      state_json TEXT NOT NULL,
+      posted_at INTEGER,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
+    );
+
     CREATE TABLE IF NOT EXISTS event_lifecycle_messages (
       guild_id TEXT NOT NULL,
       lifecycle_key TEXT NOT NULL,

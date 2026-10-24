@@ -33,6 +33,19 @@ export function plexActivityCorrelationKey(identity: PlexActivityIdentity): stri
   return `fallback:${user || '-'}:${player || '-'}:${media}`.slice(0, 500);
 }
 
+/**
+ * Stable key for payloads without a session key (Tautulli's Discord agent): one player plays one
+ * thing at a time, so user + player identify the session across play/pause/stop. The media title
+ * is deliberately not part of it: the notification text differs per event ("started" vs "stopped").
+ */
+export function plexPlayerCorrelationKey(identity: Pick<PlexActivityIdentity, 'user' | 'player' | 'mediaType'>): string | null {
+  const user = normalize(identity.user);
+  const player = normalize(identity.player);
+  if (!user && !player) return null;
+  if (normalize(identity.mediaType) === 'track') return `music:${user || '-'}:${player || '-'}`.slice(0, 500);
+  return `player:${user || '-'}:${player || '-'}`.slice(0, 500);
+}
+
 export function preservePlexActivityState(current: string | undefined, incoming: string): string {
   return current === 'watched' && incoming === 'stop' ? 'watched' : incoming;
 }
@@ -133,6 +146,7 @@ export function plexActivityMatchesLiveSession(
   const player = normalize(session.player);
   if (!user && !player) return false;
   if (correlationKey === `music:${user || '-'}:${player || '-'}`) return true;
+  if (correlationKey === `player:${user || '-'}:${player || '-'}`) return true;
   return correlationKey.startsWith(`fallback:${user || '-'}:${player || '-'}:`);
 }
 

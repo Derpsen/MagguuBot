@@ -2,6 +2,7 @@ import { serve, type ServerType } from '@hono/node-server';
 import { config } from './config.js';
 import { sqliteHandle } from './db/client.js';
 import { getClient, startDiscord } from './discord/client.js';
+import { flushPlexCardOnShutdown } from './discord/plex-card.js';
 import { startScheduler, stopScheduler } from './discord/scheduler.js';
 import { buildApp } from './server/app.js';
 import { flushFeedBursts } from './server/feed-bursts.js';
@@ -44,7 +45,10 @@ async function shutdown(): Promise<void> {
   stopScheduler();
   await closeHttpServer();
   // Held burst cards (deletes/imports) are posted as summaries before Discord goes away.
-  await Promise.race([flushFeedBursts(), new Promise((r) => setTimeout(r, 5000))]);
+  await Promise.race([
+    Promise.all([flushFeedBursts(), flushPlexCardOnShutdown()]),
+    new Promise((r) => setTimeout(r, 5000)),
+  ]);
   try {
     getClient().destroy();
   } catch {

@@ -13,6 +13,7 @@ import {
   type PlexProgressWatch,
 } from '../utils/plex-activity.js';
 import { getClient } from './client.js';
+import { getPlexCard, plexCardChannelId } from './plex-card.js';
 
 const TERMINATE_COOLDOWN_MS = 5 * 60_000;
 const lastProgress = new Map<string, PlexProgressWatch>();
@@ -27,6 +28,21 @@ export async function runPlexStaleSessionTick(now = new Date()): Promise<void> {
 
   await terminateStaleSessions(sessions, staleAfterMs, now.getTime());
   await closeOrphanActivityCards(sessions, now);
+  closeOrphanCardSessions(sessions, now);
+}
+
+/** Sessions on the single card that Tautulli no longer reports (after a grace period) move to "Zuletzt". */
+function closeOrphanCardSessions(sessions: TautulliSession[], now: Date): void {
+  const channelId = plexCardChannelId();
+  if (!channelId) return;
+  const closed = getPlexCard().closeSessions(channelId, (session) => shouldCloseOrphanActivityCard({
+    state: session.state,
+    correlationKey: session.key,
+    updatedAt: new Date(session.updatedAt),
+    sessions,
+    now,
+  }));
+  if (closed > 0) logger.info({ closed }, 'orphan Plex card sessions closed');
 }
 
 async function terminateStaleSessions(
