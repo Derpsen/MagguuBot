@@ -1,14 +1,21 @@
 import type { EmbedBuilder, MessageCreateOptions, MessageEditOptions } from 'discord.js';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
-import { plexActivityCard } from '../db/schema.js';
+import { plexActivityCard, plexUserCard } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { emptyPlexCardState, type PlexCardState } from '../utils/plex-card.js';
+import {
+  PLEX_CARD_MAX_USERS,
+  parsePlexCardUserConfig,
+  resolvePlexCardUser,
+  type PlexCardUserConfig,
+} from '../utils/plex-card-users.js';
 import { getChannel } from './channel-store.js';
 import { getClient } from './client.js';
+import { runPlexCardCleanupTick } from './plex-card-cleanup.js';
 import {
   PlexCardManager,
   type PlexCardGateway,
@@ -53,39 +60,144 @@ function parseState(json: string): PlexCardState {
   return emptyPlexCardState();
 }
 
+const migratedChannels = new Set<string>();
+
+function userCardRow(record: PlexCardRecord, createdAt: number) {
+  return {
+    guildId: config.DISCORD_GUILD_ID,
+    channelId: record.channelId,
+    userKey: record.userKey,
+    displayName: record.displayName,
+    messageId: record.messageId,
+    contentHash: record.contentHash,
+    stateJson: JSON.stringify(record.state),
+    postedAt: record.postedAt === null ? null : new Date(record.postedAt),
+    createdAt: new Date(createdAt),
+    updatedAt: new Date(),
+  };
+}
+
+function toRecord(row: typeof plexUserCard.$inferSelect): PlexCardRecord {
+  return {
+    channelId: row.channelId,
+    userKey: row.userKey,
+    displayName: row.displayName,
+    messageId: row.messageId,
+    contentHash: row.contentHash,
+    state: parseState(row.stateJson),
+    postedAt: row.postedAt?.getTime() ?? null,
+  };
+}
+
+/**
+ * One-time, idempotent move from the old single card (`plex_activity_card`) to per-user cards:
+ * runs only while the channel has no per-user card yet, splits the old running sessions and history by
+ * user, and seeds one card per user WITHOUT a message id (the tick posts them one after another).
+ * The old card is not touched any more; its message falls into the one-time cleanup.
+ * Returns the number of seeded cards.
+ */
+export function migrateLegacyPlexCard(channelId: string, userConfig: PlexCardUserConfig = currentUserConfig()): number {
+  const guildId = config.DISCORD_GUILD_ID;
+  const existing = db.select({ userKey: plexUserCard.userKey }).from(plexUserCard)
+    .where(and(eq(plexUserCard.guildId, guildId), eq(plexUserCard.channelId, channelId)))
+    .limit(1).get();
+  if (existing) return 0;
+  const legacy = db.select().from(plexActivityCard)
+    .where(and(eq(plexActivityCard.guildId, guildId), eq(plexActivityCard.channelId, channelId)))
+    .get();
+  if (!legacy) return 0;
+  const old = parseState(legacy.stateJson);
+
+  const byUser = new Map<string, { name: string; state: PlexCardState }>();
+  const bucket = (raw: string): { name: string; state: PlexCardState } | null => {
+    const user = resolvePlexCardUser(raw, userConfig);
+    if (!user) return null;
+    let entry = byUser.get(user.key);
+    if (!entry) {
+      if (byUser.size >= PLEX_CARD_MAX_USERS) return null;
+      entry = { name: user.name, state: { sessions: [], recent: [], changedAt: old.changedAt } };
+      byUser.set(user.key, entry);
+    }
+    return entry;
+  };
+  for (const session of old.sessions) bucket(session.user)?.state.sessions.push(session);
+  for (const recent of old.recent) bucket(recent.user)?.state.recent.push(recent);
+
+  const base = Date.now();
+  let n = 0;
+  db.transaction((tx) => {
+    for (const [userKey, entry] of byUser) {
+      tx.insert(plexUserCard).values(userCardRow({
+        channelId,
+        userKey,
+        displayName: entry.name,
+        messageId: null,
+        contentHash: null,
+        state: entry.state,
+        postedAt: null,
+      }, base + n)).onConflictDoNothing().run();
+      n += 1;
+    }
+  });
+  if (n > 0) logger.info({ cards: n }, 'Plex cards seeded from the old single card');
+  return n;
+}
+
+function ensureMigrated(channelId: string): void {
+  if (migratedChannels.has(channelId)) return;
+  migratedChannels.add(channelId);
+  try {
+    migrateLegacyPlexCard(channelId);
+  } catch (err) {
+    migratedChannels.delete(channelId);
+    logger.warn({ err }, 'Plex card migration failed, will retry');
+  }
+}
+
 export const plexCardStore: PlexCardStore = {
-  load(channelId) {
-    const row = db.select().from(plexActivityCard)
-      .where(and(eq(plexActivityCard.guildId, config.DISCORD_GUILD_ID), eq(plexActivityCard.channelId, channelId)))
+  load(channelId, userKey) {
+    ensureMigrated(channelId);
+    const row = db.select().from(plexUserCard)
+      .where(and(
+        eq(plexUserCard.guildId, config.DISCORD_GUILD_ID),
+        eq(plexUserCard.channelId, channelId),
+        eq(plexUserCard.userKey, userKey),
+      ))
       .get();
-    if (!row) return null;
-    return {
-      channelId: row.channelId,
-      messageId: row.messageId,
-      contentHash: row.contentHash,
-      state: parseState(row.stateJson),
-      postedAt: row.postedAt?.getTime() ?? null,
-    };
+    return row ? toRecord(row) : null;
+  },
+  list(channelId) {
+    ensureMigrated(channelId);
+    return db.select().from(plexUserCard)
+      .where(and(eq(plexUserCard.guildId, config.DISCORD_GUILD_ID), eq(plexUserCard.channelId, channelId)))
+      .orderBy(asc(plexUserCard.createdAt), asc(plexUserCard.userKey))
+      .all()
+      .map(toRecord);
   },
   save(record: PlexCardRecord) {
-    const values = {
-      guildId: config.DISCORD_GUILD_ID,
-      channelId: record.channelId,
-      messageId: record.messageId,
-      contentHash: record.contentHash,
-      stateJson: JSON.stringify(record.state),
-      postedAt: record.postedAt === null ? null : new Date(record.postedAt),
-      updatedAt: new Date(),
-    };
-    db.insert(plexActivityCard)
+    const values = userCardRow(record, Date.now());
+    const { createdAt: _createdAt, ...update } = values;
+    db.insert(plexUserCard)
       .values(values)
       .onConflictDoUpdate({
-        target: [plexActivityCard.guildId, plexActivityCard.channelId],
-        set: values,
+        target: [plexUserCard.guildId, plexUserCard.channelId, plexUserCard.userKey],
+        set: update,
       })
       .run();
   },
 };
+
+let userConfigCache: { aliases: string; exclude: string; value: PlexCardUserConfig } | null = null;
+
+/** Parsed aliases/exclude from the current config (re-parsed only when the env strings change). */
+export function currentUserConfig(): PlexCardUserConfig {
+  const aliases = config.PLEX_CARD_USER_ALIASES;
+  const exclude = config.PLEX_CARD_USER_EXCLUDE;
+  if (!userConfigCache || userConfigCache.aliases !== aliases || userConfigCache.exclude !== exclude) {
+    userConfigCache = { aliases, exclude, value: parsePlexCardUserConfig(aliases, exclude) };
+  }
+  return userConfigCache.value;
+}
 
 async function textChannel(channelId: string) {
   const channel = await getClient().channels.fetch(channelId);
@@ -139,6 +251,7 @@ export function getPlexCard(): PlexCardManager {
   manager ??= new PlexCardManager({
     store: plexCardStore,
     gateway: discordCardGateway,
+    resolveUser: (raw) => resolvePlexCardUser(raw, currentUserConfig()),
     log: (level, msg, data) => logger[level](data ?? {}, msg),
   });
   return manager;
@@ -148,11 +261,12 @@ export function plexCardChannelId(): string | undefined {
   return getChannel('plexActivity');
 }
 
-/** 30 s tick: expires sessions without any event for hours and retries an outstanding flush. */
+/** 30 s tick: expires sessions without any event for hours, retries outstanding flushes, then the one-time cleanup. */
 export async function runPlexCardTick(): Promise<void> {
   const channelId = plexCardChannelId();
   if (!channelId) return;
   await getPlexCard().tick(channelId);
+  await runPlexCardCleanupTick(channelId, getPlexCard().syncStatus(channelId));
 }
 
 export async function flushPlexCardOnShutdown(): Promise<void> {

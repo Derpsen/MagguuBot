@@ -209,8 +209,9 @@ interface ActivityCardArgs {
 
 /**
  * Plex playback events never post a message of their own: they fold into the
- * single activity card (`discord/plex-card.ts`), which edits its stored message
- * after a short debounce and only when the rendered content changed.
+ * Plex user's own card (`discord/plex-card.ts`, one card per user), which edits its
+ * stored message after a short debounce and only when the rendered content changed.
+ * Events without a user (or from an excluded user) leave no card.
  */
 function publishActivityCard(args: ActivityCardArgs): void {
   const channelId = getChannel('plexActivity');

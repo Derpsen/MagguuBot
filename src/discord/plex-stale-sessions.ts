@@ -31,7 +31,7 @@ export async function runPlexStaleSessionTick(now = new Date()): Promise<void> {
   closeOrphanCardSessions(sessions, now);
 }
 
-/** Sessions on the single card that Tautulli no longer reports (after a grace period) move to "Zuletzt". */
+/** Sessions on the per-user cards that Tautulli no longer reports (after a grace period) move to "Zuletzt geguckt". */
 function closeOrphanCardSessions(sessions: TautulliSession[], now: Date): void {
   const channelId = plexCardChannelId();
   if (!channelId) return;

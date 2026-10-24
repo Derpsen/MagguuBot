@@ -491,6 +491,35 @@ export function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS plex_user_card (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      user_key TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      message_id TEXT,
+      content_hash TEXT,
+      state_json TEXT NOT NULL,
+      posted_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id, user_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS plex_cleanup_state (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      scanned INTEGER NOT NULL DEFAULT 0,
+      candidates INTEGER NOT NULL DEFAULT 0,
+      deleted INTEGER NOT NULL DEFAULT 0,
+      skipped INTEGER NOT NULL DEFAULT 0,
+      errors INTEGER NOT NULL DEFAULT 0,
+      scan_limit INTEGER NOT NULL DEFAULT 0,
+      finished_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
+    );
+
     CREATE TABLE IF NOT EXISTS plex_weekly_card (
       guild_id TEXT NOT NULL,
       channel_id TEXT NOT NULL,

@@ -534,6 +534,45 @@ export const plexActivityCard = sqliteTable(
   (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
 );
 
+// One persistent Plex card per Plex user and channel: message id, content hash and the user's own state
+// (running sessions + "zuletzt geguckt"). Replaces the single plex_activity_card (kept only as migration source).
+export const plexUserCard = sqliteTable(
+  'plex_user_card',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    userKey: text('user_key').notNull(),
+    displayName: text('display_name').notNull(),
+    messageId: text('message_id'),
+    contentHash: text('content_hash'),
+    stateJson: text('state_json').notNull(),
+    postedAt: integer('posted_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId, t.userKey] })],
+);
+
+// Result of the one-time removal of the old Plex activity cards (so it runs only once, also across restarts).
+export const plexCleanupState = sqliteTable(
+  'plex_cleanup_state',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    /** done | aborted | failed */
+    status: text('status').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    scanned: integer('scanned').notNull().default(0),
+    candidates: integer('candidates').notNull().default(0),
+    deleted: integer('deleted').notNull().default(0),
+    skipped: integer('skipped').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    scanLimit: integer('scan_limit').notNull().default(0),
+    finishedAt: integer('finished_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
 export const eventLifecycleMessages = sqliteTable(
   'event_lifecycle_messages',
   {
@@ -596,6 +635,7 @@ export type JtcRoom = typeof jtcRooms.$inferSelect;
 export type TicketCategory = typeof ticketCategories.$inferSelect;
 export type LivePanel = typeof livePanels.$inferSelect;
 export type PlexActivityMessage = typeof plexActivityMessages.$inferSelect;
+export type PlexUserCard = typeof plexUserCard.$inferSelect;
 export type PlexActivityCard = typeof plexActivityCard.$inferSelect;
 export type EventLifecycleMessage = typeof eventLifecycleMessages.$inferSelect;
 export type MovieNight = typeof movieNights.$inferSelect;

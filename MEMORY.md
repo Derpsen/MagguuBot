@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-24 Plex cards per user + one-time cleanup
+
+- Request (Marco, via Buddy): one self-updating Plex card per Plex user instead of one shared card, then delete the old cards ("die ganzen vorherigen Posts, also die Karten, weg"). Rollback branch `rollback/pre-usercards-2290461`. Details/rules: AGENTS.md "Plex activity cards (one per Plex user)" and "One-time cleanup".
+- Decisions: (1) manager state, debounce, hash, backoff and repost cooldowns are per card, the pause on 10003/50001/50013 is per channel (one warn instead of 25 failing calls); (2) migration seeds user cards from the old single card state with message id null, so cards are posted one by one 3 s apart; the old row stays and is protected from the cleanup via `protectedMessageIds`; (3) the new card footer `MagguuBot · Plex-Nutzerkarte (wird aktualisiert)` is deliberately NOT in the cleanup list and not a routed legacy footer; (4) the cleanup is an automatic gate in the 30 s tick (no manual trigger), result in `plex_cleanup_state` (`done`/`failed` final, `aborted` retried after 6 h, max 3 attempts); (5) cap 25 users, throttled warn; (6) logs use an 8 hex tag, no names.
+- Tested with real `EmbedBuilder`/`MessagePayload.resolveBody` payloads and fake channels (bulkDelete throws); real Discord deletes and the real message history of the channel are not yet seen. First live check: Container log for `Plex card cleanup: candidates found` and `Plex card cleanup finished` (field `deleted`).
+- Deploy: green Docker publish → autoupdate. New optional envs: `PLEX_CARD_USER_ALIASES`, `PLEX_CARD_USER_EXCLUDE` (empty), `PLEX_CARD_CLEANUP_ENABLED` (true), `PLEX_CARD_CLEANUP_DRY_RUN` (false), `PLEX_CARD_CLEANUP_SCAN_LIMIT` (1000). Unraid XML unchanged. Known leftovers: pinned info card text in `src/embeds/cards.ts` still says "Eine Karte pro Stream"; cards of users who get excluded/aliased away later stay (protected from cleanup).
+
 ## 2026-10-24 Plex card hardening (review findings on 4c7b538)
 
 - Failure counter used to count the debounce retry timer and the 30 s tick separately (threshold 5 reached after ~2-3 min) → now one counter per real Discord attempt with exponential backoff (`backoffUntil`), skipped flushes return `retry` without counting. 10003/50001/50013 → `pausedUntil` (30 min, option `permanentPauseMs`), quiet `warn` log, never a repost. Fold-time caps user 40 / player 40 / title 150 (assumed from the review note "150/40/40"), markdown/mention escaping at render (`escapePlexMarkdown`). Tests: `tests/plex-card-hardening.test.ts` (incl. real SQLite temp DB + second boot, `goneCooldownMs`). The first edit after deploy may change the card hash once (escaped text).

@@ -95,6 +95,13 @@ const schema = z.object({
   WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
   PLEX_ACTIVITY_RETENTION_DAYS: z.coerce.number().int().min(0).max(90).default(7),
   PLEX_STALE_SESSION_MINUTES: z.coerce.number().int().min(0).max(180).default(20),
+  /** Per-user Plex cards: optional display aliases ("plexname=Alias,..." or a JSON object) and users without a card. */
+  PLEX_CARD_USER_ALIASES: z.string().default(''),
+  PLEX_CARD_USER_EXCLUDE: z.string().default(''),
+  /** One-time removal of the old Plex activity cards in the Plex channel (after the per-user cards are live). */
+  PLEX_CARD_CLEANUP_ENABLED: envBoolean(true),
+  PLEX_CARD_CLEANUP_DRY_RUN: envBoolean(false),
+  PLEX_CARD_CLEANUP_SCAN_LIMIT: z.coerce.number().int().min(100).max(2000).default(1000),
   STATUS_STALE_HOURS: z.coerce.number().positive().max(8760).default(24),
 
   OPENAI_API_KEY: z.string().optional(),

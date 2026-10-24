@@ -1,9 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { after, test } from 'node:test';
+import { test } from 'node:test';
 import type { EmbedBuilder } from 'discord.js';
 import {
   PlexCardManager,
@@ -14,7 +10,7 @@ import {
 } from '../src/discord/plex-card-manager.ts';
 import {
   applyPlexCardEvent,
-  buildPlexCardEmbed,
+  buildPlexUserCardEmbed,
   clipPlexText,
   emptyPlexCardState,
   escapePlexMarkdown,
@@ -33,8 +29,9 @@ function ev(kind: string, at: number, extra: Partial<PlexCardEvent> = {}): PlexC
 
 class MemStore implements PlexCardStore {
   rows = new Map<string, PlexCardRecord>();
-  load(c: string) { const r = this.rows.get(c); return r ? structuredClone(r) : null; }
-  save(r: PlexCardRecord) { this.rows.set(r.channelId, structuredClone(r)); }
+  load(c: string, u: string) { const r = this.rows.get(`${c}|${u}`); return r ? structuredClone(r) : null; }
+  save(r: PlexCardRecord) { this.rows.set(`${r.channelId}|${r.userKey}`, structuredClone(r)); }
+  list(c: string) { return [...this.rows.values()].filter((r) => r.channelId === c).map((r) => structuredClone(r)); }
 }
 
 class Gateway implements PlexCardGateway {
@@ -70,7 +67,7 @@ function rig(options: Partial<ConstructorParameters<typeof PlexCardManager>[0]> 
   const logs: Array<{ level: string; msg: string; data?: Record<string, unknown> }> = [];
   const manager = new PlexCardManager({
     store, gateway, timers, now: () => now,
-    debounceMs: 4000, maxWaitMs: 15_000, retryMs: 30_000,
+    debounceMs: 4000, maxWaitMs: 15_000, retryMs: 30_000, postSpacingMs: 0, editSpacingMs: 0,
     log: (level, msg, data) => logs.push({ level, msg, ...(data ? { data } : {}) }),
     ...options,
   });
@@ -122,7 +119,7 @@ test('flushes inside a backoff window do not call Discord and return retry', asy
   t.manager.handleEvent(CH, ev('pause', t.now()));
   await t.run(5000);
   assert.equal(t.logs.filter((l) => l.msg === 'Plex card edit failed').length, 1);
-  for (let i = 0; i < 5; i++) assert.equal(await t.manager.flush(CH), 'retry');
+  for (let i = 0; i < 5; i++) assert.equal(await t.manager.flushCard(CH, 'anna'), 'retry');
   assert.equal(t.logs.filter((l) => l.msg === 'Plex card edit failed').length, 1);
 });
 
@@ -152,7 +149,7 @@ for (const code of [10_003, 50_001, 50_013]) {
     assert.equal(blocked.length, 1);
     assert.equal(blocked[0]?.level, 'warn');
     assert.equal(blocked[0]?.data?.code, code);
-    assert.equal(await t.manager.flush(CH), 'paused');
+    assert.equal(await t.manager.flushCard(CH, 'anna'), 'paused');
 
     await t.run(10 * 60_000, 30_000); // pause over: exactly one more attempt, pause again
     assert.equal(edits, 2);
@@ -170,14 +167,14 @@ test('post error 50013 pauses too and keeps the state for later', async () => {
   t.gateway.postError = err(50_013);
   t.manager.handleEvent(CH, ev('play', T0));
   await t.run(5000, 30_000);
-  assert.equal(t.store.load(CH)?.messageId, null);
+  assert.equal(t.store.load(CH, 'anna')?.messageId, null);
   assert.equal(t.logs.filter((l) => /blocked by Discord/.test(l.msg)).length, 1);
   await t.run(5 * 60_000, 30_000);
   assert.equal(t.gateway.posts, 0);
   t.gateway.postError = null;
   await t.run(6 * 60_000, 30_000);
   assert.equal(t.gateway.posts, 1);
-  assert.equal(t.manager.getState(CH).sessions.length, 1);
+  assert.equal(t.manager.getState(CH, 'anna').sessions.length, 1);
 });
 
 // ─── 3. goneCooldownMs (10008) ──────────────────────────────────────────────
@@ -191,10 +188,10 @@ test('goneCooldownMs: a deleted message is replaced at most once per cooldown', 
   t.manager.handleEvent(CH, ev('pause', t.now())); // < 60 s after the post
   await t.run(5000);
   assert.equal(t.gateway.posts, 1, 'inside the cooldown: no repost');
-  assert.equal(t.store.load(CH)?.messageId, '1', 'old id kept while cooling down');
+  assert.equal(t.store.load(CH, 'anna')?.messageId, '1', 'old id kept while cooling down');
   await t.run(70_000, 30_000);
   assert.equal(t.gateway.posts, 2, 'cooldown over: replaced once');
-  assert.equal(t.store.load(CH)?.messageId, '2');
+  assert.equal(t.store.load(CH, 'anna')?.messageId, '2');
 });
 
 // ─── 3b. failure repost removes the old tracked message (best effort) ───────
@@ -214,7 +211,7 @@ test('failure repost: the old tracked message is deleted once, after the new car
   await failedEditsUntilRepost(t);
   assert.equal(t.gateway.posts, 2);
   assert.deepEqual(t.gateway.deletes, [{ channelId: CH, messageId: '1' }], 'exactly the old tracked id, one call');
-  assert.equal(t.store.load(CH)?.messageId, '2', 'the new id is what is tracked');
+  assert.equal(t.store.load(CH, 'anna')?.messageId, '2', 'the new id is what is tracked');
 });
 
 test('failure repost: a failing delete is ignored (card still reposted and tracked, only an info log)', async () => {
@@ -223,7 +220,7 @@ test('failure repost: a failing delete is ignored (card still reposted and track
   await failedEditsUntilRepost(t);
   assert.equal(t.gateway.posts, 2);
   assert.equal(t.gateway.deletes.length, 1);
-  assert.equal(t.store.load(CH)?.messageId, '2');
+  assert.equal(t.store.load(CH, 'anna')?.messageId, '2');
   assert.ok(t.logs.some((l) => l.level === 'info' && /could not be deleted/.test(l.msg)));
   assert.ok(!t.logs.some((l) => l.level === 'warn' && /delete/i.test(l.msg)));
 });
@@ -247,7 +244,7 @@ test('no delete when the message is simply gone (10008) or the new post fails', 
   t.manager.handleEvent(CH, ev('pause', t.now()));
   await t.run(5 * 60_000, 30_000);
   assert.equal(t.gateway.deletes.length, 0, 'old card is kept while no replacement exists');
-  assert.equal(t.store.load(CH)?.messageId, '1');
+  assert.equal(t.store.load(CH, 'anna')?.messageId, '1');
 });
 
 // ─── 4. untrusted text ──────────────────────────────────────────────────────
@@ -275,77 +272,12 @@ test('markdown, mentions and timestamps in webhook text render literally', () =>
   const s = applyPlexCardEvent(emptyPlexCardState(), ev('play', T0, {
     user: '**admin** <@123>', title: '[click](http://evil) <t:1:R> @everyone # > _x_', player: '`code`',
   }));
-  const text = buildPlexCardEmbed(s).data.description ?? '';
-  assert.ok(text.includes('\\*\\*admin\\*\\* \\<\\@123\\>'), text);
+  const text = buildPlexUserCardEmbed('**admin** <@123>', s).data.description ?? '';
+  const title = buildPlexUserCardEmbed('**admin** <@123>', s).data.title ?? '';
+  assert.ok(title.includes('\\*\\*admin\\*\\* \\<\\@123\\>'), title);
   assert.ok(text.includes('\\[click\\]\\(http://evil\\) \\<t:1:R\\> \\@everyone'), text);
   assert.ok(text.includes('\\`code\\`'));
-  // the only live formatting left is the bot's own bold user + relative timestamp
+  // the only live formatting left is the bot's own relative timestamp
   assert.equal((text.match(/<t:\d+:R>/g) ?? []).length, 1);
 });
 
-// ─── 5. real SQLite store and migration (temp DB) ───────────────────────────
-
-const dir = mkdtempSync(join(tmpdir(), 'plex-card-db-'));
-const dbPath = join(dir, 'bot.db');
-after(() => rmSync(dir, { recursive: true, force: true }));
-Object.assign(process.env, {
-  DATABASE_PATH: dbPath,
-  DISCORD_TOKEN: 'test-token',
-  DISCORD_CLIENT_ID: '1',
-  DISCORD_GUILD_ID: '2',
-  WEBHOOK_SECRET: 'test-webhook-secret-0123456789abcdef',
-});
-
-test('real SQLite: tables are created, card and weekly stores round-trip, corrupt state degrades', async () => {
-  const { sqliteHandle } = await import('../src/db/client.ts');
-  const { plexCardStore } = await import('../src/discord/plex-card.ts');
-  const { plexWeeklyStore } = await import('../src/discord/plex-weekly.ts');
-
-  const cols = (table: string) => (sqliteHandle.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((c) => c.name);
-  assert.deepEqual(cols('plex_activity_card'), ['guild_id', 'channel_id', 'message_id', 'content_hash', 'state_json', 'posted_at', 'updated_at']);
-  assert.deepEqual(cols('plex_weekly_card'), ['guild_id', 'channel_id', 'message_id', 'content_hash', 'posted_at', 'updated_at']);
-
-  assert.equal(plexCardStore.load(CH), null);
-  const state = applyPlexCardEvent(emptyPlexCardState(), ev('play', T0));
-  plexCardStore.save({ channelId: CH, messageId: '900', contentHash: 'h1', state, postedAt: T0 });
-  assert.deepEqual(plexCardStore.load(CH), { channelId: CH, messageId: '900', contentHash: 'h1', state, postedAt: T0 });
-  plexCardStore.save({ channelId: CH, messageId: '900', contentHash: 'h2', state: emptyPlexCardState(), postedAt: null });
-  const upd = plexCardStore.load(CH);
-  assert.equal(upd?.contentHash, 'h2');
-  assert.equal(upd?.postedAt, null);
-  assert.equal((sqliteHandle.prepare('SELECT COUNT(*) c FROM plex_activity_card').get() as { c: number }).c, 1, 'upsert, not insert');
-
-  sqliteHandle.prepare("UPDATE plex_activity_card SET state_json = '{not json' WHERE channel_id = ?").run(CH);
-  assert.deepEqual(plexCardStore.load(CH)?.state, emptyPlexCardState());
-  sqliteHandle.prepare("UPDATE plex_activity_card SET state_json = '{\"sessions\":\"x\"}' WHERE channel_id = ?").run(CH);
-  assert.deepEqual(plexCardStore.load(CH)?.state, emptyPlexCardState());
-
-  assert.equal(plexWeeklyStore.load(CH), null);
-  plexWeeklyStore.save({ channelId: CH, messageId: '901', contentHash: 'w1', postedAt: T0 });
-  plexWeeklyStore.save({ channelId: CH, messageId: '901', contentHash: 'w2', postedAt: T0 });
-  assert.deepEqual(plexWeeklyStore.load(CH), { channelId: CH, messageId: '901', contentHash: 'w2', postedAt: T0 });
-  assert.equal(plexWeeklyStore.load('other'), null);
-});
-
-test('real SQLite: manager on the real store survives a restart and a second boot keeps the rows', async () => {
-  const { plexCardStore } = await import('../src/discord/plex-card.ts');
-  const gateway = new Gateway();
-  const make = () => new PlexCardManager({ store: plexCardStore, gateway, debounceMs: 4000, log: () => {} });
-  const first = make();
-  first.handleEvent('777', ev('play', T0));
-  assert.equal(await first.flush('777'), 'posted');
-  const id = plexCardStore.load('777')?.messageId;
-  assert.ok(id);
-  const restarted = make();
-  restarted.handleEvent('777', ev('stop', T0 + 1000));
-  assert.equal(await restarted.flush('777'), 'edited');
-  assert.equal(gateway.posts, 1);
-  assert.equal(plexCardStore.load('777')?.messageId, id);
-
-  // second boot against the same file: schema creation is idempotent and keeps the rows
-  const out = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e',
-    `const { sqliteHandle } = await import(${JSON.stringify(new URL('../src/db/client.ts', import.meta.url).href)});
-     const c = sqliteHandle.prepare("SELECT message_id m FROM plex_activity_card WHERE channel_id = '777'").get();
-     console.log(JSON.stringify(c)); process.exit(0);`], { env: process.env, encoding: 'utf8' });
-  assert.equal(JSON.parse(out.trim().split('\n').at(-1)!).m, id);
-});

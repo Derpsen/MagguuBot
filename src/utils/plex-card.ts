@@ -3,8 +3,8 @@ import { EmbedBuilder } from 'discord.js';
 import { Colors, FOOTER_ICONS, truncate } from '../embeds/colors.js';
 
 /**
- * Pure model of the single Plex activity card: which sessions are running and
- * the last few finished ones. Events fold into this state; the card is only
+ * Pure model of one Plex user's activity card: which sessions that user has running and
+ * their last few finished ones. Events fold into this state; the card is only
  * rendered from it, so the same state always yields the same embed (and hash).
  */
 
@@ -87,8 +87,13 @@ function sanitizeEvent(event: PlexCardEvent): PlexCardEvent {
   return out;
 }
 
-function norm(value: string | undefined | null): string {
+/** Case/space-insensitive comparison key (also the identity of a per-user card). */
+export function normPlexText(value: string | undefined | null): string {
   return value?.trim().toLocaleLowerCase('de-DE').replace(/\s+/g, ' ') ?? '';
+}
+
+function norm(value: string | undefined | null): string {
+  return normPlexText(value);
 }
 
 function pushRecent(recent: PlexCardRecent[], entry: PlexCardRecent): PlexCardRecent[] {
@@ -277,37 +282,51 @@ function shown(value: string, max: number): string {
 }
 
 function sessionLine(session: PlexCardSession): string {
-  const who = session.user ? `**${shown(session.user, PLEX_CARD_MAX_USER)}** · ` : '';
   const where = session.player ? ` · ${shown(session.player, PLEX_CARD_MAX_PLAYER)}` : '';
   const done = session.watched ? ' ✅' : '';
-  return `${STATE_ICON[session.state]} ${who}${shown(session.title, 110)}${where}${done} · seit <t:${unixSeconds(session.startedAt)}:R>`;
+  return `${STATE_ICON[session.state]} ${shown(session.title, 110)}${where}${done} · seit <t:${unixSeconds(session.startedAt)}:R>`;
 }
 
 function recentLine(entry: PlexCardRecent): string {
-  const who = entry.user ? `**${shown(entry.user, PLEX_CARD_MAX_USER)}** · ` : '';
-  return `${RECENT_ICON[entry.kind]} ${who}${shown(entry.title, 110)} · <t:${unixSeconds(entry.at)}:R>`;
+  return `${RECENT_ICON[entry.kind]} ${shown(entry.title, 110)} · <t:${unixSeconds(entry.at)}:R>`;
 }
 
-/** Builds the card embed. Deterministic for a given state: no "now", relative times are Discord timestamps. */
-export function buildPlexCardEmbed(state: PlexCardState): EmbedBuilder {
+/** Footer of every per-user card. Deliberately NOT a prefix-extension of the legacy single-card footer. */
+export const PLEX_USER_CARD_FOOTER = 'MagguuBot · Plex-Nutzerkarte (wird aktualisiert)';
+
+/** Last time anything is known to have happened for this user (running session start or last history line). */
+function lastSeenAt(state: PlexCardState): number {
+  let at = 0;
+  for (const r of state.recent) at = Math.max(at, r.at);
+  return at;
+}
+
+/**
+ * Builds one user's card embed. Deterministic for a given state: no "now", relative times are
+ * Discord timestamps. The active state is visible in the title (and the colour where it differs).
+ */
+export function buildPlexUserCardEmbed(displayName: string, state: PlexCardState): EmbedBuilder {
   const running = state.sessions.filter((s) => s.state !== 'pause');
+  const name = shown(displayName || 'Unbekannt', PLEX_CARD_MAX_USER);
+  const status = running.length > 0 ? '▶️' : state.sessions.length > 0 ? '⏸️' : '💤';
+  const label = running.length > 0 ? 'gerade aktiv' : state.sessions.length > 0 ? 'pausiert' : 'gerade nicht aktiv';
   const embed = new EmbedBuilder()
     .setColor(running.length > 0 ? Colors.success : state.sessions.length > 0 ? Colors.warn : Colors.muted)
-    .setAuthor({ name: 'Plex · Aktivität' })
-    .setTitle(state.sessions.length === 0
-      ? '🎬 Gerade läuft nichts'
-      : `🎬 ${state.sessions.length === 1 ? '1 Wiedergabe' : `${state.sessions.length} Wiedergaben`}`)
-    .setFooter({ text: 'MagguuBot · Plex-Aktivität (eine Karte, wird aktualisiert)', iconURL: FOOTER_ICONS.bot });
+    .setAuthor({ name: 'Plex · Nutzer' })
+    .setTitle(`${status} ${name} · ${label}`)
+    .setFooter({ text: PLEX_USER_CARD_FOOTER, iconURL: FOOTER_ICONS.bot });
   if (state.changedAt > 0) embed.setTimestamp(new Date(state.changedAt));
 
   if (state.sessions.length > 0) {
     embed.setDescription(truncate(state.sessions.map(sessionLine).join('\n'), 3800));
+  } else {
+    const seen = lastSeenAt(state);
+    embed.setDescription(seen > 0
+      ? `Gerade läuft nichts · zuletzt aktiv <t:${unixSeconds(seen)}:R>`
+      : 'Noch nichts abgespielt.');
   }
   if (state.recent.length > 0) {
-    embed.addFields({ name: 'Zuletzt', value: truncate(state.recent.map(recentLine).join('\n'), 1024) });
-  }
-  if (state.sessions.length === 0 && state.recent.length === 0) {
-    embed.setDescription('Sobald jemand etwas abspielt, erscheint es hier.');
+    embed.addFields({ name: 'Zuletzt geguckt', value: truncate(state.recent.map(recentLine).join('\n'), 1024) });
   }
   return embed;
 }

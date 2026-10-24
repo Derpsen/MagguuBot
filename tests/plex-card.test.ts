@@ -14,7 +14,7 @@ import {
 } from '../src/utils/plex-activity.ts';
 import {
   applyPlexCardEvent,
-  buildPlexCardEmbed,
+  buildPlexUserCardEmbed,
   closePlexCardSessions,
   emptyPlexCardState,
   plexCardHash,
@@ -113,11 +113,11 @@ test('events without user/player only leave a deduplicated history line', () => 
 
 test('the embed is deterministic and its hash ignores the timestamp', () => {
   const state = fold([ev('play', T0)]);
-  const a = buildPlexCardEmbed(state);
-  const b = buildPlexCardEmbed({ ...state, changedAt: state.changedAt + 60_000 });
+  const a = buildPlexUserCardEmbed('Magguu', state);
+  const b = buildPlexUserCardEmbed('Magguu', { ...state, changedAt: state.changedAt + 60_000 });
   assert.equal(plexCardHash(a), plexCardHash(b));
-  assert.notEqual(plexCardHash(a), plexCardHash(buildPlexCardEmbed(fold([ev('pause', T0 + 1)], state))));
-  assert.ok(String(buildPlexCardEmbed(emptyPlexCardState()).data.title).includes('nichts'));
+  assert.notEqual(plexCardHash(a), plexCardHash(buildPlexUserCardEmbed('Magguu', fold([ev('pause', T0 + 1)], state))));
+  assert.ok(String(buildPlexUserCardEmbed('Magguu', emptyPlexCardState()).data.title).includes('nicht aktiv'));
 });
 
 test('embed stays within Discord limits for many sessions and long text', () => {
@@ -129,7 +129,7 @@ test('embed stays within Discord limits for many sessions and long text', () => 
     }));
     state = applyPlexCardEvent(state, ev('stop', T0 + i + 1, { key: `session:${i}`, sessionKey: String(i), title: long }));
   }
-  const data = buildPlexCardEmbed(state).toJSON();
+  const data = buildPlexUserCardEmbed('Magguu', state).toJSON();
   assert.ok((data.description?.length ?? 0) <= 4096);
   for (const field of data.fields ?? []) assert.ok(field.value.length <= 1024);
 });
@@ -154,12 +154,15 @@ test('player correlation key is stable across event texts and matches live sessi
 
 class MemoryStore implements PlexCardStore {
   readonly rows = new Map<string, PlexCardRecord>();
-  load(channelId: string): PlexCardRecord | null {
-    const row = this.rows.get(channelId);
+  load(channelId: string, userKey: string): PlexCardRecord | null {
+    const row = this.rows.get(`${channelId}|${userKey}`);
     return row ? structuredClone(row) : null;
   }
   save(record: PlexCardRecord): void {
-    this.rows.set(record.channelId, structuredClone(record));
+    this.rows.set(`${record.channelId}|${record.userKey}`, structuredClone(record));
+  }
+  list(channelId: string): PlexCardRecord[] {
+    return [...this.rows.values()].filter((r) => r.channelId === channelId).map((r) => structuredClone(r));
   }
 }
 
@@ -230,6 +233,8 @@ function setup(options: Partial<ConstructorParameters<typeof PlexCardManager>[0]
     timers,
     now: () => timers.now,
     debounceMs: 4000,
+    postSpacingMs: 0,
+    editSpacingMs: 0,
     maxWaitMs: 15_000,
     retryMs: 30_000,
     log: (_level, msg) => logs.push(msg),
@@ -243,7 +248,7 @@ test('first events post exactly one card; later events edit that same message', 
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
   assert.equal(gateway.posts.length, 1);
-  const messageId = store.load(CHANNEL)?.messageId;
+  const messageId = store.load(CHANNEL, 'magguu')?.messageId;
   assert.ok(messageId);
 
   manager.handleEvent(CHANNEL, ev('pause', timers.now));
@@ -289,7 +294,7 @@ test('an unchanged card is neither edited nor posted again', async () => {
   const { manager, gateway, timers } = setup();
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
-  assert.equal(await manager.flush(CHANNEL), 'unchanged');
+  assert.deepEqual(await manager.flush(CHANNEL), ['unchanged']);
   assert.equal(manager.handleEvent(CHANNEL, ev('play', timers.now + 1)), false, 'duplicate play is a no-op');
   assert.equal(manager.handleEvent(CHANNEL, ev('resume', timers.now + 2)), false);
   assert.equal(timers.pending, 0, 'no timer armed for a no-op event');
@@ -305,31 +310,31 @@ test('after a restart the stored message id is edited, not re-posted', async () 
   const { manager, gateway, timers, store, make } = setup();
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
-  const messageId = store.load(CHANNEL)?.messageId;
+  const messageId = store.load(CHANNEL, 'magguu')?.messageId;
 
   const restarted = make();
-  assert.equal(restarted.getState(CHANNEL).sessions.length, 1, 'state survived the restart');
+  assert.equal(restarted.getState(CHANNEL, 'magguu').sessions.length, 1, 'state survived the restart');
   restarted.handleEvent(CHANNEL, ev('stop', timers.now));
   await timers.advance(4000);
   assert.equal(gateway.posts.length, 1);
   assert.equal(gateway.edits.length, 1);
   assert.equal(gateway.edits[0]?.messageId, messageId);
   // Boot tick on an unchanged card does nothing either.
-  assert.equal(await make().tick(CHANNEL), 'unchanged');
+  assert.deepEqual(await make().tick(CHANNEL), ['unchanged']);
 });
 
 test('Unknown Message (10008) posts a replacement and stores its id', async () => {
   const { manager, gateway, timers, store } = setup();
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
-  const oldId = store.load(CHANNEL)?.messageId;
+  const oldId = store.load(CHANNEL, 'magguu')?.messageId;
 
   gateway.editError = Object.assign(new Error('Unknown Message'), { code: 10_008 });
   await timers.advance(120_000);
   manager.handleEvent(CHANNEL, ev('pause', timers.now));
   await timers.advance(4000);
   assert.equal(gateway.posts.length, 2);
-  const newId = store.load(CHANNEL)?.messageId;
+  const newId = store.load(CHANNEL, 'magguu')?.messageId;
   assert.notEqual(newId, oldId);
 
   gateway.editError = null;
@@ -351,14 +356,14 @@ test('transient edit errors retry without posting; only repeated failure reposts
   const { manager, gateway, timers, store, logs } = setup({ maxEditFailures: 3, repostCooldownMs: 600_000 });
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
-  const firstId = store.load(CHANNEL)?.messageId;
+  const firstId = store.load(CHANNEL, 'magguu')?.messageId;
 
   gateway.editError = new Error('503 Service Unavailable');
   await timers.advance(11 * 60_000); // cooldown since the first post is over
   manager.handleEvent(CHANNEL, ev('pause', timers.now));
   await timers.advance(4000); // failure 1
   assert.equal(gateway.posts.length, 1);
-  assert.equal(store.load(CHANNEL)?.messageId, firstId);
+  assert.equal(store.load(CHANNEL, 'magguu')?.messageId, firstId);
   await timers.advance(30_000); // failure 2 (retry timer after the 30 s backoff)
   assert.equal(gateway.posts.length, 1);
   await timers.advance(30_000); // inside the 60 s backoff: no attempt, not counted
@@ -382,7 +387,7 @@ test('a failing post does not lose the state and is retried without duplicates',
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
   assert.equal(gateway.posts.length, 0);
-  assert.equal(store.load(CHANNEL)?.messageId, null);
+  assert.equal(store.load(CHANNEL, 'magguu')?.messageId, null);
   gateway.postError = null;
   await timers.advance(30_000);
   assert.equal(gateway.posts.length, 1);
@@ -395,10 +400,10 @@ test('parallel events and flushes never double-post (queue/mutex)', async () => 
   gateway.postDelayMs = 20;
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   const results = await Promise.all([
-    manager.flush(CHANNEL),
-    manager.flush(CHANNEL),
-    manager.flush(CHANNEL),
-    manager.tick(CHANNEL),
+    manager.flushCard(CHANNEL, 'magguu'),
+    manager.flushCard(CHANNEL, 'magguu'),
+    manager.flushCard(CHANNEL, 'magguu'),
+    manager.tick(CHANNEL).then((r) => r[0] ?? 'unchanged'),
   ]);
   assert.equal(gateway.posts.length, 1);
   assert.deepEqual(results.filter((r) => r === 'posted').length, 1);
@@ -406,30 +411,30 @@ test('parallel events and flushes never double-post (queue/mutex)', async () => 
 
   // Events arriving while a flush is in flight are kept and flushed afterwards.
   manager.handleEvent(CHANNEL, ev('pause', timers.now));
-  const inFlight = manager.flush(CHANNEL);
+  const inFlight = manager.flushCard(CHANNEL, 'magguu');
   manager.handleEvent(CHANNEL, ev('stop', timers.now + 1));
   await inFlight;
-  await manager.flush(CHANNEL);
+  await manager.flushCard(CHANNEL, 'magguu');
   assert.equal(gateway.posts.length, 1);
-  assert.equal(manager.getState(CHANNEL).sessions.length, 0);
+  assert.equal(manager.getState(CHANNEL, 'magguu').sessions.length, 0);
   const last = gateway.edits.at(-1);
   assert.ok(last);
-  assert.ok(String(last.embed.data.title).includes('nichts'));
+  assert.ok(String(last.embed.data.title).includes('nicht aktiv'));
 });
 
 test('no empty card is posted, and the TTL tick drops sessions that never got a stop', async () => {
   const { manager, gateway, timers, store } = setup();
-  assert.equal(await manager.flush(CHANNEL), 'unchanged');
+  assert.deepEqual(await manager.flush(CHANNEL), []);
   assert.equal(gateway.posts.length, 0);
 
   manager.handleEvent(CHANNEL, ev('play', timers.now));
   await timers.advance(4000);
-  assert.equal(manager.getState(CHANNEL).sessions.length, 1);
+  assert.equal(manager.getState(CHANNEL, 'magguu').sessions.length, 1);
   await timers.advance(PLEX_CARD_SESSION_TTL_MS + 1000);
-  assert.equal(await manager.tick(CHANNEL), 'edited');
-  assert.equal(manager.getState(CHANNEL).sessions.length, 0);
+  assert.deepEqual(await manager.tick(CHANNEL), ['edited']);
+  assert.equal(manager.getState(CHANNEL, 'magguu').sessions.length, 0);
   assert.equal(gateway.posts.length, 1);
-  assert.ok(store.load(CHANNEL)?.messageId);
+  assert.ok(store.load(CHANNEL, 'magguu')?.messageId);
 });
 
 test('flushAllPending sends the outstanding debounced change on shutdown', async () => {
