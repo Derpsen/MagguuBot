@@ -74,6 +74,23 @@ export async function getHomeStats(
   });
 }
 
+/** `get_plays_by_date`: one value per day and series (TV / Movies / Music …). */
+export interface TautulliDateSeries {
+  categories?: string[];
+  series?: Array<{ name?: string; data?: Array<number | string | null> }>;
+}
+
+/** Plays or watch duration (seconds) per day for the last `days` days; null when Tautulli is unreachable. */
+export async function getPlaysByDate(
+  days: number,
+  yAxis: 'plays' | 'duration',
+): Promise<TautulliDateSeries | null> {
+  return tautulliFetch<TautulliDateSeries>('get_plays_by_date', {
+    time_range: String(days),
+    y_axis: yAxis,
+  });
+}
+
 interface TautulliActivityEnvelope {
   stream_count?: string | number;
   stream_count_transcode?: string | number;

@@ -48,6 +48,7 @@ import { suggestionStatusCommand } from './suggestion-status.js';
 import { timeoutCommand } from './timeout.js';
 import { userinfoCommand } from './userinfo.js';
 import { warnCommand } from './warn.js';
+import { wochenstatistikCommand } from './wochenstatistik.js';
 import { wrappedCommand } from './wrapped.js';
 
 export type CommandCategory = 'downloads' | 'moderation' | 'utility' | 'admin';
@@ -63,6 +64,7 @@ const all: SlashCommand[] = [
   arrStatusCommand,
   calendarCommand,
   plexTopCommand,
+  wochenstatistikCommand,
   plexNowPlayingCommand,
   searchCommand,
   setupServerCommand,

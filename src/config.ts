@@ -48,6 +48,8 @@ const schema = z.object({
   DISCORD_CHANNEL_ADDON_UPDATES: z.string().optional(),
   DISCORD_CHANNEL_FAQ: z.string().optional(),
   DISCORD_CHANNEL_WEEKLY_DIGEST: z.string().optional(),
+  /** Optional override for the weekly Plex statistics card; default is the weeklyDigest channel. */
+  DISCORD_CHANNEL_PLEX_WEEKLY: z.string().optional(),
   DISCORD_CHANNEL_DOWNLOAD_LIVE: z.string().optional(),
   DISCORD_CHANNEL_MOVIE_NIGHT: z.string().optional(),
   DISCORD_CHANNEL_SUGGESTIONS: z.string().optional(),
@@ -78,6 +80,9 @@ const schema = z.object({
   WEEKLY_DIGEST_ENABLED: envBoolean(true),
   WEEKLY_DIGEST_DAY: z.coerce.number().int().min(0).max(6).default(0),
   WEEKLY_DIGEST_HOUR: z.coerce.number().int().min(0).max(23).default(10),
+  PLEX_WEEKLY_ENABLED: envBoolean(true),
+  PLEX_WEEKLY_DAY: z.coerce.number().int().min(0).max(6).default(1),
+  PLEX_WEEKLY_HOUR: z.coerce.number().int().min(0).max(23).default(8),
   AUTOMATIC_BACKUP_ENABLED: envBoolean(true),
   AUTOMATIC_BACKUP_HOUR: z.coerce.number().int().min(0).max(23).default(4),
   AUTOMATIC_BACKUP_RETENTION: z.coerce.number().int().min(1).max(30).default(7),

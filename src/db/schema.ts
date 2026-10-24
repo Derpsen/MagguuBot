@@ -492,6 +492,20 @@ export const plexActivityMessages = sqliteTable(
   ],
 );
 
+// One persistent weekly Plex statistics card per channel (message id + content hash).
+export const plexWeeklyCard = sqliteTable(
+  'plex_weekly_card',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id'),
+    contentHash: text('content_hash'),
+    postedAt: integer('posted_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
 // One persistent Plex activity card per channel; the message id survives restarts.
 export const plexActivityCard = sqliteTable(
   'plex_activity_card',

@@ -28,6 +28,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { source: 'Plex/Tautulli Aktivität', keys: ['plexActivity'], integrated: true, delivery: 'channel' },
   { source: 'Plex/Tautulli Neu auf Plex', keys: ['newOnPlex'], integrated: true, delivery: 'channel' },
   { source: 'Wochenrückblick', keys: ['weeklyDigest'], integrated: true, delivery: 'channel' },
+  { source: 'Plex-Wochenstatistik (1 Karte, editiert)', keys: ['weeklyDigest'], integrated: true, delivery: 'channel', note: 'Kanal-Override: DISCORD_CHANNEL_PLEX_WEEKLY' },
   { source: 'Seerr', keys: ['requests', 'approvals', 'failures'], integrated: true, delivery: 'channel' },
   { source: 'Prowlarr', keys: ['health'], integrated: true, delivery: 'channel' },
   { source: 'GitHub (CI, PRs, Issues)', keys: ['github'], integrated: true, delivery: 'channel' },
@@ -149,6 +150,7 @@ export function classifyBotEmbed(embed: EmbedView): ChannelKey[] | null {
   if (author.startsWith('Plex · ') && PLEX_ACTIVITY_KINDS.test(footer)) return ['plexActivity'];
   if (footer === 'MagguuBot · recently_added' || footer === 'MagguuBot · now available') return ['newOnPlex'];
   if (footer === 'MagguuBot · automatisch jeden Sonntag') return ['weeklyDigest'];
+  if (footer === 'MagguuBot · Plex-Wochenstatistik') return ['weeklyDigest'];
   if (footer.startsWith('MagguuBot · WoW Blue-Tracker')) return ['blizzard'];
   if (/^MagguuUI · (neues Release|Vorabversion|stabiles Update)$/.test(footer)) return ['addonUpdates', 'github'];
   if (footer.startsWith('GitHub · ')) return ['github', 'addonUpdates'];

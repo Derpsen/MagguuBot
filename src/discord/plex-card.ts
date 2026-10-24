@@ -95,7 +95,8 @@ async function textChannel(channelId: string) {
   return channel;
 }
 
-const gateway: PlexCardGateway = {
+/** Shared Discord gateway for single-card features (post / PATCH-edit by id). */
+export const discordCardGateway: PlexCardGateway = {
   async post(channelId, embed: EmbedBuilder) {
     const channel = await textChannel(channelId);
     if (!channel.isSendable()) throw new Error(`channel ${channelId} is not sendable`);
@@ -116,7 +117,7 @@ let manager: PlexCardManager | null = null;
 export function getPlexCard(): PlexCardManager {
   manager ??= new PlexCardManager({
     store,
-    gateway,
+    gateway: discordCardGateway,
     log: (level, msg, data) => logger[level](data ?? {}, msg),
   });
   return manager;
