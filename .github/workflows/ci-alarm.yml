@@ -54,6 +54,19 @@ jobs:
             exit 0
           fi
 
+          # redact-begin: stdin -> stdout. Order matters: token shapes, URLs and bearer values are replaced
+          # inside the line first, long opaque strings next, then any line still mentioning a secret keyword.
+          redact_log() {
+            sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g; s/^[0-9T:.-]+Z //' \
+              | sed -E 's/(gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})/[redacted-gh]/g' \
+              | sed -E 's/eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}(\.[A-Za-z0-9_-]*)?/[redacted-jwt]/g' \
+              | sed -E 's#[A-Za-z][A-Za-z0-9+.-]*://[^[:space:]"<>)]+#[redacted-url]#g' \
+              | sed -E 's/(bearer|basic)[[:space:]]+[A-Za-z0-9._~+\/=-]+/\1 [redacted]/Ig' \
+              | sed -E 's/[A-Za-z0-9+_=-]{32,}/[redacted]/g' \
+              | sed -E '/(token|secret|bearer|authorization|password|passwd|api[_-]?key|key=|cookie|x-plex)/I s/.*/[line redacted]/'
+          }
+          # redact-end
+
           # Last lines of the first failed job (job logs exist once that job has finished).
           LOG_TAIL=""
           JOB_ID="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100" \
@@ -61,8 +74,7 @@ jobs:
           if [ -n "${JOB_ID}" ]; then
             LOG_TAIL="$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs" 2>/dev/null \
               | tail -n 60 \
-              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g; s/^[0-9T:.-]+Z //' \
-              | sed -E '/(token|secret|bearer|authorization|password|passwd|api[_-]?key|key=|cookie|x-plex)/I s/.*/[line redacted]/' \
+              | redact_log \
               | cut -c1-300 \
               | tail -n 20 || true)"
           fi

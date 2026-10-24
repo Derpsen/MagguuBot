@@ -19,7 +19,7 @@ const {
   prepareNeuItems, neuPage, buildNeuEmbed, buildNeuComponents, encodeNeuId, decodeNeuId, safePosterUrl,
   clampNeuDays, NEU_PAGE_SIZE, NEU_ERROR_TEXT, NEU_FETCH_COUNT,
 } = utils;
-const { PlexNewService, renderNeu, neuCooldownLeft, resetNeuCooldown, buildPosterMap } = await import('../src/discord/plex-new.ts');
+const { PlexNewService, renderNeu, neuCooldownLeft, resetNeuCooldown, buildPosterMap, neuButtonCooldownLeft } = await import('../src/discord/plex-new.ts');
 const { getRecentlyAdded } = await import('../src/services/tautulli.ts');
 const { handleNeuButton } = await import('../src/discord/interactions/neu-buttons.ts');
 const { commands } = await import('../src/discord/commands/index.ts');
@@ -175,6 +175,7 @@ test('service: errors are quiet results, not cached, stale data survives', async
   assert.deepEqual(await svc.get('movies', 7), { ok: false, reason: 'unavailable' });
   assert.deepEqual(await svc.get('movies', 7), { ok: false, reason: 'unavailable' });
   fail = false;
+  clock.t += 46_000; // negative cache (45 s) is over: the next request retries and succeeds
   assert.equal((await svc.get('movies', 7)).ok, true);
   clock.t += 6 * 60_000;
   fail = true;
@@ -327,4 +328,88 @@ test('command registration: /neu is an unrestricted downloads command with bound
   const days = json.options!.find((o) => o.name === 'tage')!;
   assert.deepEqual([days.min_value, days.max_value], [1, 30]);
   assert.deepEqual(json.options!.find((o) => o.name === 'typ')!.choices!.map((c) => c.value), ['movies', 'shows', 'all']);
+});
+
+test('negative cache: a Tautulli outage costs one request per 45 s, not one per click; recovery and stale data work', async () => {
+  let mode: 'fail' | 'null' | 'ok' = 'fail';
+  const { svc, clock, calls } = makeService({
+    fetchRecent: async (mediaType) => {
+      calls.push(`fetch:${mediaType}`);
+      if (mode === 'fail') throw new Error('connect ECONNREFUSED');
+      if (mode === 'null') return null;
+      return MOVIES;
+    },
+  });
+  for (let i = 0; i < 20; i += 1) {
+    assert.deepEqual(await svc.get('movies', 7), { ok: false, reason: 'unavailable' });
+    clock.t += 1_000;
+  }
+  assert.equal(calls.filter((c) => c === 'fetch:movie').length, 1, '20 clicks within 20 s = a single upstream request');
+  clock.t += 30_000; // 50 s since the failure
+  assert.deepEqual(await svc.get('movies', 7), { ok: false, reason: 'unavailable' });
+  assert.equal(calls.filter((c) => c === 'fetch:movie').length, 2, 'retry after the negative TTL');
+  mode = 'ok';
+  clock.t += 46_000;
+  assert.equal((await svc.get('movies', 7)).ok, true);
+  assert.equal(calls.filter((c) => c === 'fetch:movie').length, 3);
+  // stale success + outage: stale data is served and the outage is also negative-cached
+  clock.t += 6 * 60_000;
+  mode = 'null';
+  for (let i = 0; i < 5; i += 1) assert.equal((await svc.get('movies', 7)).ok, true);
+  assert.equal(calls.filter((c) => c === 'fetch:movie').length, 4, 'one refresh attempt, then stale data without upstream calls');
+});
+
+test('button cooldown: rapid clicks of one user are ignored (page kept), other users unaffected', async () => {
+  resetNeuCooldown();
+  const owner = '223456789012345678';
+  let fetches = 0;
+  const realFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () => { fetches += 1; throw new Error('ENOTFOUND tautulli.invalid'); }) as typeof fetch;
+    const first = fakeButton(`neu:1:7:a:${owner}`, owner);
+    await handleNeuButton(first as never);
+    const second = fakeButton(`neu:1:7:a:${owner}`, owner);
+    await handleNeuButton(second as never);
+    assert.equal(first.edits.length, 1);
+    assert.equal(second.deferred, true, 'acknowledged so Discord shows no error');
+    assert.equal(second.edits.length, 0, 'but no new render');
+    assert.ok(fetches <= 2, `at most one fetch per media type, got ${fetches}`);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.ok(neuButtonCooldownLeft('someone-else', 10_000) === 0);
+  assert.ok(neuButtonCooldownLeft('someone-else', 10_500) > 0);
+  assert.equal(neuButtonCooldownLeft('someone-else', 12_000), 0);
+});
+
+test('/neu command honours the per-user cooldown (fake interaction)', async () => {
+  resetNeuCooldown();
+  const cmd = commands.get('neu')!;
+  const make = (userId: string) => {
+    const r = { replies: [] as Array<{ content?: unknown }>, deferred: false, edits: [] as Array<{ content?: unknown }> };
+    const interaction = {
+      user: { id: userId },
+      options: { getInteger: () => null, getString: () => null },
+      reply: async (o: { content?: unknown }) => { r.replies.push(o); },
+      deferReply: async () => { r.deferred = true; },
+      editReply: async (o: { content?: unknown }) => { r.edits.push(o); },
+    };
+    return { r, interaction };
+  };
+  const realFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = (async () => { throw new Error('ENOTFOUND tautulli.invalid'); }) as typeof fetch;
+    const a = make('323456789012345678');
+    await cmd.execute(a.interaction as never);
+    assert.equal(a.r.deferred, true);
+    const again = make('323456789012345678');
+    await cmd.execute(again.interaction as never);
+    assert.equal(again.r.deferred, false);
+    assert.match(String(again.r.replies[0]!.content), /Bitte warte \d+ s/);
+    const other = make('423456789012345678');
+    await cmd.execute(other.interaction as never);
+    assert.equal(other.r.deferred, true);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

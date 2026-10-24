@@ -39,6 +39,8 @@ export interface PlexCardStore {
 export interface PlexCardGateway {
   post(channelId: string, embed: EmbedBuilder): Promise<string>;
   edit(channelId: string, messageId: string, embed: EmbedBuilder): Promise<void>;
+  /** Optional: delete one message by id (used only for the card's own, tracked, replaced message). */
+  delete?(channelId: string, messageId: string): Promise<void>;
 }
 
 export interface PlexCardTimers {
@@ -262,7 +264,8 @@ export class PlexCardManager {
       if (this.pauseOnPermanent(channelId, 'edit', err)) return 'paused';
       const count = this.recordFailure(channelId, 'edit', err);
       if (count >= this.maxEditFailures) {
-        return this.post(channelId, embed, hash, 'reposted', this.repostCooldownMs);
+        // Edits kept failing: post a fresh card, then best-effort remove the old tracked one (no duplicates left behind).
+        return this.post(channelId, embed, hash, 'reposted', this.repostCooldownMs, record.messageId);
       }
       return 'retry';
     }
@@ -308,6 +311,7 @@ export class PlexCardManager {
     hash: string,
     result: 'posted' | 'reposted',
     cooldownMs: number,
+    replacedMessageId?: string,
   ): Promise<PlexCardFlushResult> {
     const now = this.now();
     const record = this.loadRecord(channelId);
@@ -320,11 +324,22 @@ export class PlexCardManager {
       const messageId = await this.gateway.post(channelId, embed);
       this.clearFailures(channelId);
       this.store.save({ ...this.loadRecord(channelId), messageId, contentHash: hash, postedAt: now });
+      if (replacedMessageId && replacedMessageId !== messageId) await this.deleteReplaced(channelId, replacedMessageId);
       return result;
     } catch (err) {
       if (this.pauseOnPermanent(channelId, 'post', err)) return 'paused';
       this.recordFailure(channelId, 'post', err);
       return 'retry';
+    }
+  }
+
+  /** Best-effort: only the card's own previously tracked message, one delete call, every error is ignored. */
+  private async deleteReplaced(channelId: string, messageId: string): Promise<void> {
+    if (!this.gateway.delete) return;
+    try {
+      await this.gateway.delete(channelId, messageId);
+    } catch (err) {
+      this.log('info', 'old Plex card message could not be deleted (ignored)', { channelId, code: discordErrorCode(err) });
     }
   }
 

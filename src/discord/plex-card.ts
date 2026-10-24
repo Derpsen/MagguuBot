@@ -110,6 +110,10 @@ export const discordCardGateway: PlexCardGateway = {
     // PATCH by id: no fetch round trip, and Discord answers 10008 when the message is gone.
     await channel.messages.edit(messageId, { embeds: [embed], components: [] });
   },
+  async delete(channelId, messageId) {
+    const channel = await textChannel(channelId);
+    await channel.messages.delete(messageId);
+  },
 };
 
 let manager: PlexCardManager | null = null;

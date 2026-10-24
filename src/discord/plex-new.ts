@@ -21,6 +21,9 @@ import {
 
 export const NEU_CACHE_TTL_MS = 5 * 60 * 1000;
 export const NEU_COOLDOWN_MS = 5_000;
+export const NEU_BUTTON_COOLDOWN_MS = 1_500;
+/** After a failed Tautulli fetch no new request is made for this long (negative cache), however many clicks arrive. */
+export const NEU_FAIL_TTL_MS = 45_000;
 const POSTER_INDEX_TTL_MS = 30 * 60 * 1000;
 const POSTER_INDEX_FAIL_TTL_MS = 5 * 60 * 1000;
 
@@ -36,6 +39,7 @@ export interface PlexNewDeps {
   loadPosterIndex?: () => Promise<PosterIndex | null>;
   now?: () => number;
   ttlMs?: number;
+  failTtlMs?: number;
 }
 
 export type PlexNewResult =
@@ -45,6 +49,8 @@ export type PlexNewResult =
 interface CacheEntry {
   at: number;
   data: TautulliRecentRaw[] | null;
+  /** While `now < failedUntil` the last fetch failed: serve `data` (stale or null) without asking Tautulli again. */
+  failedUntil?: number;
 }
 
 /** Cached, de-duplicated access to Tautulli's recently-added lists plus the optional poster lookup. */
@@ -55,30 +61,37 @@ export class PlexNewService {
   private posterInflight: Promise<PosterIndex | null> | null = null;
   private readonly now: () => number;
   private readonly ttlMs: number;
+  private readonly failTtlMs: number;
 
   constructor(private readonly deps: PlexNewDeps) {
     this.now = deps.now ?? Date.now;
     this.ttlMs = deps.ttlMs ?? NEU_CACHE_TTL_MS;
+    this.failTtlMs = deps.failTtlMs ?? NEU_FAIL_TTL_MS;
   }
 
   private async raw(mediaType: 'movie' | 'show'): Promise<TautulliRecentRaw[] | null> {
     const hit = this.cache.get(mediaType);
-    if (hit && this.now() - hit.at < this.ttlMs) return hit.data;
+    const now = this.now();
+    if (hit?.data && now - hit.at < this.ttlMs && !hit.failedUntil) return hit.data;
+    if (hit?.failedUntil && now < hit.failedUntil) return hit.data;
     const running = this.inflight.get(mediaType);
     if (running) return running;
     const p = (async () => {
+      let data: TautulliRecentRaw[] | null = null;
       try {
-        const data = await this.deps.fetchRecent(mediaType, NEU_FETCH_COUNT);
-        // Failures are not cached so the next click can retry; a stale success is kept as fallback.
-        if (data) this.cache.set(mediaType, { at: this.now(), data });
-        else if (hit?.data) return hit.data;
-        return data;
+        data = await this.deps.fetchRecent(mediaType, NEU_FETCH_COUNT);
       } catch (err) {
         logger.warn({ err, mediaType }, '/neu: recently-added fetch failed');
-        return hit?.data ?? null;
       } finally {
         this.inflight.delete(mediaType);
       }
+      if (data) {
+        this.cache.set(mediaType, { at: this.now(), data });
+        return data;
+      }
+      // Failure: remember it briefly (negative cache) and fall back to the last good data if there is any.
+      this.cache.set(mediaType, { at: hit?.at ?? 0, data: hit?.data ?? null, failedUntil: this.now() + this.failTtlMs });
+      return hit?.data ?? null;
     })();
     this.inflight.set(mediaType, p);
     return p;
@@ -211,4 +224,18 @@ export function neuCooldownLeft(userId: string, now: number = Date.now(), cooldo
 
 export function resetNeuCooldown(): void {
   lastUse.clear();
+  lastButtonUse.clear();
+}
+
+// Page buttons: a short separate cooldown so rapid clicking can't hammer the render path.
+const lastButtonUse = new Map<string, number>();
+
+export function neuButtonCooldownLeft(userId: string, now: number = Date.now(), cooldownMs: number = NEU_BUTTON_COOLDOWN_MS): number {
+  const last = lastButtonUse.get(userId);
+  if (last !== undefined && now - last < cooldownMs) return cooldownMs - (now - last);
+  lastButtonUse.set(userId, now);
+  if (lastButtonUse.size > 500) {
+    for (const [id, at] of lastButtonUse) if (now - at > cooldownMs) lastButtonUse.delete(id);
+  }
+  return 0;
 }

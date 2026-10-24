@@ -42,7 +42,13 @@ class Gateway implements PlexCardGateway {
   edits = 0;
   editError: unknown = null;
   postError: unknown = null;
+  deletes: Array<{ channelId: string; messageId: string }> = [];
+  deleteError: unknown = null;
   private n = 1;
+  async delete(channelId: string, messageId: string) {
+    this.deletes.push({ channelId, messageId });
+    if (this.deleteError) throw this.deleteError;
+  }
   async post(_c: string, _e: EmbedBuilder) { if (this.postError) throw this.postError; this.posts += 1; return String(this.n++); }
   async edit(_c: string, _m: string, _e: EmbedBuilder) { if (this.editError) throw this.editError; this.edits += 1; }
 }
@@ -189,6 +195,59 @@ test('goneCooldownMs: a deleted message is replaced at most once per cooldown', 
   await t.run(70_000, 30_000);
   assert.equal(t.gateway.posts, 2, 'cooldown over: replaced once');
   assert.equal(t.store.load(CH)?.messageId, '2');
+});
+
+// ─── 3b. failure repost removes the old tracked message (best effort) ───────
+
+async function failedEditsUntilRepost(t: ReturnType<typeof rig>): Promise<void> {
+  t.manager.handleEvent(CH, ev('play', T0));
+  await t.run(5000, 30_000);
+  assert.equal(t.gateway.posts, 1);
+  await t.run(11 * 60_000);
+  t.gateway.editError = new Error('503');
+  t.manager.handleEvent(CH, ev('pause', t.now()));
+  await t.run(10 * 60_000, 30_000);
+}
+
+test('failure repost: the old tracked message is deleted once, after the new card is saved; no bulk delete', async () => {
+  const t = rig({ maxEditFailures: 3, repostCooldownMs: 60_000 });
+  await failedEditsUntilRepost(t);
+  assert.equal(t.gateway.posts, 2);
+  assert.deepEqual(t.gateway.deletes, [{ channelId: CH, messageId: '1' }], 'exactly the old tracked id, one call');
+  assert.equal(t.store.load(CH)?.messageId, '2', 'the new id is what is tracked');
+});
+
+test('failure repost: a failing delete is ignored (card still reposted and tracked, only an info log)', async () => {
+  const t = rig({ maxEditFailures: 3, repostCooldownMs: 60_000 });
+  t.gateway.deleteError = err(50_013);
+  await failedEditsUntilRepost(t);
+  assert.equal(t.gateway.posts, 2);
+  assert.equal(t.gateway.deletes.length, 1);
+  assert.equal(t.store.load(CH)?.messageId, '2');
+  assert.ok(t.logs.some((l) => l.level === 'info' && /could not be deleted/.test(l.msg)));
+  assert.ok(!t.logs.some((l) => l.level === 'warn' && /delete/i.test(l.msg)));
+});
+
+test('no delete when the message is simply gone (10008) or the new post fails', async () => {
+  const gone = rig({ goneCooldownMs: 1000 });
+  gone.manager.handleEvent(CH, ev('play', T0));
+  await gone.run(5000);
+  gone.gateway.editError = err(10_008);
+  gone.manager.handleEvent(CH, ev('pause', gone.now()));
+  await gone.run(60_000, 30_000);
+  assert.equal(gone.gateway.posts, 2);
+  assert.equal(gone.gateway.deletes.length, 0, 'nothing to delete: the message does not exist');
+
+  const t = rig({ maxEditFailures: 2, repostCooldownMs: 60_000 });
+  t.manager.handleEvent(CH, ev('play', T0));
+  await t.run(5000, 30_000);
+  await t.run(11 * 60_000);
+  t.gateway.editError = new Error('503');
+  t.gateway.postError = new Error('503 post');
+  t.manager.handleEvent(CH, ev('pause', t.now()));
+  await t.run(5 * 60_000, 30_000);
+  assert.equal(t.gateway.deletes.length, 0, 'old card is kept while no replacement exists');
+  assert.equal(t.store.load(CH)?.messageId, '1');
 });
 
 // ─── 4. untrusted text ──────────────────────────────────────────────────────

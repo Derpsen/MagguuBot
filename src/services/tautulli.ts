@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { errSerializer, registerSecret } from '../utils/scrub.js';
 import { buildServiceUrl } from './service-url.js';
 
 export interface TautulliStatRow {
@@ -29,6 +30,9 @@ interface TautulliEnvelope<T> {
 
 const TAUTULLI_TIMEOUT_MS = 10_000;
 
+// The key travels in the request URL, which fetch errors may echo: never let the literal reach a log line.
+registerSecret(config.TAUTULLI_API_KEY);
+
 async function tautulliRequest<T>(
   cmd: string,
   params: Record<string, string> = {},
@@ -51,7 +55,7 @@ async function tautulliRequest<T>(
     }
     return { ok: true, data: envelope.response.data };
   } catch (err) {
-    logger.warn({ err, cmd }, 'tautulli fetch error');
+    logger.warn({ err: errSerializer(err), cmd }, 'tautulli fetch error');
     return { ok: false };
   } finally {
     clearTimeout(timer);

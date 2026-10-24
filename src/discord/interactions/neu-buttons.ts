@@ -1,7 +1,7 @@
 import { MessageFlags, type ButtonInteraction } from 'discord.js';
 import { logger } from '../../utils/logger.js';
 import { decodeNeuId } from '../../utils/plex-new.js';
-import { plexNewService, renderNeu } from '../plex-new.js';
+import { neuButtonCooldownLeft, plexNewService, renderNeu } from '../plex-new.js';
 
 /** Page buttons of `/neu` (`neu:<page>:<days>:<type>:<userId>`); only the user who ran the command may flip pages. */
 export async function handleNeuButton(interaction: ButtonInteraction): Promise<void> {
@@ -15,6 +15,7 @@ export async function handleNeuButton(interaction: ButtonInteraction): Promise<v
     return;
   }
   await interaction.deferUpdate();
+  if (neuButtonCooldownLeft(interaction.user.id) > 0) return; // rapid clicks: keep the current page, no new work
   const reply = await renderNeu(plexNewService, view);
   if (!reply.ok) {
     logger.debug({ page: view.page }, '/neu page render failed');
