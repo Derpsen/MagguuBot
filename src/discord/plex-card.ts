@@ -1,5 +1,5 @@
 import type { EmbedBuilder, MessageCreateOptions, MessageEditOptions } from 'discord.js';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
@@ -170,7 +170,7 @@ export const plexCardStore: PlexCardStore = {
     ensureMigrated(channelId);
     return db.select().from(plexUserCard)
       .where(and(eq(plexUserCard.guildId, config.DISCORD_GUILD_ID), eq(plexUserCard.channelId, channelId)))
-      .orderBy(asc(plexUserCard.createdAt), asc(plexUserCard.userKey))
+      .orderBy(asc(plexUserCard.createdAt), sql`rowid`)
       .all()
       .map(toRecord);
   },
