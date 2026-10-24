@@ -169,3 +169,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - CI alarm: `redact_log` markers `# redact-begin/end` in `ci-alarm.yml` are executed by `tests/ci-alarm-redact.test.ts` (Dashboard: `tests/test_ci_alarm_redact.py`); replacement markers must not contain keywords like `token`/`secret`, else the keyword filter drops the whole line.
 - `/neu`: negative cache 45 s (`NEU_FAIL_TTL_MS`), button cooldown 1.5 s; Tautulli logs go through `errSerializer`; Plex activity card failure repost deletes the old tracked message best-effort (`PlexCardGateway.delete`, optional).
 - Tested only with fakes (fake gateway/fetch/clock); real Discord delete permissions (needs Manage Messages only for foreign messages; own message needs none) not seen live.
+
+## 2026-10-24 /faq search (Welle d, part 1)
+- New `/faq suche:<autocomplete> [privat]` over the website FAQ cache (`faq-autoanswer.ts` `getCachedFaqEntries`; ranking in `src/utils/faq-search.ts`); command count 56. Autocomplete never touches the network; with a cold cache (before the first hourly refresh succeeded) it returns no choices, execute then loads the list. Hourly refresh is now always on (was only with `FAQ_AUTOANSWER_CHANNEL_IDS`).
+- Choice value = FAQ id (≤100 chars), unknown id → friendly embed with page link + contact@magguu.xyz; free text resolves best hit + up to 4 similar questions.
+- Tested only with fakes (fake interaction, in-memory cache); real autocomplete latency/Discord rendering not seen live.

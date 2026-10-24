@@ -15,6 +15,7 @@ import { doctorCommand } from './doctor.js';
 import { downloadsLiveCommand } from './downloads-live.js';
 import { editSnipeCommand, snipeCommand } from './snipe.js';
 import { giveawayCommand } from './giveaway.js';
+import { faqCommand } from './faq.js';
 import { helpCommand } from './help.js';
 import { jtcCommand } from './jtc.js';
 import { kickCommand } from './kick.js';
@@ -102,6 +103,7 @@ const all: SlashCommand[] = [
   statusCommand,
   rolesPanelCommand,
   tagCommand,
+  faqCommand,
   autoresponderCommand,
   scheduleAnnounceCommand,
   stickyCommand,

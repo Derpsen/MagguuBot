@@ -206,7 +206,8 @@ export function buildCommandsCard(ctx: CardContext): CardPayload {
     ['movie-night nominate', 'Film für den Filmabend'],
     ['remindme', 'Erinnerung per DM'],
     ['erinnerung an', 'Raid-/M+-Erinnerung (wöchentlich)'],
-    ['tag get', 'FAQ-Antwort abrufen'],
+    ['faq', 'FAQ durchsuchen'],
+    ['tag get', 'Tag-Antwort abrufen'],
     ['wrapped', 'dein Jahresrückblick'],
   ]);
   return only(card('⌨️ Befehle', [

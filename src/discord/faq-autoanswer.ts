@@ -10,6 +10,7 @@ import {
   matchFaq,
   type FaqEntry,
 } from '../utils/faq-matcher.js';
+import { neutralizeMentions } from '../utils/faq-search.js';
 import { logger } from '../utils/logger.js';
 import { safeFetch } from '../utils/safe-fetch.js';
 
@@ -43,8 +44,8 @@ export function faqAutoanswerEnabled(): boolean {
   return helpChannels().size > 0;
 }
 
+/** Refreshes the cache from the public website FAQ API (also feeds `/faq`, independent of auto-answer channels). */
 export async function refreshWebsiteFaqCache(): Promise<void> {
-  if (!faqAutoanswerEnabled()) return;
   const res = await safeFetch(config.WEBSITE_FAQ_API_URL, {
     headers: { accept: 'application/json', 'user-agent': 'MagguuBot' },
     signal: AbortSignal.timeout(15_000),
@@ -54,6 +55,21 @@ export async function refreshWebsiteFaqCache(): Promise<void> {
   const entries = Object.values(parsed.data).flat();
   cache = { entries, at: Date.now() };
   logger.info({ count: entries.length }, 'website FAQ cache refreshed');
+}
+
+/** Network-free snapshot for autocomplete: whatever the last refresh stored (possibly empty). */
+export function getCachedFaqEntries(): readonly FaqEntry[] {
+  return cache?.entries ?? [];
+}
+
+/** Test hook. */
+export function setFaqCacheForTests(entries: FaqEntry[] | null): void {
+  cache = entries ? { entries, at: Date.now() } : null;
+}
+
+/** Cached entries; refreshes first when missing or stale (may hit the network, so not for autocomplete). */
+export async function loadFaqEntries(): Promise<readonly FaqEntry[]> {
+  return getEntries();
 }
 
 async function getEntries(): Promise<FaqEntry[]> {
@@ -67,14 +83,20 @@ async function getEntries(): Promise<FaqEntry[]> {
   return cache?.entries ?? [];
 }
 
-export function buildFaqAnswerEmbed(entry: FaqEntry, pageUrl: string): EmbedBuilder {
+export function buildFaqAnswerEmbed(
+  entry: FaqEntry,
+  pageUrl: string,
+  footer = 'Automatische Antwort aus dem Website-FAQ',
+): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(Colors.info)
     .setAuthor({ name: 'MagguuUI FAQ', url: pageUrl })
-    .setTitle(truncate(entry.question, 256))
+    .setTitle(truncate(neutralizeMentions(entry.question), 256))
     .setURL(pageUrl)
-    .setDescription(truncate(`${faqAnswerToDiscord(entry.answer)}\n\nMehr im FAQ: ${pageUrl}`, 4096))
-    .setFooter({ text: 'Automatische Antwort aus dem Website-FAQ' });
+    .setDescription(
+      truncate(`${neutralizeMentions(faqAnswerToDiscord(entry.answer))}\n\nMehr im FAQ: ${pageUrl}`, 4096),
+    )
+    .setFooter({ text: footer });
 }
 
 /** Silent unless the message is a question in a help channel with a confident FAQ match. */

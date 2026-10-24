@@ -15,6 +15,7 @@ import { commandsInSync, diffCommands, type CommandShape } from '../utils/comman
 import { hashSlashCommandBody } from './slash-body-hash.js';
 import { backfillWelcomePins, handleSetupServerButton } from './commands/setup-server.js';
 import { allEvents } from './events/index.js';
+import { handleFaqAutocomplete } from './commands/faq.js';
 import { autocompleteTagNames } from './commands/tag.js';
 import { handleGiveawayButton } from './interactions/giveaway-buttons.js';
 import { handleNeuButton } from './interactions/neu-buttons.js';
@@ -109,6 +110,8 @@ export async function startDiscord(): Promise<void> {
           const focused = interaction.options.getFocused();
           const results = autocompleteTagNames(interaction.guildId, focused);
           await interaction.respond(results);
+        } else if (interaction.commandName === 'faq') {
+          await handleFaqAutocomplete(interaction);
         }
       } else if (interaction.isButton()) {
         if (interaction.customId.startsWith('seerr:')) {

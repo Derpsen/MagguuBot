@@ -10,7 +10,7 @@ import { tickBirthdays } from './birthday.js';
 import { recoverAntiRaidProtection } from './anti-raid.js';
 import { runAddonReleasePollTick } from './addon-release-poller.js';
 import { runBlueTrackerTick } from './blue-tracker.js';
-import { faqAutoanswerEnabled, refreshWebsiteFaqCache } from './faq-autoanswer.js';
+import { refreshWebsiteFaqCache } from './faq-autoanswer.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
 import { getClient } from './client.js';
@@ -109,11 +109,10 @@ export function startScheduler(): void {
     }, config.ADDON_RELEASE_POLL_MINUTES * 60_000);
   }
 
-  if (faqAutoanswerEnabled()) {
-    websiteFaqTimer = setInterval(() => {
-      runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ refresh failed');
-    }, WEBSITE_FAQ_TICK_MS);
-  }
+  // Always on: the cache also serves /faq autocomplete (public GET, once per hour).
+  websiteFaqTimer = setInterval(() => {
+    runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ refresh failed');
+  }, WEBSITE_FAQ_TICK_MS);
 
   topicsTimer = setInterval(() => {
     runTick('topics', updateChannelTopics, 'topics tick failed');
@@ -209,9 +208,7 @@ export function startScheduler(): void {
     if (addonReleasePollEnabled) {
       runTick('addon-release', runAddonReleasePollTick, 'addon release poll boot tick failed');
     }
-    if (faqAutoanswerEnabled()) {
-      runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ boot refresh failed');
-    }
+    runTick('website-faq', refreshWebsiteFaqCache, 'website FAQ boot refresh failed');
   });
 
   logger.info(
