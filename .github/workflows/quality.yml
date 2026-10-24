@@ -1,12 +1,11 @@
-# Adopted from magguu-ci-drafts (2026-10-16): drift-check + actionlint + zizmor + shellcheck + osv-scanner.
+# No paths-ignore (2026-10-24): the drift job must also see doc-only changes (AGENTS/MEMORY/CHANGELOG are checked for drift).
+# Adopted from magguu-ci-drafts (2026-10-16): drift guard + actionlint + zizmor + shellcheck + osv-scanner.
 name: Quality
 
 on:
   push:
     branches: [main]
-    paths-ignore: ['**/*.md']
   pull_request:
-    paths-ignore: ['**/*.md']
   workflow_dispatch:
 
 permissions:
@@ -33,9 +32,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Drift check
-        run: bash tools/drift-check.sh
-
       - name: actionlint
         run: |
           curl -sSfL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
@@ -58,9 +54,23 @@ jobs:
           chmod +x osv-scanner
           ./osv-scanner scan source --recursive .
 
+  drift:
+    name: drift guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        # actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Drift guard (forbidden names, engines, locked majors, container uid 99 + cosign keyless)
+        run: python3 tools/magguu-drift.py --repo bot --allow tools/drift-allow.txt --gha
+
   alarm:
     name: failure alarm
-    needs: [quality]
+    needs: [quality, drift]
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
       contents: read

@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Changed
+- Drift guard: `tools/magguu-drift.py` (+ `tools/drift-allow.txt`) replaces `tools/drift-check.sh`; own `drift` job in `quality.yml` (alarm `needs` it) and a step in `.githooks/pre-push`; `quality.yml` no longer ignores `**/*.md`, so doc-only changes are checked too.
+
 ### Added
 - `issue-route.yml`: labels new/assigned issues by title keywords (bug, security, dependencies, documentation); unclear issues trigger at most one JSON call to the escalation webhook (no body, https only, idempotent, `needs-triage` marker). Minimal permissions, no third-party actions.
 

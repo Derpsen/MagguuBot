@@ -1,7 +1,7 @@
 # docs-drift rules for MagguuBot (read by tools/docs-drift.sh, copied 1:1 from
 # MagguuUI-Website). Format: regex<TAB>reason[<TAB>allow-regex[<TAB>file-regex]].
 # ERE, case-sensitive. Banned addon names are written as [W]IM etc. so this file
-# never contains the literal names (tools/drift-check.sh would flag it).
+# never contains the literal names (tools/magguu-drift.py would flag it).
 # No @health-url: the only status endpoint (GET /api/status) is Bearer-gated and
 # off without STATUS_API_TOKEN, and no public health URL is documented.
 

@@ -1,0 +1,1 @@
+# tools/drift-allow.txt (MagguuBot) - currently empty: no hits outside AGENTS/MEMORY/CHANGELOG/tests/tools (all handled by built-in skip/negation rules).
