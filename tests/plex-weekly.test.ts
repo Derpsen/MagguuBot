@@ -253,9 +253,7 @@ test('manager: deleted message (10008 / 50005) → repost once; other edit error
   assert.equal(t.rows.get('c1')?.messageId, 'm3');
 
   t.advance(24 * 3600_000);
-  t.fail.edit = codeError(50_013); // missing permissions: not "gone"
-  assert.equal(await t.manager.refresh('c1', { maxAgeMs: 0 }), 'error');
-  t.fail.edit = new Error('network');
+  t.fail.edit = new Error('network'); // transient: quiet error, never a repost (permanent codes: plex-weekly-hardening.test.ts)
   assert.equal(await t.manager.refresh('c1', { maxAgeMs: 0 }), 'error');
   assert.deepEqual(t.calls, ['post:c1', 'post:c1', 'post:c1']);
   assert.equal(t.rows.get('c1')?.messageId, 'm3'); // untouched

@@ -6,7 +6,13 @@ import {
   type PlexWeeklyRaw,
   type PlexWeeklyStats,
 } from '../utils/plex-weekly.js';
-import { isMessageGone, discordErrorCode, type PlexCardGateway } from './plex-card-manager.js';
+import {
+  isMessageGone,
+  isPermanentDiscordError,
+  discordErrorCode,
+  PLEX_CARD_PERMANENT_PAUSE_MS,
+  type PlexCardGateway,
+} from './plex-card-manager.js';
 
 /**
  * One weekly Plex statistics card per channel, edited in place (same rules as the activity card):
@@ -27,7 +33,7 @@ export interface PlexWeeklyStore {
   save(record: PlexWeeklyRecord): void;
 }
 
-export type PlexWeeklyResult = 'posted' | 'reposted' | 'edited' | 'unchanged' | 'error';
+export type PlexWeeklyResult = 'posted' | 'reposted' | 'edited' | 'unchanged' | 'error' | 'paused';
 
 export interface PlexWeeklyManagerOptions {
   store: PlexWeeklyStore;
@@ -38,6 +44,8 @@ export interface PlexWeeklyManagerOptions {
   now?: () => number;
   /** Stats younger than this are reused (protects Tautulli from command spam). */
   cacheTtlMs?: number;
+  /** Pause after a permanent Discord error (10003 / 50001 / 50013); default 30 min. */
+  permanentPauseMs?: number;
   log?: (level: 'info' | 'warn', msg: string, data?: Record<string, unknown>) => void;
 }
 
@@ -47,6 +55,7 @@ export class PlexWeeklyManager {
   private readonly opts: PlexWeeklyManagerOptions;
   private queue: Promise<unknown> = Promise.resolve();
   private cache: { at: number; stats: PlexWeeklyStats } | null = null;
+  private readonly pausedUntil = new Map<string, number>();
 
   constructor(opts: PlexWeeklyManagerOptions) {
     this.opts = opts;
@@ -61,8 +70,8 @@ export class PlexWeeklyManager {
   }
 
   /** Serialised: parallel calls (tick + slash command) can never double-post. */
-  refresh(channelId: string, options: { maxAgeMs?: number } = {}): Promise<PlexWeeklyResult> {
-    const run = this.queue.then(() => this.doRefresh(channelId, options.maxAgeMs));
+  refresh(channelId: string, options: { maxAgeMs?: number; force?: boolean } = {}): Promise<PlexWeeklyResult> {
+    const run = this.queue.then(() => this.doRefresh(channelId, options.maxAgeMs, options.force === true));
     this.queue = run.catch(() => undefined);
     return run;
   }
@@ -83,7 +92,30 @@ export class PlexWeeklyManager {
     return stats;
   }
 
-  private async doRefresh(channelId: string, maxAgeMs = this.opts.cacheTtlMs ?? PLEX_WEEKLY_CACHE_TTL_MS): Promise<PlexWeeklyResult> {
+  /** Permanent errors stop all calls for a while: one warn log, no repost, no Discord message. */
+  private pauseOnPermanent(channelId: string, op: 'edit' | 'post', err: unknown): boolean {
+    if (!isPermanentDiscordError(err)) return false;
+    const pauseMs = this.opts.permanentPauseMs ?? PLEX_CARD_PERMANENT_PAUSE_MS;
+    this.pausedUntil.set(channelId, this.now() + pauseMs);
+    this.log('warn', `Plex weekly card ${op} blocked by Discord, pausing the card`, {
+      channelId,
+      code: discordErrorCode(err),
+      pauseMs,
+    });
+    return true;
+  }
+
+  private async doRefresh(
+    channelId: string,
+    maxAgeMs = this.opts.cacheTtlMs ?? PLEX_WEEKLY_CACHE_TTL_MS,
+    force = false,
+  ): Promise<PlexWeeklyResult> {
+    if (force) this.pausedUntil.delete(channelId);
+    const pausedUntil = this.pausedUntil.get(channelId);
+    if (pausedUntil !== undefined) {
+      if (this.now() < pausedUntil) return 'paused';
+      this.pausedUntil.delete(channelId);
+    }
     const stats = await this.loadStats(maxAgeMs);
     if (!stats) {
       this.log('warn', 'Plex weekly card skipped: no Tautulli data', { channelId });
@@ -102,6 +134,7 @@ export class PlexWeeklyManager {
         return 'edited';
       } catch (err) {
         if (!isMessageGone(err)) {
+          if (this.pauseOnPermanent(channelId, 'edit', err)) return 'paused';
           this.log('warn', 'Plex weekly card edit failed', { channelId, error: String(err) });
           return 'error';
         }
@@ -123,6 +156,7 @@ export class PlexWeeklyManager {
       this.opts.store.save({ channelId, messageId, contentHash: hash, postedAt: this.now() });
       return result;
     } catch (err) {
+      if (this.pauseOnPermanent(channelId, 'post', err)) return 'paused';
       this.log('warn', 'Plex weekly card post failed', { channelId, error: String(err) });
       return 'error';
     }

@@ -101,15 +101,15 @@ export async function runPlexWeeklyTick(now = new Date()): Promise<void> {
   const channelId = plexWeeklyChannelId();
   if (!channelId) return;
   const result = await getPlexWeekly().refresh(channelId, { maxAgeMs: 0 });
-  if (result === 'error') return; // already logged; the next tick tries again
+  if (result === 'error' || result === 'paused') return; // already logged; the next tick tries again
   setFeatureState(LAST_PERIOD_KEY, period);
   logger.info({ period, result }, 'Plex weekly card updated');
 }
 
-/** For `/wochenstatistik`: refresh now (cached ≤10 min), without touching the weekly period state. */
+/** For `/wochenstatistik`: refresh now (cached ≤10 min, an admin retry lifts a permanent-error pause), without touching the weekly period state. */
 export async function refreshPlexWeekly(): Promise<PlexWeeklyResult | 'not-configured'> {
   if (!plexWeeklyConfigured()) return 'not-configured';
   const channelId = plexWeeklyChannelId();
   if (!channelId) return 'not-configured';
-  return getPlexWeekly().refresh(channelId);
+  return getPlexWeekly().refresh(channelId, { force: true });
 }

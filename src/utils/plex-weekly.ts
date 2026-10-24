@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { EmbedBuilder } from 'discord.js';
-import { Colors, FOOTER_ICONS, truncate } from '../embeds/colors.js';
+import { Colors, FOOTER_ICONS } from '../embeds/colors.js';
 import type { TautulliDateSeries, TautulliStatRow, TautulliStatSection } from '../services/tautulli.js';
+import { clipPlexText, escapePlexMarkdown } from './plex-card.js';
 import { localScheduleParts } from './schedule.js';
 
 /**
@@ -13,6 +14,8 @@ export const PLEX_WEEKLY_DAYS = 7;
 /** Rows requested per Tautulli home-stat list; also the cap behind the "active users" count. */
 export const PLEX_WEEKLY_STATS_COUNT = 25;
 export const PLEX_WEEKLY_TOP_N = 5;
+/** Max visible characters of a title / user name in the card (before markdown escaping). */
+export const WEEKLY_MAX_NAME = 48;
 export const PLEX_WEEKLY_FOOTER = 'MagguuBot · Plex-Wochenstatistik';
 
 export interface WeeklyItem {
@@ -54,9 +57,11 @@ function section(sections: TautulliStatSection[], id: string): TautulliStatRow[]
 function toItems(rows: TautulliStatRow[], kind: 'title' | 'user', limit: number): WeeklyItem[] {
   return rows
     .map((row): WeeklyItem => {
-      const name = kind === 'user'
+      const rawName = kind === 'user'
         ? (row.friendly_name?.trim() || row.user?.trim() || 'Unbekannt')
         : (row.title?.trim() || 'Unbekannt');
+      // Clip first, then escape (escaping afterwards never cuts a backslash pair in half).
+      const name = escapePlexMarkdown(clipPlexText(rawName, WEEKLY_MAX_NAME)) || 'Unbekannt';
       const year = kind === 'title' && row.year ? String(row.year) : null;
       return { name, year, plays: num(row.total_plays), seconds: num(row.total_duration) };
     })
@@ -109,7 +114,7 @@ function line(item: WeeklyItem, rank: number, withYear: boolean): string {
   const medal = RANK[rank] ?? `**${rank + 1}.**`;
   const year = withYear && item.year ? ` (${item.year})` : '';
   const time = item.seconds > 0 ? ` · ${formatWatchTime(item.seconds)}` : '';
-  return `${medal} **${truncate(item.name, 48)}**${year} — ${item.plays} ${item.plays === 1 ? 'Play' : 'Plays'}${time}`;
+  return `${medal} **${item.name}**${year} — ${item.plays} ${item.plays === 1 ? 'Play' : 'Plays'}${time}`;
 }
 
 function listField(items: WeeklyItem[], withYear: boolean, empty: string): string {

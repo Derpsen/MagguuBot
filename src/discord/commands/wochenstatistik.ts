@@ -8,6 +8,7 @@ const MESSAGES = {
   posted: '✅ Wochenstatistik-Karte gepostet',
   reposted: '✅ Wochenstatistik-Karte neu gepostet (die alte Nachricht war gelöscht)',
   edited: '🔄 Wochenstatistik-Karte aktualisiert',
+  paused: '⚠️ Discord verweigert den Zugriff auf den Zielkanal (Kanal fehlt oder Rechte fehlen). Prüfe die Bot-Rechte; Details stehen im Log.',
   unchanged: 'ℹ️ Wochenstatistik unverändert, nichts geändert',
 } as const;
 
@@ -18,7 +19,7 @@ export const wochenstatistikCommand: SlashCommand = {
     .setDescription('Plex-Wochenstatistik-Karte jetzt aktualisieren')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild) as SlashCommandBuilder,
   async execute(interaction) {
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    if (!interaction.inGuild() || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
       await interaction.reply({ content: 'Dafür brauchst du „Server verwalten“.', flags: MessageFlags.Ephemeral });
       return;
     }
