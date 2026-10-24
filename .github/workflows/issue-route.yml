@@ -1,0 +1,101 @@
+# Issue routing: labels new/assigned issues by title keywords (bug, security, dependencies, documentation).
+# Only when neither an existing label nor a keyword gives an answer, ONE JSON call goes to the escalation webhook
+# (repo, issue number, issue URL, clipped title; never the issue body). The issue body is not read at all.
+# Dedupe: marker label `needs-triage` (checked live before each call) plus an Idempotency-Key header.
+# Both secrets are optional: if either is missing, or the URL is not https, no call is made.
+name: Issue route
+
+on:
+  issues:
+    types: [assigned, opened]
+
+permissions: {}
+
+concurrency:
+  group: issue-route-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Route by label / title keywords
+        id: route
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+        run: |
+          set -euo pipefail
+          case "${NUMBER}" in ''|*[!0-9]*) echo "bad issue number"; exit 1 ;; esac
+          current="$(gh issue view "${NUMBER}" --repo "${REPO}" --json labels --jq '[.labels[].name] | join(",")')"
+          title="$(printf '%s' "${TITLE}" | tr '[:upper:]' '[:lower:]' | tr -d '[:cntrl:]')"
+          has() { case ",${current}," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
+          want=""
+          add() { has "$1" || want="${want:+${want},}$1"; }
+          matched=0
+          for l in bug security dependencies documentation; do has "$l" && matched=1; done
+          if printf '%s' "${title}" | grep -Eq 'security|vulnerab|cve-|xss|injection|exploit|leak'; then add security; matched=1; fi
+          if printf '%s' "${title}" | grep -Eq 'bug|error|crash|exception|broken|regression|fails?( |$)|not working'; then add bug; matched=1; fi
+          if printf '%s' "${title}" | grep -Eq 'dependenc|renovate|dependabot|bump|upgrade|npm|pip '; then add dependencies; matched=1; fi
+          if printf '%s' "${title}" | grep -Eq 'docs?( |$)|documentation|readme|typo|changelog'; then add documentation; matched=1; fi
+          if [ -n "${want}" ]; then
+            IFS=',' read -r -a labels <<< "${want}"
+            for l in "${labels[@]}"; do
+              gh label create "${l}" --repo "${REPO}" >/dev/null 2>&1 || true
+              gh issue edit "${NUMBER}" --repo "${REPO}" --add-label "${l}" >/dev/null
+            done
+            echo "routed: ${want}"
+          fi
+          if [ "${matched}" -eq 0 ] && ! has needs-triage; then
+            echo "unclear=true" >> "${GITHUB_OUTPUT}"
+            echo "unclear: escalation candidate"
+          else
+            echo "unclear=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Escalate unclear issue (one call)
+        if: steps.route.outputs.unclear == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+          BEARER: ${{ secrets.ESCALATION_BEARER }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEBHOOK_URL}" ] || [ -z "${BEARER}" ]; then
+            echo "escalation secrets set: no (skipped)"
+            exit 0
+          fi
+          # https only; no whitespace, quote or backslash (the values go into curl's config on stdin).
+          if ! printf '%s' "${WEBHOOK_URL}" | grep -Eq '^https://[^[:space:]"\\]+$' \
+            || ! printf '%s' "${BEARER}" | grep -Eq '^[^[:space:]"\\]+$'; then
+            echo "escalation config invalid (needs https URL): skipped"
+            exit 0
+          fi
+          key="issue-route-${REPO//\//-}-${NUMBER}"
+          clipped="$(printf '%s' "${TITLE}" | tr -d '[:cntrl:]' | cut -c1-120)"
+          payload="$(jq -n --arg repo "${REPO}" --argjson number "${NUMBER}" --arg url "${ISSUE_URL}" --arg title "${clipped}" --arg key "${key}" \
+            '{kind: "issue-unrouted", idempotency_key: $key, repo: $repo, issue: $number, url: $url, title: $title}')"
+          STATUS="$(printf 'url = "%s"\nheader = "Authorization: Bearer %s"\n' "${WEBHOOK_URL}" "${BEARER}" \
+            | curl --silent --config - --request POST \
+                --connect-timeout 5 --max-time 10 \
+                --header 'Content-Type: application/json' \
+                --header "Idempotency-Key: ${key}" \
+                --data "${payload}" \
+                --output /dev/null --write-out '%{http_code}' || true)"
+          echo "escalation HTTP status: ${STATUS}"
+          case "${STATUS}" in
+            2??)
+              gh label create needs-triage --repo "${REPO}" >/dev/null 2>&1 || true
+              gh issue edit "${NUMBER}" --repo "${REPO}" --add-label needs-triage >/dev/null
+              ;;
+          esac

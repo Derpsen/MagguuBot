@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Added
+- `issue-route.yml`: labels new/assigned issues by title keywords (bug, security, dependencies, documentation); unclear issues trigger at most one JSON call to the escalation webhook (no body, https only, idempotent, `needs-triage` marker). Minimal permissions, no third-party actions.
+
 ### Changed
 - Renovate: automerge now as PR (`automergeType: pr`, no platform automerge; Renovate waits for all checks), patch/pin/digest and stable (non-0.x) minor only, 0.x minors and majors manual, groups non-major only, `internalChecksFilter: strict`, 3 day release age also for github-actions minor/patch; `fileMatch` migrated to `managerFilePatterns`. Locked majors unchanged.
 
