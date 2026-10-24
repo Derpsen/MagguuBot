@@ -59,7 +59,8 @@ function addColumnIfMissing(table: string, column: string, type: string): void {
   }
 }
 
-function runMigrations(): void {
+/** Idempotent column/data migrations; exported for the same reason as ensureSchema. */
+export function runMigrations(): void {
   addColumnIfMissing('autoresponders', 'auto_delete_seconds', 'INTEGER');
   addColumnIfMissing('welcome_messages', 'content_hash', 'TEXT');
   addColumnIfMissing('autoresponders', 'as_embed', 'INTEGER NOT NULL DEFAULT 0');
@@ -81,6 +82,7 @@ function runMigrations(): void {
   addColumnIfMissing('plex_activity_messages', 'session_key', 'TEXT');
   addColumnIfMissing('plex_activity_messages', 'paused_at', 'INTEGER');
   addColumnIfMissing('live_panels', 'payload_hash', 'TEXT');
+  addColumnIfMissing('raid_reminders', 'pause_notified_at', 'INTEGER');
   applyWebhookRetryMigration(sqlite);
   retireMaintainerr();
   renameBlueTrackerKey();
@@ -110,7 +112,8 @@ function retireMaintainerr(): void {
     .run();
 }
 
-function ensureSchema(): void {
+/** Idempotent (CREATE TABLE/INDEX IF NOT EXISTS); exported so tests can prove a double init is harmless. */
+export function ensureSchema(): void {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS webhook_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -512,6 +515,7 @@ function ensureSchema(): void {
       next_due_at INTEGER NOT NULL,
       paused_reason TEXT,
       paused_at INTEGER,
+      pause_notified_at INTEGER,
       last_sent_at INTEGER,
       created_at INTEGER NOT NULL
     );

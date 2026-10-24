@@ -6,6 +6,7 @@ import {
   buildReminderEmbed,
   decideDue,
   nextWeeklyOccurrence,
+  pauseNoticeText,
   type ReminderKind,
   type ReminderView,
 } from '../utils/raid-reminder.js';
@@ -19,6 +20,8 @@ import {
 export interface ReminderRow extends ReminderView {
   guildId: string;
   userId: string;
+  /** Set once the creator was told about the pause (not set = still to be told). */
+  pauseNotifiedAt?: number | null;
 }
 
 export interface NewReminder {
@@ -39,7 +42,10 @@ export interface ReminderStore {
   listByUser(guildId: string, userId: string): ReminderRow[];
   /** Active (not paused) rows whose `nextDueAt` is <= now. */
   due(now: number): ReminderRow[];
-  update(id: number, patch: { nextDueAt?: number; pausedReason?: string | null; pausedAt?: number | null; lastSentAt?: number }): void;
+  update(
+    id: number,
+    patch: { nextDueAt?: number; pausedReason?: string | null; pausedAt?: number | null; pauseNotifiedAt?: number | null; lastSentAt?: number },
+  ): void;
   delete(id: number): void;
   deleteAllByUser(guildId: string, userId: string): number;
 }
@@ -122,11 +128,35 @@ export class RaidReminderManager {
       this.opts.store.update(r.id, {
         pausedReason: null,
         pausedAt: null,
+        pauseNotifiedAt: null,
         nextDueAt: nextWeeklyOccurrence(now, this.opts.timeZone, r.day, r.hour, r.minute),
       });
       resumed += 1;
     }
     return resumed;
+  }
+
+  /**
+   * Hint for the creator about paused subscriptions, returned ONCE per pause (marks them as told, so it is
+   * neither repeated nor does it cause any DM attempt: the user sees it in their next /erinnerung reply).
+   */
+  takePauseNotice(guildId: string, userId: string): string | null {
+    const pending = this.opts.store.listByUser(guildId, userId).filter((r) => r.pausedReason && !r.pauseNotifiedAt);
+    const text = pauseNoticeText(pending);
+    if (!text) return null;
+    const now = this.now();
+    for (const r of pending) this.opts.store.update(r.id, { pauseNotifiedAt: now });
+    return text;
+  }
+
+  /** Moderation: remove a user's subscriptions (all or one id). Same effect as the user's own opt-out. */
+  removeForModerator(guildId: string, targetUserId: string, id?: number): number {
+    return this.remove(guildId, targetUserId, id);
+  }
+
+  /** The user left the server: their subscriptions are useless and are deleted. */
+  removeAllForLeftUser(guildId: string, userId: string): number {
+    return this.opts.store.deleteAllByUser(guildId, userId);
   }
 
   private advance(row: ReminderRow, now: number): void {
@@ -140,7 +170,7 @@ export class RaidReminderManager {
   }
 
   private pause(row: ReminderRow, reason: 'dm_closed' | 'channel_unavailable', now: number, code: number | null): void {
-    this.opts.store.update(row.id, { pausedReason: reason, pausedAt: now });
+    this.opts.store.update(row.id, { pausedReason: reason, pausedAt: now, pauseNotifiedAt: null });
     this.log('warn', 'reminder subscription paused', { reminderId: row.id, reason, code });
   }
 

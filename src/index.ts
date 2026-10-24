@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   // event handlers that aren't wrapped in try/catch. Without these, Node 20+
   // crashes silently to stderr and the supervisor sees no Pino log entry.
   process.on('unhandledRejection', (reason) => {
-    logger.error({ reason }, 'unhandled promise rejection');
+    logger.error({ err: reason }, 'unhandled promise rejection');
   });
   process.on('uncaughtException', (err) => {
     logger.fatal({ err }, 'uncaught exception — exiting');

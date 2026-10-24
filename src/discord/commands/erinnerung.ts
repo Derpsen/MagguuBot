@@ -6,6 +6,7 @@ import {
   type ChatInputCommandInteraction,
 } from 'discord.js';
 import { config } from '../../config.js';
+import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
 import { getRaidReminders } from '../raid-reminders.js';
 import { reminderCooldownLeft } from '../raid-reminder-manager.js';
@@ -80,12 +81,18 @@ export const erinnerungCommand: SlashCommand = {
             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
         ),
     )
-    .addSubcommand((s) => s.setName('liste').setDescription('Deine Erinnerungen anzeigen'))
+    .addSubcommand((s) =>
+      s
+        .setName('liste')
+        .setDescription('Deine Erinnerungen anzeigen')
+        .addUserOption((o) => o.setName('nutzer').setDescription('Nur Mods (Server verwalten): Erinnerungen dieses Nutzers')),
+    )
     .addSubcommand((s) =>
       s
         .setName('aus')
         .setDescription('Erinnerung abbestellen (ohne ID: alle deine Erinnerungen)')
-        .addIntegerOption((o) => o.setName('id').setDescription('ID aus /erinnerung liste').setMinValue(1)),
+        .addIntegerOption((o) => o.setName('id').setDescription('ID aus /erinnerung liste').setMinValue(1))
+        .addUserOption((o) => o.setName('nutzer').setDescription('Nur Mods (Server verwalten): Erinnerungen dieses Nutzers entfernen')),
     )
     .addSubcommand((s) =>
       s.setName('fortsetzen').setDescription('Pausierte Erinnerungen wieder aktivieren (z. B. nachdem du DMs erlaubt hast)'),
@@ -104,21 +111,37 @@ export const erinnerungCommand: SlashCommand = {
     const reminders = getRaidReminders();
     const sub = interaction.options.getSubcommand(true);
 
+    // One-time hint about paused subscriptions (e.g. DMs closed) rides on the creator's next reply; never a DM.
+    // Taken only when a success/info reply is sent, so an error reply never swallows it.
+    const say = (content: string): Promise<void> => {
+      const notice = reminders.takePauseNotice(guildId, userId);
+      return reply(interaction, notice ? `${content}\n\n${notice}` : content);
+    };
+
+    // Moderation: members with Manage Server may act on another user's reminders (liste / aus).
+    const targetOption = sub === 'liste' || sub === 'aus' ? interaction.options.getUser('nutzer') : null;
+    const isModerating = Boolean(targetOption && targetOption.id !== userId);
+    if (isModerating && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      await reply(interaction, '❌ Fremde Erinnerungen verwalten dürfen nur Mitglieder mit der Berechtigung „Server verwalten“.');
+      return;
+    }
+    const subjectId = isModerating && targetOption ? targetOption.id : userId;
+
     if (sub === 'liste') {
-      const rows = reminders.list(guildId, userId);
+      const rows = reminders.list(guildId, subjectId);
       if (rows.length === 0) {
-        await reply(
-          interaction,
-          'Du hast keine Erinnerungen. Lege eine an mit `/erinnerung an` (Art, Tag, Uhrzeit).',
+        await say(
+          isModerating
+            ? 'Dieser Nutzer hat keine Erinnerungen.'
+            : 'Du hast keine Erinnerungen. Lege eine an mit `/erinnerung an` (Art, Tag, Uhrzeit).',
         );
         return;
       }
       const paused = rows.some((r) => r.pausedReason);
       const body = rows.map(describeReminder).join('\n\n');
-      await reply(
-        interaction,
-        `**Deine Erinnerungen** (${rows.length}, Zeiten in ${config.TIME_ZONE})\n\n${body}${
-          paused ? '\n\n💡 Pausierte Erinnerungen startest du mit `/erinnerung fortsetzen` neu.' : ''
+      await say(
+        `**${isModerating ? `Erinnerungen von <@${subjectId}>` : 'Deine Erinnerungen'}** (${rows.length}, Zeiten in ${config.TIME_ZONE})\n\n${body}${
+          paused && !isModerating ? '\n\n💡 Pausierte Erinnerungen startest du mit `/erinnerung fortsetzen` neu.' : ''
         }\nAbbestellen: \`/erinnerung aus\``,
       );
       return;
@@ -126,17 +149,20 @@ export const erinnerungCommand: SlashCommand = {
 
     if (sub === 'aus') {
       const id = interaction.options.getInteger('id') ?? undefined;
-      const removed = reminders.remove(guildId, userId, id);
+      const removed = reminders.remove(guildId, subjectId, id);
+      if (isModerating) logger.info({ moderatorId: userId, targetId: subjectId, id: id ?? null, removed }, 'raid reminders removed by moderator');
       if (removed === 0) {
-        await reply(
-          interaction,
-          id === undefined ? 'Du hast keine Erinnerungen.' : `Keine Erinnerung #${id} von dir gefunden (siehe \`/erinnerung liste\`).`,
+        await say(
+          isModerating
+            ? id === undefined ? 'Dieser Nutzer hat keine Erinnerungen.' : `Keine Erinnerung #${id} dieses Nutzers gefunden.`
+            : id === undefined ? 'Du hast keine Erinnerungen.' : `Keine Erinnerung #${id} von dir gefunden (siehe \`/erinnerung liste\`).`,
         );
         return;
       }
-      await reply(
-        interaction,
-        id === undefined ? `✅ Alle ${removed} Erinnerungen abbestellt.` : `✅ Erinnerung #${id} abbestellt.`,
+      await say(
+        isModerating
+          ? `✅ ${removed} Erinnerung(en) von <@${subjectId}> entfernt.`
+          : id === undefined ? `✅ Alle ${removed} Erinnerungen abbestellt.` : `✅ Erinnerung #${id} abbestellt.`,
       );
       return;
     }
@@ -214,8 +240,7 @@ export const erinnerungCommand: SlashCommand = {
     }
     const r = result.reminder;
     const unix = Math.floor(r.nextDueAt / 1000);
-    await reply(
-      interaction,
+    await say(
       `✅ ${KIND_LABEL[r.kind]}-Erinnerung #${r.id} angelegt: ${WEEKDAY_NAMES[r.day]} ${formatReminderTime(r.hour, r.minute)} (${config.TIME_ZONE}), ${
         r.recurring ? 'jede Woche' : 'einmalig'
       }, ${r.channelId ? `in <#${r.channelId}>` : 'per DM'}.\nNächste: <t:${unix}:F> (<t:${unix}:R>)${

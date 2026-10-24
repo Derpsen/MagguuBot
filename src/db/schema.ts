@@ -612,6 +612,7 @@ export const raidReminders = sqliteTable(
     nextDueAt: integer('next_due_at', { mode: 'timestamp_ms' }).notNull(),
     pausedReason: text('paused_reason'),
     pausedAt: integer('paused_at', { mode: 'timestamp_ms' }),
+    pauseNotifiedAt: integer('pause_notified_at', { mode: 'timestamp_ms' }),
     lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .notNull()

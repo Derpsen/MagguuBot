@@ -43,7 +43,10 @@ process.env.WEBHOOK_SECRET ??= 'test-secret-0123456789abcdef';
 process.env.DATABASE_PATH = dbPath;
 const { commands } = await import('../src/discord/commands/index.ts');
 const { raidReminderStore } = await import('../src/discord/raid-reminders.ts');
-const { sqliteHandle } = await import('../src/db/client.ts');
+const { sqliteHandle, ensureSchema, runMigrations } = await import('../src/db/client.ts');
+const { assertReminderChannelAllowed, REMINDER_CHANNEL_PERMISSIONS } = await import('../src/discord/raid-reminders.ts');
+const { guildMemberRemoveEvent } = await import('../src/discord/events/guild-member-remove.ts');
+const { saveChannel } = await import('../src/discord/channel-store.ts');
 const erinnerung = commands.get('erinnerung')!;
 
 const TZ = 'Europe/Berlin';
@@ -150,10 +153,11 @@ class MemStore implements ReminderStore {
   due(now: number): ReminderRow[] {
     return this.rows.filter((r) => !r.pausedReason && r.nextDueAt <= now).map((r) => ({ ...r }));
   }
-  update(id: number, patch: { nextDueAt?: number; pausedReason?: string | null; pausedAt?: number | null; lastSentAt?: number }): void {
+  update(id: number, patch: { nextDueAt?: number; pausedReason?: string | null; pausedAt?: number | null; pauseNotifiedAt?: number | null; lastSentAt?: number }): void {
     const row = this.rows.find((r) => r.id === id)!;
     if (patch.nextDueAt !== undefined) row.nextDueAt = patch.nextDueAt;
     if (patch.pausedReason !== undefined) row.pausedReason = patch.pausedReason;
+    if (patch.pauseNotifiedAt !== undefined) row.pauseNotifiedAt = patch.pauseNotifiedAt;
   }
   delete(id: number): void {
     this.rows = this.rows.filter((r) => r.id !== id);
@@ -398,6 +402,8 @@ function fakeInteraction(opts: {
   channel?: { id: string } | null;
   memberCanWrite?: boolean;
   botCanWrite?: boolean;
+  targetUser?: { id: string } | null;
+  canManageGuild?: boolean;
 }) {
   const replies: Array<{ content: string; flags?: unknown; allowedMentions?: unknown }> = [];
   const guildId = opts.guildId === undefined ? process.env.DISCORD_GUILD_ID! : opts.guildId;
@@ -416,7 +422,9 @@ function fakeInteraction(opts: {
       members: { fetch: async () => ({ me: false }), me: { me: true } },
     },
     user: { id: opts.userId ?? 'cmd-user' },
+    memberPermissions: { has: (p: bigint) => opts.canManageGuild === true && p === PermissionFlagsBits.ManageGuild },
     options: {
+      getUser: () => opts.targetUser ?? null,
       getSubcommand: () => opts.sub,
       getString: (n: string) => opts.strings?.[n] ?? null,
       getInteger: (n: string) => opts.ints?.[n] ?? null,
@@ -526,4 +534,199 @@ test('command: fortsetzen shows the DM hint in liste for a paused subscription a
   assert.match(resume.replies[0]!.content, /1 Erinnerung\(en\) wieder aktiv/);
   assert.equal(raidReminderStore.listByUser(gid, uid)[0]!.pausedReason, null);
   raidReminderStore.deleteAllByUser(gid, uid);
+});
+
+// ─── review follow-ups: leave cleanup, channel gate, moderation, pause notice, migration idempotency ───
+
+const GID = process.env.DISCORD_GUILD_ID!;
+const granted = (bits: bigint) => ({ has: (b: bigint) => (bits & b) === b });
+const chan = (id: string, bits: bigint | null) => ({ id, permissionsFor: () => (bits === null ? null : granted(bits)) });
+
+test('member leaves: all of the user\'s reminders are deleted (DM and channel), others untouched, audit channel absent is fine', async () => {
+  const leaver = 'leaver-1';
+  const stayer = 'stayer-1';
+  const now = Date.now();
+  raidReminderStore.insert({ ...BASE, guildId: GID, userId: leaver, nextDueAt: now + 1e6 }, now);
+  raidReminderStore.insert({ ...BASE, guildId: GID, userId: leaver, channelId: '5551', hour: 21, nextDueAt: now + 1e6 }, now);
+  raidReminderStore.insert({ ...BASE, guildId: GID, userId: stayer, nextDueAt: now + 1e6 }, now);
+  assert.equal(raidReminderStore.listByUser(GID, leaver).length, 2);
+  await guildMemberRemoveEvent.execute({
+    id: leaver,
+    guild: { id: GID, channels: { fetch: async () => null } },
+    user: { displayName: 'x', displayAvatarURL: () => '' },
+    joinedTimestamp: null,
+  } as never);
+  assert.equal(raidReminderStore.listByUser(GID, leaver).length, 0);
+  assert.equal(raidReminderStore.listByUser(GID, stayer).length, 1);
+  raidReminderStore.deleteAllByUser(GID, stayer);
+  // a second leave event (or a user without reminders) is a quiet no-op
+  await guildMemberRemoveEvent.execute({ id: leaver, guild: { id: GID, channels: { fetch: async () => null } }, user: undefined } as never);
+});
+
+test('channel delivery gate: reserved #updates, missing View/Send/EmbedLinks and unknown permissions are refused with a permanent code', () => {
+  const need = REMINDER_CHANNEL_PERMISSIONS;
+  assert.equal(need, PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks);
+  assert.doesNotThrow(() => assertReminderChannelAllowed(chan('c1', need), {}, undefined));
+  assert.doesNotThrow(() => assertReminderChannelAllowed(chan('c1', need), {}, 'other-channel'));
+  const code = (fn: () => void) => { try { fn(); } catch (e) { return (e as { code?: number }).code; } return undefined; };
+  assert.equal(code(() => assertReminderChannelAllowed(chan('upd', need), {}, 'upd')), 50013, 'addonUpdates is reserved for releases');
+  for (const missing of [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks]) {
+    assert.equal(code(() => assertReminderChannelAllowed(chan('c1', need & ~missing), {}, undefined)), 50013);
+  }
+  assert.equal(code(() => assertReminderChannelAllowed(chan('c1', null), {}, undefined)), 50013);
+});
+
+test('missing channel permission at send time: paused once with one warn, no retry spam, DM subscriptions unaffected', async () => {
+  const { store, gateway, clock, logs, manager } = setup(NOW);
+  const ch = manager.add({ ...BASE, channelId: 'c9' });
+  const dm = manager.add({ ...BASE, hour: 21 });
+  assert.ok(ch.ok && dm.ok);
+  gateway.channelError = Object.assign(new Error('missing channel permissions'), { code: 50013 });
+  clock.t = DUE;
+  const first = await manager.tick();
+  assert.equal(first.paused, 1);
+  assert.equal(logs.filter((l) => l === 'reminder subscription paused').length, 1);
+  const attempts = gateway.attempts;
+  clock.t = DUE + 30_000;
+  await manager.tick();
+  clock.t = DUE + 60_000;
+  await manager.tick();
+  assert.equal(gateway.attempts, attempts, 'a paused channel subscription is not retried');
+  assert.equal(store.rows.find((r) => r.channelId === 'c9')!.pausedReason, 'channel_unavailable');
+});
+
+test('addonUpdates lock in the command: refused for the reserved channel, other channels still work', async () => {
+  resetReminderCooldown();
+  const uid = 'lock-user-1';
+  saveChannel('addonUpdates', '7777');
+  const base = { sub: 'an', userId: uid, strings: { art: 'raid', uhrzeit: '19:45' }, ints: { tag: 4 } };
+  const locked = fakeInteraction({ ...base, channel: { id: '7777' } });
+  await erinnerung.execute(locked.interaction);
+  assert.match(locked.replies[0]!.content, /nur MagguuUI-Releases/);
+  assert.equal(raidReminderStore.listByUser(GID, uid).length, 0);
+  resetReminderCooldown();
+  const open = fakeInteraction({ ...base, channel: { id: '5551' } });
+  await erinnerung.execute(open.interaction);
+  assert.match(open.replies[0]!.content, /in <#5551>/);
+  raidReminderStore.deleteAllByUser(GID, uid);
+});
+
+test('moderation: only Manage Server may list/remove other users\' reminders; own ones always; replies stay ping-free', async () => {
+  resetReminderCooldown();
+  const victim = 'victim-1';
+  const mod = 'mod-1';
+  const now = Date.now();
+  const a = raidReminderStore.insert({ ...BASE, guildId: GID, userId: victim, nextDueAt: now + 1e6 }, now);
+  raidReminderStore.insert({ ...BASE, guildId: GID, userId: victim, hour: 21, nextDueAt: now + 1e6 }, now);
+
+  const denied = fakeInteraction({ sub: 'aus', userId: 'plain-user', targetUser: { id: victim } });
+  await erinnerung.execute(denied.interaction);
+  assert.match(denied.replies[0]!.content, /Server verwalten/);
+  const deniedList = fakeInteraction({ sub: 'liste', userId: 'plain-user', targetUser: { id: victim } });
+  await erinnerung.execute(deniedList.interaction);
+  assert.match(deniedList.replies[0]!.content, /Server verwalten/);
+  assert.equal(raidReminderStore.listByUser(GID, victim).length, 2);
+
+  const list = fakeInteraction({ sub: 'liste', userId: mod, targetUser: { id: victim }, canManageGuild: true });
+  await erinnerung.execute(list.interaction);
+  assert.match(list.replies[0]!.content, new RegExp(`Erinnerungen von <@${victim}>`));
+  assert.deepEqual(list.replies[0]!.allowedMentions, { parse: [] });
+
+  const one = fakeInteraction({ sub: 'aus', userId: mod, targetUser: { id: victim }, ints: { id: a.id }, canManageGuild: true });
+  await erinnerung.execute(one.interaction);
+  assert.match(one.replies[0]!.content, /1 Erinnerung\(en\) von/);
+  assert.deepEqual(one.replies[0]!.allowedMentions, { parse: [] });
+  assert.equal(raidReminderStore.listByUser(GID, victim).length, 1);
+
+  const missing = fakeInteraction({ sub: 'aus', userId: mod, targetUser: { id: victim }, ints: { id: 999999 }, canManageGuild: true });
+  await erinnerung.execute(missing.interaction);
+  assert.match(missing.replies[0]!.content, /nicht gefunden|Keine Erinnerung/);
+
+  const all = fakeInteraction({ sub: 'aus', userId: mod, targetUser: { id: victim }, canManageGuild: true });
+  await erinnerung.execute(all.interaction);
+  assert.equal(raidReminderStore.listByUser(GID, victim).length, 0);
+
+  // naming yourself as the target needs no permission
+  const selfRow = raidReminderStore.insert({ ...BASE, guildId: GID, userId: 'self-1', nextDueAt: now + 1e6 }, now);
+  const self = fakeInteraction({ sub: 'aus', userId: 'self-1', targetUser: { id: 'self-1' }, ints: { id: selfRow.id } });
+  await erinnerung.execute(self.interaction);
+  assert.match(self.replies[0]!.content, /abbestellt/);
+});
+
+test('pause notice (manager): shown once per pause, no DM attempt, again only after resume + new pause', async () => {
+  const { gateway, clock, manager } = setup(NOW);
+  manager.add({ ...BASE });
+  manager.add({ ...BASE, hour: 21 });
+  assert.equal(manager.takePauseNotice('g1', 'u1'), null, 'nothing paused yet');
+  gateway.dmError = discordError(50007);
+  clock.t = DUE;
+  await manager.tick();
+  const attempts = gateway.attempts;
+  const notice = manager.takePauseNotice('g1', 'u1');
+  assert.match(notice ?? '', /einmalig/);
+  assert.match(notice ?? '', /2 DM-Erinnerung/);
+  assert.match(notice ?? '', /\/erinnerung fortsetzen/);
+  assert.equal(manager.takePauseNotice('g1', 'u1'), null, 'second call: already told');
+  assert.equal(gateway.attempts, attempts, 'the notice never triggers a DM attempt');
+  assert.equal(manager.takePauseNotice('g1', 'other-user'), null);
+  manager.resume('g1', 'u1');
+  clock.t = DUE + 7 * 86_400_000 + 2 * 60_000;
+  await manager.tick();
+  assert.match(manager.takePauseNotice('g1', 'u1') ?? '', /einmalig/, 'a new pause is announced again');
+});
+
+test('pause notice (command): appended once to the next /erinnerung reply, errors do not swallow it, fortsetzen has none', async () => {
+  resetReminderCooldown();
+  const uid = 'notice-user-1';
+  const now = Date.now();
+  const row = raidReminderStore.insert({ ...BASE, guildId: GID, userId: uid, nextDueAt: now + 1e6 }, now);
+  raidReminderStore.update(row.id, { pausedReason: 'dm_closed', pausedAt: now, pauseNotifiedAt: null });
+
+  const bad = fakeInteraction({ sub: 'an', userId: uid, strings: { art: 'raid', uhrzeit: '99:99' }, ints: { tag: 1 } });
+  await erinnerung.execute(bad.interaction);
+  assert.doesNotMatch(bad.replies[0]!.content, /einmalig/);
+
+  const first = fakeInteraction({ sub: 'liste', userId: uid });
+  await erinnerung.execute(first.interaction);
+  assert.match(first.replies[0]!.content, /Hinweis \(einmalig\)/);
+  assert.deepEqual(first.replies[0]!.allowedMentions, { parse: [] });
+  const second = fakeInteraction({ sub: 'liste', userId: uid });
+  await erinnerung.execute(second.interaction);
+  assert.doesNotMatch(second.replies[0]!.content, /Hinweis \(einmalig\)/);
+  assert.ok(raidReminderStore.listByUser(GID, uid)[0]!.pauseNotifiedAt);
+
+  const resume = fakeInteraction({ sub: 'fortsetzen', userId: uid });
+  await erinnerung.execute(resume.interaction);
+  assert.doesNotMatch(resume.replies[0]!.content, /Hinweis \(einmalig\)/);
+  assert.equal(raidReminderStore.listByUser(GID, uid)[0]!.pauseNotifiedAt, null, 'resume clears the marker');
+  raidReminderStore.deleteAllByUser(GID, uid);
+});
+
+test('migration idempotency: double ensureSchema + runMigrations on a populated DB changes nothing and never throws', () => {
+  const now = Date.now();
+  const row = raidReminderStore.insert({ ...BASE, guildId: GID, userId: 'mig-user', nextDueAt: now + 1e6 }, now);
+  const tables = () => (sqliteHandle.prepare("SELECT name FROM sqlite_master WHERE type IN ('table','index') ORDER BY name").all() as Array<{ name: string }>).map((r) => r.name);
+  const before = tables();
+  assert.doesNotThrow(() => { ensureSchema(); ensureSchema(); });
+  assert.doesNotThrow(() => { runMigrations(); runMigrations(); });
+  assert.deepEqual(tables(), before);
+  assert.equal(raidReminderStore.listByUser(GID, 'mig-user').length, 1);
+  assert.equal((sqliteHandle.prepare('SELECT message FROM reminders').get() as { message: string }).message, 'alt', 'legacy data untouched');
+  assert.ok(before.includes('idx_raid_reminders_due') && before.includes('idx_raid_reminders_user'));
+  raidReminderStore.delete(row.id);
+});
+
+test('migration: a DB created before pause_notified_at gets the column added without data loss, repeatedly', () => {
+  const now = Date.now();
+  const row = raidReminderStore.insert({ ...BASE, guildId: GID, userId: 'mig-user-2', nextDueAt: now + 1e6 }, now);
+  sqliteHandle.exec('ALTER TABLE raid_reminders DROP COLUMN pause_notified_at');
+  const has = () => (sqliteHandle.prepare("PRAGMA table_info('raid_reminders')").all() as Array<{ name: string }>).some((c) => c.name === 'pause_notified_at');
+  assert.equal(has(), false);
+  runMigrations();
+  runMigrations();
+  assert.equal(has(), true);
+  const kept = sqliteHandle.prepare('SELECT user_id, pause_notified_at FROM raid_reminders WHERE id = ?').get(row.id) as { user_id: string; pause_notified_at: number | null };
+  assert.equal(kept.user_id, 'mig-user-2');
+  assert.equal(kept.pause_notified_at, null);
+  raidReminderStore.delete(row.id);
 });

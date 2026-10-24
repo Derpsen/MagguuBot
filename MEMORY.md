@@ -177,3 +177,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-24 CI alarm test path (Welle d, part 2)
 - `ci-alarm.yml` has `workflow_dispatch` input `test`; job `if` lets the dispatch run only on main with `test=true`, called runs are unchanged (`failure()` gate stays in the callers). Test payload: workflow `<name> TEST (kein echter Fehler)`, log_tail `CI-Alarm Test, kein echter Fehler`, Idempotency-Key by run id.
+
+## 2026-10-24 /erinnerung review follow-ups (low findings of 5d2e110)
+- Scrub: `scrub.ts` now covers bare GitHub tokens, JWTs, Discord webhook tokens, free-text password/secret; `index.ts`/`discord-poster.ts` log via serializer (`{ err }`). New column `raid_reminders.pause_notified_at` (CREATE TABLE + `addColumnIfMissing`; `ensureSchema`/`runMigrations` are exported and tested for double runs).
+- Leave cleanup in `guild-member-remove.ts`; `assertReminderChannelAllowed` in `raid-reminders.ts` (permissions + addonUpdates lock, code 50013 → one pause). Moderators (ManageGuild) via `nutzer` option.
+- Tested only with fakes (fake interactions/channels/permissions, in-memory + temp SQLite); real Discord permission resolution and real `guildMemberRemove` payloads not seen live. The poster/index call sites are covered by a source-level regression test plus serializer tests, not by a live Discord failure.

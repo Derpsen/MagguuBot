@@ -1,10 +1,11 @@
 import { and, asc, eq, isNull, lte } from 'drizzle-orm';
-import type { EmbedBuilder } from 'discord.js';
+import { PermissionFlagsBits, type EmbedBuilder } from 'discord.js';
 import { db } from '../db/client.js';
 import { raidReminders } from '../db/schema.js';
 import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { reminderChannelPayload, reminderDmPayload } from '../utils/raid-reminder.js';
+import { getChannel } from './channel-store.js';
 import { getClient } from './client.js';
 import {
   RaidReminderManager,
@@ -13,6 +14,30 @@ import {
   type ReminderRow,
   type ReminderStore,
 } from './raid-reminder-manager.js';
+
+/** Permissions the bot needs to deliver a channel reminder (same set the other cards use). */
+export const REMINDER_CHANNEL_PERMISSIONS =
+  PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.EmbedLinks;
+
+export interface ReminderChannelLike {
+  id: string;
+  permissionsFor(who: never): { has(bits: bigint): boolean } | null;
+}
+
+/**
+ * Delivery gate: `#updates` (addonUpdates) is reserved for MagguuUI releases, and the bot must be allowed to
+ * view/send/embed. Throws a coded Discord-style error (50013, permanent) so the manager pauses the
+ * subscription once (warn log, no alarm) instead of failing on every tick.
+ */
+export function assertReminderChannelAllowed(channel: ReminderChannelLike, me: unknown, blockedChannelId: string | undefined): void {
+  if (blockedChannelId && channel.id === blockedChannelId) {
+    throw Object.assign(new Error('channel reserved for releases'), { code: 50013 });
+  }
+  const perms = channel.permissionsFor(me as never);
+  if (!perms?.has(REMINDER_CHANNEL_PERMISSIONS)) {
+    throw Object.assign(new Error('missing channel permissions'), { code: 50013 });
+  }
+}
 
 type Row = typeof raidReminders.$inferSelect;
 
@@ -30,6 +55,7 @@ function toRow(r: Row): ReminderRow {
     channelId: r.channelId,
     nextDueAt: r.nextDueAt.getTime(),
     pausedReason: r.pausedReason,
+    pauseNotifiedAt: r.pauseNotifiedAt ? r.pauseNotifiedAt.getTime() : null,
   };
 }
 
@@ -65,6 +91,7 @@ export const raidReminderStore: ReminderStore = {
     if (patch.nextDueAt !== undefined) set.nextDueAt = new Date(patch.nextDueAt);
     if (patch.pausedReason !== undefined) set.pausedReason = patch.pausedReason;
     if (patch.pausedAt !== undefined) set.pausedAt = patch.pausedAt === null ? null : new Date(patch.pausedAt);
+    if (patch.pauseNotifiedAt !== undefined) set.pauseNotifiedAt = patch.pauseNotifiedAt === null ? null : new Date(patch.pauseNotifiedAt);
     if (patch.lastSentAt !== undefined) set.lastSentAt = new Date(patch.lastSentAt);
     if (Object.keys(set).length === 0) return;
     db.update(raidReminders).set(set).where(eq(raidReminders.id, id)).run();
@@ -87,9 +114,11 @@ export const discordReminderGateway: ReminderGateway = {
   },
   async sendChannel(channelId: string, userId: string, embed: EmbedBuilder) {
     const channel = await getClient().channels.fetch(channelId);
-    if (!channel || !channel.isSendable()) {
+    if (!channel || !channel.isSendable() || channel.isDMBased()) {
       throw Object.assign(new Error('channel not sendable'), { code: 10003 });
     }
+    const me = channel.guild.members.me ?? (await channel.guild.members.fetchMe());
+    assertReminderChannelAllowed(channel, me, getChannel('addonUpdates'));
     await channel.send(reminderChannelPayload(userId, embed));
   },
 };

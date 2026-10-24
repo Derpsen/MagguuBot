@@ -149,6 +149,17 @@ export const PAUSE_REASON_TEXT: Record<string, string> = {
   channel_unavailable: 'der Kanal ist nicht erreichbar oder dem Bot fehlen Rechte – prüfe das und nutze `/erinnerung fortsetzen`',
 };
 
+/** One-time hint for the creator when subscriptions were paused (never repeated until they are resumed and paused again). */
+export function pauseNoticeText(rows: ReadonlyArray<Pick<ReminderView, 'id' | 'pausedReason'>>): string | null {
+  if (rows.length === 0) return null;
+  const dm = rows.filter((r) => r.pausedReason === 'dm_closed').length;
+  const channel = rows.length - dm;
+  const parts: string[] = [];
+  if (dm > 0) parts.push(`${dm} DM-Erinnerung(en) pausiert, weil ich dir keine Direktnachricht senden kann – erlaube DMs von Servermitgliedern`);
+  if (channel > 0) parts.push(`${channel} Kanal-Erinnerung(en) pausiert, weil der Kanal nicht erreichbar ist oder dem Bot Rechte fehlen`);
+  return `⏸️ Hinweis (einmalig): ${parts.join('; ')}. Danach \`/erinnerung fortsetzen\`.`;
+}
+
 export function describeReminder(r: ReminderView): string {
   const when = `${WEEKDAY_NAMES[r.day] ?? '?'} ${formatReminderTime(r.hour, r.minute)}`;
   const repeat = r.recurring ? 'wöchentlich' : 'einmalig';

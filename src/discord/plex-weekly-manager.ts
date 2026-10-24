@@ -1,4 +1,5 @@
 import type { EmbedBuilder } from 'discord.js';
+import { scrubString } from '../utils/scrub.js';
 import {
   aggregatePlexWeekly,
   buildPlexWeeklyEmbed,
@@ -83,7 +84,7 @@ export class PlexWeeklyManager {
     try {
       raw = await this.opts.fetchRaw();
     } catch (err) {
-      this.log('warn', 'Plex weekly stats fetch failed', { error: String(err) });
+      this.log('warn', 'Plex weekly stats fetch failed', { error: scrubString(String(err)) });
       return null;
     }
     if (!raw) return null;

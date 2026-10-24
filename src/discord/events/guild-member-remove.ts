@@ -5,6 +5,7 @@ import { memberHistory } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
+import { getRaidReminders } from '../raid-reminders.js';
 import type { BotEvent } from './types.js';
 
 export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
@@ -17,6 +18,13 @@ export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
         .run();
     } catch (err) {
       logger.warn({ err, userId: member.id }, 'member_history left-update failed');
+    }
+
+    try {
+      const removed = getRaidReminders().removeAllForLeftUser(member.guild.id, member.id);
+      if (removed > 0) logger.info({ userId: member.id, removed }, 'deleted raid reminders of the member who left');
+    } catch (err) {
+      logger.warn({ err, userId: member.id }, 'raid reminder cleanup on leave failed');
     }
 
     try {

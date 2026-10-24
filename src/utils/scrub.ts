@@ -20,6 +20,12 @@ export function clearRegisteredSecretsForTests(): void {
 const PARAM = /(^|[?&;,\s"'(])((?:x-plex-token|api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|key)=)([^&\s"'<>)]*)/gi;
 const USERINFO = /(\b[a-z][a-z0-9+.-]*:\/\/)[^\s/@"'<>]+@/gi;
 const BEARER = /\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{6,}/gi;
+// Bare credentials that show up in free text (error messages, response bodies), without any `key=` hint.
+const GITHUB_TOKEN = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{16,})/g;
+const JWT = /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}(?:\.[A-Za-z0-9_-]*)?/g;
+const DISCORD_WEBHOOK = /(\/api(?:\/v\d+)?\/webhooks\/\d+\/)[A-Za-z0-9._-]+/gi;
+// `password: xyz`, `secret = "xyz"`, `passwd is xyz` (a following already-redacted value stays redacted).
+const FREETEXT_SECRET = /\b(password|passwd|passphrase|secret)\b(\s*[:=]\s*|\s+is\s+)("[^"]*"|'[^']*'|[^\s,;"'&]+)/gi;
 
 export function scrubString(input: string): string {
   let out = input;
@@ -29,7 +35,11 @@ export function scrubString(input: string): string {
     if (encoded !== secret && out.includes(encoded)) out = out.split(encoded).join('[redacted]');
   }
   return out
+    .replace(DISCORD_WEBHOOK, '$1[redacted]')
+    .replace(GITHUB_TOKEN, '[redacted]')
+    .replace(JWT, '[redacted]')
     .replace(PARAM, '$1$2[redacted]')
+    .replace(FREETEXT_SECRET, '$1$2[redacted]')
     .replace(USERINFO, '$1[redacted]@')
     .replace(BEARER, '$1 [redacted]');
 }

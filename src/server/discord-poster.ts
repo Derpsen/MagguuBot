@@ -6,6 +6,7 @@ import { db } from '../db/client.js';
 import { webhookEvents, type NewWebhookEvent } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
+import { scrubString } from '../utils/scrub.js';
 import { webhookRetryDelayMs } from '../utils/retry.js';
 import { sanitizePayload } from './webhook-payload-redactor.js';
 import { getWebhookReplayContext } from './webhook-retry-context.js';
@@ -72,8 +73,9 @@ export async function postEmbed(args: PostArgs): Promise<Message | null> {
 
     return message;
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger.error({ source, eventType, error }, 'failed to post embed');
+    // Scrubbed once: the same text goes to the log and into the webhook activity table.
+    const error = scrubString(err instanceof Error ? err.message : String(err));
+    logger.error({ source, eventType, err }, 'failed to post embed');
     logWebhookEvent({
       source,
       eventType,
@@ -105,8 +107,7 @@ export async function editEmbed(args: EditArgs): Promise<Message | null> {
     });
     return edited;
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger.warn({ source, eventType, channelId, messageId, error }, 'failed to edit embed');
+    logger.warn({ source, eventType, channelId, messageId, err }, 'failed to edit embed');
     return null;
   }
 }
