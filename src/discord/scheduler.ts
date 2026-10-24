@@ -26,6 +26,7 @@ import { runPlexPauseFlushTick } from './plex-activity-pause.js';
 import { runPlexCardTick } from './plex-card.js';
 import { runRaidReminderTick } from './raid-reminders.js';
 import { runFaqTopTick } from './faq-top.js';
+import { runUnseenReportTick } from '../services/unseen-report.js';
 import { runServerHealthTick } from './server-health.js';
 import { runPlexNewDigestTick } from './plex-new-digest.js';
 import { plexWeeklyNextRun, runPlexWeeklyTick } from './plex-weekly.js';
@@ -58,6 +59,7 @@ const PLEX_WEEKLY_TICK_MS = 30 * 60_000;
 const PLEX_NEW_DIGEST_TICK_MS = 5 * 60_000;
 const FAQ_TOP_TICK_MS = 4 * 60_000;
 const SERVER_HEALTH_TICK_MS = 15 * 60_000;
+const UNSEEN_REPORT_TICK_MS = 60 * 60_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
 const SELF_CHECK_TICK_MS = 60 * 60_000;
 
@@ -85,6 +87,7 @@ let plexWeeklyTimer: NodeJS.Timeout | null = null;
 let plexNewDigestTimer: NodeJS.Timeout | null = null;
 let faqTopTimer: NodeJS.Timeout | null = null;
 let serverHealthTimer: NodeJS.Timeout | null = null;
+let unseenReportTimer: NodeJS.Timeout | null = null;
 let plexStaleSessionTimer: NodeJS.Timeout | null = null;
 let selfCheckTimer: NodeJS.Timeout | null = null;
 const activeTicks = new Set<string>();
@@ -196,6 +199,10 @@ export function startScheduler(): void {
     runTick('server-health', async () => { await runServerHealthTick(); }, 'Server health card tick failed');
   }, SERVER_HEALTH_TICK_MS);
 
+  unseenReportTimer = setInterval(() => {
+    runTick('unseen-report', async () => { await runUnseenReportTick(); }, 'unseen media report tick failed');
+  }, UNSEEN_REPORT_TICK_MS);
+
   plexStaleSessionTimer = setInterval(() => {
     runTick('plex-stale-sessions', runPlexStaleSessionTick, 'Plex stale session tick failed');
   }, PLEX_STALE_SESSION_TICK_MS);
@@ -226,6 +233,7 @@ export function startScheduler(): void {
     runTick('plex-weekly', () => runPlexWeeklyTick(), 'Plex weekly card boot tick failed');
     runTick('plex-new-digest', runPlexNewDigestTick, 'Plex new-added digest boot tick failed');
     runTick('faq-top', runFaqTopTick, 'FAQ top boot tick failed');
+    runTick('unseen-report', async () => { await runUnseenReportTick(); }, 'unseen media report boot tick failed');
     if (config.WOW_BLUE_TRACKER_URL) {
       runTick('blue-tracker', runBlueTrackerTick, 'blue-tracker boot tick failed');
     }
@@ -259,6 +267,7 @@ export function startScheduler(): void {
       plexWeeklyMs: config.PLEX_WEEKLY_ENABLED ? PLEX_WEEKLY_TICK_MS : 'disabled',
       plexNewDigestMs: config.PLEX_NEW_DIGEST_ENABLED ? PLEX_NEW_DIGEST_TICK_MS : 'disabled',
       faqTopMs: config.FAQ_TOP_ENABLED ? FAQ_TOP_TICK_MS : 'disabled',
+      unseenReportMs: config.PLEX_UNSEEN_REPORT_ENABLED ? UNSEEN_REPORT_TICK_MS : 'disabled',
       serverHealthMs: config.SERVER_HEALTH_CARD_ENABLED ? SERVER_HEALTH_TICK_MS : 'disabled',
       plexWeeklyNext: config.PLEX_WEEKLY_ENABLED ? plexWeeklyNextRun()?.toISOString() : 'disabled',
       plexStaleSessionMs: config.PLEX_STALE_SESSION_MINUTES > 0 ? PLEX_STALE_SESSION_TICK_MS : 'disabled',
@@ -303,6 +312,7 @@ export function stopScheduler(): void {
   if (plexNewDigestTimer) clearInterval(plexNewDigestTimer);
   if (faqTopTimer) clearInterval(faqTopTimer);
   if (serverHealthTimer) clearInterval(serverHealthTimer);
+  if (unseenReportTimer) clearInterval(unseenReportTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   if (selfCheckTimer) clearInterval(selfCheckTimer);
   remindersTimer = null;
@@ -329,6 +339,7 @@ export function stopScheduler(): void {
   plexNewDigestTimer = null;
   faqTopTimer = null;
   serverHealthTimer = null;
+  unseenReportTimer = null;
   plexStaleSessionTimer = null;
   selfCheckTimer = null;
 }

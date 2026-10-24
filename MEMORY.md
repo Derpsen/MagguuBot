@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Unseen media report (Step C, Marco Go)
+
+- Rollback branch `rollback/pre-unseen-report-ee9f403` (Dashboard has its own, see its MEMORY). Rules: AGENTS.md "Unseen media report".
+- Path chosen (safest): the bot computes (read-only Tautulli, daily cache) and serves the result as the new `unseen` field of the existing Bearer `/api/status`; the HA REST sensor `sensor.magguu_bot_status` picks it up as an attribute. No new endpoint, no shell_command, no Discord output.
+- Tautulli API checked against the official reference before coding (`get_library_media_info` fields, `last_played` empty = never). Deliberately no `refresh`. Caveat shown in the card: "never played" = not in Tautulli's history.
+- Residual risk: HA attributes are readable by every HA user (UI gate only, see Dashboard); a huge library with few qualifying rows scans at most 3000 items per library (`partial`).
+
 ## 2026-10-25 Raider.IO score roles (Step B, Marco Go)
 
 - Rollback branch `rollback/pre-rio-roles-60e9173`. Rules: AGENTS.md "Raider.IO score roles".

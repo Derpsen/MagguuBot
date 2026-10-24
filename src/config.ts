@@ -110,6 +110,10 @@ const schema = z.object({
   PLEX_CARD_CLEANUP_ENABLED: envBoolean(true),
   PLEX_CARD_CLEANUP_DRY_RUN: envBoolean(false),
   PLEX_CARD_CLEANUP_SCAN_LIMIT: z.coerce.number().int().min(100).max(2000).default(1000),
+  /** Read-only report of big, unseen / long-unwatched Plex media for the dashboard (never deletes anything). */
+  PLEX_UNSEEN_REPORT_ENABLED: envBoolean(true),
+  PLEX_UNSEEN_REPORT_MIN_AGE_DAYS: z.coerce.number().int().min(7).max(3650).default(90),
+  PLEX_UNSEEN_REPORT_STALE_DAYS: z.coerce.number().int().min(30).max(3650).default(365),
   /** Raider.IO score roles on request: "minScore=roleId,..." or JSON [{minScore, roleId}]; empty = not set up. */
   RIO_ROLE_THRESHOLDS: z.string().default(''),
   /** Optional display label of the season the thresholds are meant for (e.g. "Season 2"). */

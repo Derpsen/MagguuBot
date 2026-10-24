@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Added
+- Read-only unseen media report for the Magguu dashboard: once per 24 h (hourly check, 24 h cache in memory + `bot_settings`) the bot reads Tautulli (`get_libraries`, `get_library_media_info` sorted by size, no `refresh`) and keeps the 25 biggest never-played / long-unwatched movie and show titles (title, size, library, last play, added). New field `unseen` in the authenticated `GET /api/status` (no new endpoint, no user data, no delete path, nothing in Discord). Envs `PLEX_UNSEEN_REPORT_ENABLED`, `PLEX_UNSEEN_REPORT_MIN_AGE_DAYS` (90), `PLEX_UNSEEN_REPORT_STALE_DAYS` (365).
 - `/rio-link charakter realm region`, `/rio-unlink` and admin `/rio-config` (Manage Server): voluntary Raider.IO score roles on request (no Battle.net OAuth, no background sync). Score from the public `characters/profile?fields=mythic_plus_scores_by_season:current` API (8 s timeout, 2 min cache, global 30/min ceiling, Retry-After honoured, clear messages for not found / 429 / 5xx / timeout), thresholds from `RIO_ROLE_THRESHOLDS` (JSON or `score=roleId,…`) or `/rio-config`, `RIO_SEASON_LABEL`. Never creates roles; missing roles / Manage Roles / role hierarchy give an ephemeral message; only bot-assigned score roles are added or removed. Table `rio_link` (`CREATE TABLE IF NOT EXISTS`), mapping deleted on `guildMemberRemove`. Not set up = a friendly hint, no error.
 
 ### Changed

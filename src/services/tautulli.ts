@@ -261,3 +261,48 @@ export function pickStatSection(
 ): TautulliStatSection | undefined {
   return sections.find((s) => s.stat_id === statId);
 }
+
+/** One entry of `get_libraries` (Tautulli v2). */
+export interface TautulliLibraryRaw {
+  section_id?: string | number;
+  section_name?: string;
+  section_type?: 'movie' | 'show' | 'artist' | 'photo' | string;
+}
+
+/** All libraries; null when Tautulli is unreachable or not configured. Read-only. */
+export async function getLibraries(): Promise<TautulliLibraryRaw[] | null> {
+  const data = await tautulliFetch<TautulliLibraryRaw[]>('get_libraries');
+  return Array.isArray(data) ? data : null;
+}
+
+export interface TautulliMediaInfoPage {
+  recordsTotal: number;
+  data: Array<Record<string, unknown>>;
+}
+
+/**
+ * One page of `get_library_media_info`, biggest files first. Read-only: it never passes `refresh` (that would make
+ * Tautulli rebuild its media-info cache from Plex, a heavy write on Tautulli's side), so it only reads the table
+ * Tautulli already has. Null when unreachable / error.
+ */
+export async function getLibraryMediaInfoPage(
+  sectionId: string,
+  sectionType: 'movie' | 'show',
+  start: number,
+  length: number,
+): Promise<TautulliMediaInfoPage | null> {
+  const data = await tautulliFetch<{ recordsTotal?: number | string; data?: Array<Record<string, unknown>> }>(
+    'get_library_media_info',
+    {
+      section_id: sectionId,
+      section_type: sectionType,
+      order_column: 'file_size',
+      order_dir: 'desc',
+      start: String(start),
+      length: String(length),
+    },
+  );
+  if (!data || !Array.isArray(data.data)) return null;
+  const total = Number(data.recordsTotal);
+  return { recordsTotal: Number.isFinite(total) ? total : data.data.length, data: data.data };
+}

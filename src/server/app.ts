@@ -18,7 +18,7 @@ import { radarrWebhook } from './webhooks/radarr.js';
 import { sabnzbdWebhook } from './webhooks/sabnzbd.js';
 import { seerrWebhook } from './webhooks/seerr.js';
 import { sonarrWebhook } from './webhooks/sonarr.js';
-import { buildStatusSnapshot, currentBuildInfo, currentFaqStatus, lastWebhookBySource } from './status-snapshot.js';
+import { buildStatusSnapshot, currentBuildInfo, currentFaqStatus, currentUnseenStatus, lastWebhookBySource } from './status-snapshot.js';
 import { tautulliWebhook } from './webhooks/tautulli.js';
 
 const FRONTEND_DIR = resolve(process.cwd(), 'dist-frontend');
@@ -91,6 +91,7 @@ export function buildApp(): Hono {
       staleHours: config.STATUS_STALE_HOURS,
       now: new Date(),
       faq: currentFaqStatus(),
+      unseen: currentUnseenStatus(),
     }));
   });
 
