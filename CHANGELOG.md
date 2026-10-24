@@ -12,6 +12,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - Webhook rate-limit client IP: forwarded headers are only trusted from peers listed in the new `TRUSTED_PROXIES` (IP/CIDR allowlist, X-Forwarded-For walked right-to-left). `TRUST_PROXY=true` alone no longer trusts headers (startup warning).
 
 ### Added
+- `/neu [tage 1-30] [typ]`: new Plex movies/series of the last days from Tautulli `get_recently_added`, paginated ephemeral embed with page buttons (invoker only), 5 min cache, 5 s per-user cooldown, friendly error text instead of alarms. Posters only from public TMDB/TVDB URLs of an already configured Radarr/Sonarr library, never Plex token URLs.
 - Plex weekly statistics card: one embed (top movies/series, most active users, plays, watch hours of the last 7 days from Tautulli) in `#neu-auf-plex`, edited in place (message id in SQLite `plex_weekly_card`, content-hash dedupe, repost only if the message is gone). Weekly schedule via `PLEX_WEEKLY_ENABLED/DAY/HOUR` (default Monday 08:00, `TIME_ZONE`), channel override `DISCORD_CHANNEL_PLEX_WEEKLY`, manual refresh with `/wochenstatistik`. Tautulli errors are logged quietly, no Discord alarm.
 
 ### Fixed

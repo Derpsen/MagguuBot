@@ -22,6 +22,7 @@ import { leaderboardCommand } from './leaderboard.js';
 import { lockdownCommand } from './lockdown.js';
 import { movieNightCommand } from './movie-night.js';
 import { plexNowPlayingCommand } from './plex-now-playing.js';
+import { neuCommand } from './neu.js';
 import { plexTopCommand } from './plex-top.js';
 import { pollCommand } from './poll.js';
 import { profileCommand } from './profile.js';
@@ -64,6 +65,7 @@ const all: SlashCommand[] = [
   arrStatusCommand,
   calendarCommand,
   plexTopCommand,
+  neuCommand,
   wochenstatistikCommand,
   plexNowPlayingCommand,
   searchCommand,

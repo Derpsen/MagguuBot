@@ -76,3 +76,9 @@ export async function getRadarrCalendar(startIso: string, endIso: string): Promi
   const q = `start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`;
   return radarr.get<RadarrCalendarEntry[]>(`/api/v3/calendar?${q}`);
 }
+
+/** Whole library (title, year, artwork) — only used for public poster URLs by `/neu`; big payload, callers cache it. */
+export async function getRadarrLibrary(): Promise<RadarrMovie[] | null> {
+  if (!radarr) return null;
+  return radarr.get<RadarrMovie[]>('/api/v3/movie');
+}

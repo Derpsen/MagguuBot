@@ -17,6 +17,7 @@ import { backfillWelcomePins, handleSetupServerButton } from './commands/setup-s
 import { allEvents } from './events/index.js';
 import { autocompleteTagNames } from './commands/tag.js';
 import { handleGiveawayButton } from './interactions/giveaway-buttons.js';
+import { handleNeuButton } from './interactions/neu-buttons.js';
 import { handleRoleButton } from './interactions/role-buttons.js';
 import { handleSuggestionButton } from './interactions/suggestion-buttons.js';
 import { handleRolePanelButton } from './interactions/role-panel-buttons.js';
@@ -122,6 +123,8 @@ export async function startDiscord(): Promise<void> {
           await handleSuggestionButton(interaction);
         } else if (interaction.customId.startsWith('giveaway:')) {
           await handleGiveawayButton(interaction);
+        } else if (interaction.customId.startsWith('neu:')) {
+          await handleNeuButton(interaction);
         } else if (interaction.customId.startsWith('setup-server:')) {
           await handleSetupServerButton(interaction);
         } else {

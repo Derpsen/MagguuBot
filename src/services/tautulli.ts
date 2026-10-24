@@ -91,6 +91,32 @@ export async function getPlaysByDate(
   });
 }
 
+/** One entry of `get_recently_added` (Tautulli v2). Only the fields /neu reads; thumb paths are deliberately ignored (they need a Plex token). */
+export interface TautulliRecentRaw {
+  media_type?: 'movie' | 'show' | 'season' | 'episode' | string;
+  title?: string;
+  year?: string | number;
+  added_at?: string | number;
+  rating_key?: string | number;
+  grandparent_title?: string;
+  parent_title?: string;
+  parent_media_index?: string | number;
+  media_index?: string | number;
+}
+
+/** Newest-first recently added entries of one type; null when Tautulli is unreachable or not configured. */
+export async function getRecentlyAdded(
+  mediaType: 'movie' | 'show',
+  count: number,
+): Promise<TautulliRecentRaw[] | null> {
+  const data = await tautulliFetch<{ recently_added?: TautulliRecentRaw[] }>('get_recently_added', {
+    count: String(count),
+    media_type: mediaType,
+  });
+  if (!data || !Array.isArray(data.recently_added)) return null;
+  return data.recently_added;
+}
+
 interface TautulliActivityEnvelope {
   stream_count?: string | number;
   stream_count_transcode?: string | number;

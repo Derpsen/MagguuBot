@@ -197,6 +197,7 @@ export function buildCommandsCard(ctx: CardContext): CardPayload {
     ['calendar', 'kommende Releases'],
     ['plex-now-playing', 'wer gerade schaut'],
     ['plex-top', 'meistgesehen'],
+    ['neu', 'neu auf Plex'],
   ]);
   const community = commandLines(ctx, [
     ['rank', 'dein Level'],

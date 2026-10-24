@@ -76,3 +76,9 @@ export async function getSonarrCalendar(startIso: string, endIso: string): Promi
   const q = `start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}&includeSeries=true`;
   return sonarr.get<SonarrCalendarEntry[]>(`/api/v3/calendar?${q}`);
 }
+
+/** Whole library (title, year, artwork) — only used for public poster URLs by `/neu`; big payload, callers cache it. */
+export async function getSonarrLibrary(): Promise<SonarrSeries[] | null> {
+  if (!sonarr) return null;
+  return sonarr.get<SonarrSeries[]>('/api/v3/series');
+}
