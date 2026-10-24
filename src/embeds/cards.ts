@@ -205,6 +205,7 @@ export function buildCommandsCard(ctx: CardContext): CardPayload {
     ['suggest', 'Vorschlag einreichen'],
     ['movie-night nominate', 'Film für den Filmabend'],
     ['remindme', 'Erinnerung per DM'],
+    ['erinnerung an', 'Raid-/M+-Erinnerung (wöchentlich)'],
     ['tag get', 'FAQ-Antwort abrufen'],
     ['wrapped', 'dein Jahresrückblick'],
   ]);

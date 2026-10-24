@@ -16,7 +16,7 @@ See also [CHANGELOG.md](./CHANGELOG.md).
 
 - **Webhook receiver** — `/webhook/{sonarr,radarr,seerr,tautulli,sabnzbd,prowlarr,github}` with shared-secret / HMAC auth
 - **Styled embeds** — one consistent look across services, posters, progress bars, lifecycle cards
-- **Slash commands** — 54 guild commands via `/help` (downloads, moderation, utility, admin)
+- **Slash commands** — 55 guild commands via `/help` (downloads, moderation, utility, admin)
   - `/queue` — live Sonarr + Radarr download queue with progress bars
   - `/search movie <query>` / `/search show <query>` — Radarr / Sonarr search
   - `/setup-server` — idempotently scaffolds categories, channels, roles, and posts welcome banners
@@ -169,7 +169,7 @@ src/
 ├── settings.ts                  # runtime feature toggles (SQLite)
 ├── db/                          # schema + WAL client + backup/restore
 ├── discord/
-│   ├── commands/                # 54 slash commands (see AGENTS.md)
+│   ├── commands/                # 55 slash commands (see AGENTS.md)
 │   ├── interactions/            # Seerr, tickets, roles, suggestions, …
 │   ├── server-layout.ts            # STRUCTURE, ROLES, name constants (shared by setup-server + rollout)
 │   └── channel-store.ts         # SQLite-first channel ID resolution

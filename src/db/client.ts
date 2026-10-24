@@ -498,6 +498,26 @@ function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS raid_reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      day INTEGER NOT NULL,
+      hour INTEGER NOT NULL,
+      minute INTEGER NOT NULL,
+      text TEXT,
+      recurring INTEGER NOT NULL DEFAULT 0,
+      channel_id TEXT,
+      next_due_at INTEGER NOT NULL,
+      paused_reason TEXT,
+      paused_at INTEGER,
+      last_sent_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_raid_reminders_due ON raid_reminders(next_due_at);
+    CREATE INDEX IF NOT EXISTS idx_raid_reminders_user ON raid_reminders(guild_id, user_id);
+
     CREATE TABLE IF NOT EXISTS event_lifecycle_messages (
       guild_id TEXT NOT NULL,
       lifecycle_key TEXT NOT NULL,

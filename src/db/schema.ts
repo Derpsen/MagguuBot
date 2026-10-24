@@ -594,3 +594,28 @@ export type Ticket = typeof tickets.$inferSelect;
 export type Reputation = typeof reputation.$inferSelect;
 export type Suggestion = typeof suggestions.$inferSelect;
 export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;
+
+// User-defined weekly Raid / Mythic+ / misc reminders (`/erinnerung`). `next_due_at` is the single source of truth.
+export const raidReminders = sqliteTable(
+  'raid_reminders',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    guildId: text('guild_id').notNull(),
+    userId: text('user_id').notNull(),
+    kind: text('kind', { enum: ['raid', 'mythicplus', 'other'] }).notNull(),
+    day: integer('day').notNull(),
+    hour: integer('hour').notNull(),
+    minute: integer('minute').notNull(),
+    text: text('text'),
+    recurring: integer('recurring', { mode: 'boolean' }).notNull().default(false),
+    channelId: text('channel_id'),
+    nextDueAt: integer('next_due_at', { mode: 'timestamp_ms' }).notNull(),
+    pausedReason: text('paused_reason'),
+    pausedAt: integer('paused_at', { mode: 'timestamp_ms' }),
+    lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [index('idx_raid_reminders_due').on(t.nextDueAt), index('idx_raid_reminders_user').on(t.guildId, t.userId)],
+);

@@ -24,12 +24,14 @@ import { runAutomaticBackupTick } from './automatic-backup.js';
 import { runPlexActivityCleanupTick } from './plex-activity-cleanup.js';
 import { runPlexPauseFlushTick } from './plex-activity-pause.js';
 import { runPlexCardTick } from './plex-card.js';
+import { runRaidReminderTick } from './raid-reminders.js';
 import { plexWeeklyNextRun, runPlexWeeklyTick } from './plex-weekly.js';
 import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
 import { runDailySelfCheckTick } from './self-check.js';
 import { runWebhookRetryTick } from '../server/webhook-retry.js';
 
 const REMINDER_TICK_MS = 30_000;
+const RAID_REMINDER_TICK_MS = 30_000;
 const ANNOUNCE_TICK_MS = 30_000;
 const BLUE_TRACKER_TICK_MS = 15 * 60_000;
 const WEBSITE_FAQ_TICK_MS = 60 * 60_000;
@@ -53,6 +55,7 @@ const PLEX_STALE_SESSION_TICK_MS = 60_000;
 const SELF_CHECK_TICK_MS = 60 * 60_000;
 
 let remindersTimer: NodeJS.Timeout | null = null;
+let raidReminderTimer: NodeJS.Timeout | null = null;
 let announceTimer: NodeJS.Timeout | null = null;
 let blueTrackerTimer: NodeJS.Timeout | null = null;
 let addonReleaseTimer: NodeJS.Timeout | null = null;
@@ -84,6 +87,10 @@ export function startScheduler(): void {
   remindersTimer = setInterval(() => {
     runTick('reminders', processDueReminders, 'reminder tick failed');
   }, REMINDER_TICK_MS);
+
+  raidReminderTimer = setInterval(() => {
+    runTick('raid-reminders', runRaidReminderTick, 'raid reminder tick failed');
+  }, RAID_REMINDER_TICK_MS);
 
   announceTimer = setInterval(() => {
     runTick('announcements', processDueAnnouncements, 'announce tick failed');
@@ -178,6 +185,7 @@ export function startScheduler(): void {
 
   setImmediate(() => {
     runTick('reminders', processDueReminders, 'reminder boot tick failed');
+    runTick('raid-reminders', runRaidReminderTick, 'raid reminder boot tick failed');
     runTick('announcements', processDueAnnouncements, 'announce boot tick failed');
     runTick('topics', updateChannelTopics, 'topics boot tick failed');
     runTick('countdowns', tickCountdowns, 'countdown boot tick failed');
@@ -209,6 +217,7 @@ export function startScheduler(): void {
   logger.info(
     {
       reminderMs: REMINDER_TICK_MS,
+      raidReminderMs: RAID_REMINDER_TICK_MS,
       announceMs: ANNOUNCE_TICK_MS,
       topicsMs: TOPICS_TICK_MS,
       countdownMs: COUNTDOWN_TICK_MS,
@@ -247,6 +256,7 @@ function runTick(key: string, task: () => Promise<void>, failureMessage: string)
 
 export function stopScheduler(): void {
   if (remindersTimer) clearInterval(remindersTimer);
+  if (raidReminderTimer) clearInterval(raidReminderTimer);
   if (announceTimer) clearInterval(announceTimer);
   if (blueTrackerTimer) clearInterval(blueTrackerTimer);
   if (addonReleaseTimer) clearInterval(addonReleaseTimer);
@@ -269,6 +279,7 @@ export function stopScheduler(): void {
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   if (selfCheckTimer) clearInterval(selfCheckTimer);
   remindersTimer = null;
+  raidReminderTimer = null;
   announceTimer = null;
   blueTrackerTimer = null;
   addonReleaseTimer = null;

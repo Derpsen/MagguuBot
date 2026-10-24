@@ -44,6 +44,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { source: 'Movie-Night', keys: ['movieNight'], integrated: true, delivery: 'channel' },
   { source: 'Starboard', keys: ['starboard'], integrated: true, delivery: 'channel' },
   { source: 'Level/XP', keys: [], integrated: true, delivery: 'none', note: 'vergibt nur Rollen, kein Kanal-Post' },
+  { source: 'Raid-/M+-Erinnerungen (/erinnerung)', keys: [], integrated: true, delivery: 'dm', note: 'DM oder gewählter Kanal, nur Erwähnung des Abonnenten' },
   { source: 'Erinnerungen (/remindme)', keys: [], integrated: true, delivery: 'dm', note: 'DM, Fallback im Kanal des Befehls' },
   { source: 'Bazarr', keys: [], integrated: false, delivery: 'none', note: 'nicht integriert' },
   { source: 'Uptime Kuma', keys: [], integrated: false, delivery: 'none', note: 'nicht integriert' },

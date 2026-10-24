@@ -32,6 +32,7 @@ import { queueCommand } from './queue.js';
 import { quoteCommand } from './quote.js';
 import { rankCommand } from './rank.js';
 import { autoresponderCommand } from './autoresponder.js';
+import { erinnerungCommand } from './erinnerung.js';
 import { remindmeCommand } from './remindme.js';
 import { repCommand } from './rep.js';
 import { rolesPanelCommand } from './roles-panel.js';
@@ -91,6 +92,7 @@ const all: SlashCommand[] = [
   profileCommand,
   countdownCommand,
   remindmeCommand,
+  erinnerungCommand,
   rankCommand,
   leaderboardCommand,
   userinfoCommand,

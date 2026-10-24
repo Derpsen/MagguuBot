@@ -1,0 +1,529 @@
+import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import Database from 'better-sqlite3';
+import { PermissionFlagsBits, type EmbedBuilder } from 'discord.js';
+import {
+  RaidReminderManager,
+  reminderCooldownLeft,
+  resetReminderCooldown,
+  type NewReminder,
+  type ReminderGateway,
+  type ReminderRow,
+  type ReminderStore,
+} from '../src/discord/raid-reminder-manager.ts';
+import {
+  MAX_REMINDER_TEXT,
+  buildReminderEmbed,
+  decideDue,
+  nextWeeklyOccurrence,
+  parseReminderTime,
+  reminderChannelPayload,
+  reminderDmPayload,
+  sanitizeReminderText,
+  zonedTimeToUtc,
+} from '../src/utils/raid-reminder.ts';
+
+// Real-DB parts use a throwaway file; a LEGACY db (only an old table) exists before the bot's DB module
+// boots, so the CREATE TABLE IF NOT EXISTS migration is exercised against an existing database.
+const dir = mkdtempSync(join(tmpdir(), 'magguu-erinnerung-'));
+const dbPath = join(dir, 'bot.db');
+{
+  const legacy = new Database(dbPath);
+  legacy.exec('CREATE TABLE reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, guild_id TEXT, channel_id TEXT, message TEXT NOT NULL, due_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);');
+  legacy.prepare('INSERT INTO reminders (user_id, message, due_at, created_at) VALUES (?,?,?,?)').run('1', 'alt', 1, 1);
+  legacy.close();
+}
+process.env.DISCORD_TOKEN ??= 'test-token-not-used';
+process.env.DISCORD_CLIENT_ID ??= '1498095100000000001';
+process.env.DISCORD_GUILD_ID = '1400000000000000099';
+process.env.WEBHOOK_SECRET ??= 'test-secret-0123456789abcdef';
+process.env.DATABASE_PATH = dbPath;
+const { commands } = await import('../src/discord/commands/index.ts');
+const { raidReminderStore } = await import('../src/discord/raid-reminders.ts');
+const { sqliteHandle } = await import('../src/db/client.ts');
+const erinnerung = commands.get('erinnerung')!;
+
+const TZ = 'Europe/Berlin';
+const MIN = 60_000;
+
+// ─── time arithmetic (pure, real Intl – no fakes) ───
+
+test('nextWeeklyOccurrence: ordinary week in CEST and CET', () => {
+  // Sat 2026-10-24 12:00Z. Next Thursday 20:00 CEST = 18:00Z
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 24, 12), TZ, 4, 20, 0), Date.UTC(2026, 9, 29, 19, 0)); // already CET on Oct 29
+  // Wed Oct 21 -> Thursday Oct 22 20:00 CEST
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 21, 12), TZ, 4, 20, 0), Date.UTC(2026, 9, 22, 18, 0));
+  // Friday 19:45 CET
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 24, 12), TZ, 5, 19, 45), Date.UTC(2026, 9, 30, 18, 45));
+});
+
+test('nextWeeklyOccurrence: strictly after, same day later vs. earlier, never more than 8 days away', () => {
+  const t = Date.UTC(2026, 9, 22, 18, 0); // Thu 20:00 CEST
+  assert.equal(nextWeeklyOccurrence(t - 1, TZ, 4, 20, 0), t);
+  assert.equal(nextWeeklyOccurrence(t, TZ, 4, 20, 0), Date.UTC(2026, 9, 29, 19, 0)); // next week, now CET
+  for (let day = 0; day < 7; day += 1) {
+    const next = nextWeeklyOccurrence(t, TZ, day, 3, 0);
+    assert.ok(next > t && next - t <= 8 * 86_400_000);
+  }
+});
+
+test('DST end (2026-10-25): wall clock stays 20:00 across the switch, ambiguous 02:30 fires once at the first occurrence', () => {
+  // Sunday 20:00 weekly: sent Oct 18 20:00 CEST (18:00Z) -> Oct 25 20:00 CET (19:00Z)
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 18, 18, 0, 5), TZ, 0, 20, 0), Date.UTC(2026, 9, 25, 19, 0));
+  // 02:30 on the switch day exists twice -> first (CEST, 00:30Z)
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 24, 12), TZ, 0, 2, 30), Date.UTC(2026, 9, 25, 0, 30));
+  // and after that first occurrence the next one is a week later (not 01:30Z the same night)
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 25, 0, 30), TZ, 0, 2, 30), Date.UTC(2026, 10, 1, 1, 30));
+});
+
+test('DST start (2026-03-29): non-existent 02:30 is shifted to 03:30 local, not skipped; 20:00 stays 20:00', () => {
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 2, 28, 12), TZ, 0, 2, 30), Date.UTC(2026, 2, 29, 1, 30)); // 03:30 CEST
+  assert.equal(zonedTimeToUtc(2026, 3, 29, 2, 30, TZ), Date.UTC(2026, 2, 29, 1, 30));
+  // Sunday 20:00: Mar 22 20:00 CET (19:00Z) -> Mar 29 20:00 CEST (18:00Z)
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 2, 22, 19, 0, 5), TZ, 0, 20, 0), Date.UTC(2026, 2, 29, 18, 0));
+});
+
+test('other zones work too (America/New_York, no DST confusion at the date line)', () => {
+  // Fri 2026-10-23 12:00Z, NY is EDT (UTC-4): Saturday 09:00 local = 13:00Z
+  assert.equal(nextWeeklyOccurrence(Date.UTC(2026, 9, 23, 12), 'America/New_York', 6, 9, 0), Date.UTC(2026, 9, 24, 13, 0));
+});
+
+// ─── parsing / sanitising ───
+
+test('parseReminderTime accepts HH:MM, H.MM, "20 Uhr" and rejects garbage', () => {
+  assert.deepEqual(parseReminderTime('19:45'), { hour: 19, minute: 45 });
+  assert.deepEqual(parseReminderTime('9:05'), { hour: 9, minute: 5 });
+  assert.deepEqual(parseReminderTime('20.15'), { hour: 20, minute: 15 });
+  assert.deepEqual(parseReminderTime('20 Uhr'), { hour: 20, minute: 0 });
+  assert.deepEqual(parseReminderTime('0:00'), { hour: 0, minute: 0 });
+  for (const bad of ['24:00', '12:60', '', 'abc', '12:5', '-1:00', '1:2:3', '99']) assert.equal(parseReminderTime(bad), null, bad);
+});
+
+test('sanitizeReminderText clips to 100 chars, strips control chars and neutralises markdown and mentions', () => {
+  const evil = '@everyone @here <@&123456789012345678> <@123456789012345678> **x** [a](http://evil.example) ' + 'B'.repeat(300);
+  const out = sanitizeReminderText(evil)!;
+  assert.ok(Array.from(out.replace(/\\(.)/g, '$1')).length <= MAX_REMINDER_TEXT);
+  assert.ok(!/(^|[^\\])@everyone/.test(out) && !/(^|[^\\])@here/.test(out), out);
+  assert.ok(!/(^|[^\\])<@/.test(out), out);
+  assert.equal(sanitizeReminderText('   '), null);
+  assert.equal(sanitizeReminderText(null), null);
+  assert.equal(sanitizeReminderText('a\u202eb\u200bc'), 'abc', 'bidi override / zero-width removed');
+  assert.ok(!/[\u0000-\u001f]/.test(sanitizeReminderText('a\u0000b')!), 'control chars removed');
+});
+
+test('mention safety: DM pings nobody, channel pings only the subscriber; embed carries the (escaped) text', () => {
+  const embed = buildReminderEmbed({ kind: 'raid', text: sanitizeReminderText('@everyone <@&1> los'), recurring: true });
+  assert.deepEqual(reminderDmPayload(embed).allowedMentions, { parse: [] });
+  assert.ok(!('content' in reminderDmPayload(embed)));
+  const ch = reminderChannelPayload('111122223333444455', embed);
+  assert.equal(ch.content, '<@111122223333444455>');
+  assert.deepEqual(ch.allowedMentions, { parse: [], users: ['111122223333444455'] });
+  const description = embed.data.description ?? '';
+  assert.ok(!/(^|[^\\])@everyone/.test(description) && !/(^|[^\\])<@&/.test(description), description);
+  assert.match(embed.data.title ?? '', /Raid-Erinnerung/);
+});
+
+test('decideDue: wait / send within 15 min / stale after', () => {
+  const now = Date.UTC(2026, 9, 24, 18, 0);
+  assert.equal(decideDue(now + 1, now), 'wait');
+  assert.equal(decideDue(now, now), 'send');
+  assert.equal(decideDue(now - 15 * MIN, now), 'send');
+  assert.equal(decideDue(now - 15 * MIN - 1, now), 'stale');
+});
+
+// ─── manager with in-memory store + fake gateway (FAKES: no real Discord) ───
+
+class MemStore implements ReminderStore {
+  rows: ReminderRow[] = [];
+  private seq = 0;
+  insert(input: NewReminder): ReminderRow {
+    const row: ReminderRow = { ...input, id: ++this.seq, pausedReason: null };
+    this.rows.push(row);
+    return row;
+  }
+  listByUser(guildId: string, userId: string): ReminderRow[] {
+    return this.rows.filter((r) => r.guildId === guildId && r.userId === userId);
+  }
+  due(now: number): ReminderRow[] {
+    return this.rows.filter((r) => !r.pausedReason && r.nextDueAt <= now).map((r) => ({ ...r }));
+  }
+  update(id: number, patch: { nextDueAt?: number; pausedReason?: string | null; pausedAt?: number | null; lastSentAt?: number }): void {
+    const row = this.rows.find((r) => r.id === id)!;
+    if (patch.nextDueAt !== undefined) row.nextDueAt = patch.nextDueAt;
+    if (patch.pausedReason !== undefined) row.pausedReason = patch.pausedReason;
+  }
+  delete(id: number): void {
+    this.rows = this.rows.filter((r) => r.id !== id);
+  }
+  deleteAllByUser(guildId: string, userId: string): number {
+    const before = this.rows.length;
+    this.rows = this.rows.filter((r) => !(r.guildId === guildId && r.userId === userId));
+    return before - this.rows.length;
+  }
+}
+
+class FakeGateway implements ReminderGateway {
+  dms: string[] = [];
+  channels: Array<{ channelId: string; userId: string }> = [];
+  dmError: unknown = null;
+  channelError: unknown = null;
+  attempts = 0;
+  async sendDm(userId: string, _embed: EmbedBuilder): Promise<void> {
+    this.attempts += 1;
+    if (this.dmError) throw this.dmError;
+    this.dms.push(userId);
+  }
+  async sendChannel(channelId: string, userId: string, _embed: EmbedBuilder): Promise<void> {
+    this.attempts += 1;
+    if (this.channelError) throw this.channelError;
+    this.channels.push({ channelId, userId });
+  }
+}
+
+const discordError = (code: number): Error => Object.assign(new Error(`Discord ${code}`), { code });
+
+function setup(start: number) {
+  const store = new MemStore();
+  const gateway = new FakeGateway();
+  const clock = { t: start };
+  const logs: string[] = [];
+  const manager = new RaidReminderManager({
+    store,
+    gateway,
+    timeZone: TZ,
+    now: () => clock.t,
+    log: (_level, msg) => logs.push(msg),
+  });
+  return { store, gateway, clock, logs, manager };
+}
+
+const BASE = { guildId: 'g1', userId: 'u1', kind: 'raid' as const, day: 4, hour: 20, minute: 0, text: null, recurring: true, channelId: null };
+// Sat 2026-10-24 12:00Z; next Thursday 20:00 is Oct 29 20:00 CET = 19:00Z
+const NOW = Date.UTC(2026, 9, 24, 12);
+const DUE = Date.UTC(2026, 9, 29, 19, 0);
+
+test('limits: max 5 per user, duplicates rejected, other users unaffected', () => {
+  const { manager } = setup(NOW);
+  for (let i = 0; i < 5; i += 1) assert.equal(manager.add({ ...BASE, minute: i }).ok, true);
+  const sixth = manager.add({ ...BASE, minute: 10 });
+  assert.deepEqual(sixth, { ok: false, reason: 'limit', limit: 5 });
+  assert.equal(manager.add({ ...BASE, userId: 'u2' }).ok, true);
+  const { manager: m2 } = setup(NOW);
+  assert.equal(m2.add(BASE).ok, true);
+  assert.deepEqual(m2.add(BASE), { ok: false, reason: 'duplicate' });
+});
+
+test('add computes next due via the bot time zone', () => {
+  const { manager } = setup(NOW);
+  const res = manager.add(BASE);
+  assert.ok(res.ok && res.reminder.nextDueAt === DUE);
+});
+
+test('tick: nothing before due; at due sends one DM, recurring moves exactly one week (wall clock kept across DST)', async () => {
+  const { manager, gateway, clock, store } = setup(Date.UTC(2026, 9, 18, 12)); // Sun Oct 18, still CEST
+  const added = manager.add({ ...BASE, day: 0, hour: 20 });
+  assert.ok(added.ok);
+  assert.equal(added.ok && added.reminder.nextDueAt, Date.UTC(2026, 9, 18, 18, 0));
+  clock.t = Date.UTC(2026, 9, 18, 17, 59);
+  assert.deepEqual(await manager.tick(), { sent: 0, skipped: 0, paused: 0, failed: 0 });
+  clock.t = Date.UTC(2026, 9, 18, 18, 0, 20);
+  assert.equal((await manager.tick()).sent, 1);
+  assert.deepEqual(gateway.dms, ['u1']);
+  assert.equal(store.rows[0]!.nextDueAt, Date.UTC(2026, 9, 25, 19, 0)); // 20:00 CET after the switch
+  clock.t += 5_000;
+  await manager.tick();
+  assert.equal(gateway.dms.length, 1, 'no double send');
+});
+
+test('one-off reminders are removed after sending (frees the limit); channel delivery goes to the channel', async () => {
+  const { manager, gateway, clock, store } = setup(NOW);
+  manager.add({ ...BASE, recurring: false });
+  manager.add({ ...BASE, recurring: false, minute: 5, channelId: 'c1' });
+  clock.t = DUE + 6 * MIN;
+  const s = await manager.tick();
+  assert.equal(s.sent, 2);
+  assert.deepEqual(gateway.dms, ['u1']);
+  assert.deepEqual(gateway.channels, [{ channelId: 'c1', userId: 'u1' }]);
+  assert.equal(store.rows.length, 0);
+});
+
+test('missed reminders: >15 min overdue is NOT sent late (no mass resend after restart), recurring ones are rescheduled', async () => {
+  const { manager, gateway, clock, store } = setup(NOW);
+  for (const minute of [0, 1, 2]) manager.add({ ...BASE, minute });
+  manager.add({ ...BASE, minute: 3, recurring: false });
+  clock.t = DUE + 3 * 86_400_000; // bot was down for days
+  const s = await manager.tick();
+  assert.equal(s.sent, 0);
+  assert.equal(s.skipped, 4);
+  assert.equal(gateway.attempts, 0);
+  assert.equal(store.rows.length, 3, 'one-off dropped, weekly kept');
+  assert.ok(store.rows.every((r) => r.nextDueAt > clock.t));
+});
+
+test('missed reminder at exactly 14 min overdue after a restart is still delivered', async () => {
+  const { manager, gateway, clock } = setup(NOW);
+  manager.add(BASE);
+  clock.t = DUE + 14 * MIN;
+  assert.equal((await manager.tick()).sent, 1);
+  assert.equal(gateway.dms.length, 1);
+});
+
+test('DM closed (50007): all of the user\'s DM subscriptions pause, no ops alarm, no retry spam, channel ones keep working', async () => {
+  const { manager, gateway, clock, store, logs } = setup(NOW);
+  manager.add(BASE);
+  manager.add({ ...BASE, minute: 5 });
+  manager.add({ ...BASE, minute: 10, channelId: 'c1' });
+  gateway.dmError = discordError(50007);
+  clock.t = DUE + 11 * MIN; // all three (20:00 / 20:05 / 20:10) are due and within grace
+  const first = await manager.tick();
+  assert.equal(first.paused, 2);
+  assert.equal(first.sent, 1, 'the channel reminder is delivered');
+  assert.equal(store.rows.filter((r) => r.pausedReason === 'dm_closed').length, 2);
+  assert.equal(logs.filter((l) => l === 'reminder subscription paused').length, 2);
+  const attemptsAfter = gateway.attempts;
+  clock.t += 30_000;
+  await manager.tick();
+  assert.equal(gateway.attempts, attemptsAfter, 'paused rows are not attempted again');
+  // the user sees the hint in /erinnerung liste and can resume; nothing old is resent
+  gateway.dmError = null;
+  assert.equal(manager.resume('g1', 'u1'), 2);
+  assert.ok(store.rows.every((r) => !r.pausedReason && r.nextDueAt > clock.t));
+  clock.t += 30_000;
+  await manager.tick();
+  assert.equal(gateway.dms.length, 0);
+});
+
+test('transient errors retry on the next tick within the grace window, then give up quietly', async () => {
+  const { manager, gateway, clock, store } = setup(NOW);
+  manager.add(BASE);
+  gateway.dmError = discordError(500);
+  clock.t = DUE;
+  assert.equal((await manager.tick()).failed, 1);
+  clock.t += 30_000;
+  gateway.dmError = null;
+  assert.equal((await manager.tick()).sent, 1);
+  // second reminder: keeps failing past the grace window -> skipped, rescheduled, never paused
+  const s2 = setup(NOW);
+  s2.manager.add(BASE);
+  s2.gateway.dmError = discordError(500);
+  s2.clock.t = DUE;
+  await s2.manager.tick();
+  s2.clock.t = DUE + 16 * MIN;
+  const res = await s2.manager.tick();
+  assert.equal(res.skipped, 1);
+  assert.equal(s2.store.rows[0]!.pausedReason, null);
+  assert.ok(store.rows[0]!.nextDueAt > DUE);
+});
+
+test('channel permanently unavailable (50013/10003/50001) pauses only that subscription', async () => {
+  const { manager, gateway, clock, store } = setup(NOW);
+  manager.add({ ...BASE, channelId: 'c1' });
+  manager.add({ ...BASE, minute: 5 });
+  gateway.channelError = discordError(50013);
+  clock.t = DUE + 6 * MIN;
+  const s = await manager.tick();
+  assert.equal(s.paused, 1);
+  assert.equal(s.sent, 1);
+  assert.equal(store.rows.find((r) => r.channelId === 'c1')!.pausedReason, 'channel_unavailable');
+});
+
+test('opt-out: /erinnerung aus removes one (only own) or all, always possible', async () => {
+  const { manager, gateway, clock } = setup(NOW);
+  const a = manager.add(BASE);
+  manager.add({ ...BASE, minute: 5 });
+  manager.add({ ...BASE, userId: 'u2' });
+  assert.ok(a.ok);
+  assert.equal(manager.remove('g1', 'u2', a.ok ? a.reminder.id : 0), 0, 'cannot remove someone else\'s');
+  assert.equal(manager.remove('g1', 'u1', a.ok ? a.reminder.id : 0), 1);
+  assert.equal(manager.remove('g1', 'u1'), 1);
+  assert.equal(manager.list('g1', 'u1').length, 0);
+  clock.t = DUE;
+  await manager.tick();
+  assert.deepEqual(gateway.dms, ['u2']);
+});
+
+test('cooldown: second call within 5 s is blocked, later ones pass', () => {
+  resetReminderCooldown();
+  assert.equal(reminderCooldownLeft('x', 1000), 0);
+  assert.ok(reminderCooldownLeft('x', 2000) > 0);
+  assert.equal(reminderCooldownLeft('x', 7000), 0);
+  assert.equal(reminderCooldownLeft('y', 2000), 0);
+});
+
+// ─── real SQLite store (temp DB) + migration ───
+
+test('migration: raid_reminders is created in an existing legacy DB without touching old data', () => {
+  const cols = sqliteHandle.prepare("PRAGMA table_info('raid_reminders')").all() as Array<{ name: string }>;
+  for (const c of ['guild_id', 'user_id', 'kind', 'day', 'hour', 'minute', 'text', 'recurring', 'channel_id', 'next_due_at', 'paused_reason']) {
+    assert.ok(cols.some((x) => x.name === c), c);
+  }
+  assert.equal((sqliteHandle.prepare('SELECT message FROM reminders').get() as { message: string }).message, 'alt');
+});
+
+test('real store: persistence survives a fresh connection (restart), due/pause/update/delete behave', () => {
+  const now = NOW;
+  const row = raidReminderStore.insert({ ...BASE, guildId: 'gp', userId: 'up', text: 'Hallo', nextDueAt: DUE }, now);
+  const second = raidReminderStore.insert({ ...BASE, guildId: 'gp', userId: 'up', minute: 5, nextDueAt: DUE + MIN }, now);
+  // "restart": read the same file through a brand-new connection
+  const fresh = new Database(dbPath, { readonly: true });
+  const persisted = fresh.prepare('SELECT * FROM raid_reminders WHERE user_id = ?').all('up') as Array<{ next_due_at: number; text: string | null }>;
+  fresh.close();
+  assert.equal(persisted.length, 2);
+  assert.equal(persisted[0]!.next_due_at, DUE);
+  assert.equal(persisted[0]!.text, 'Hallo');
+
+  assert.equal(raidReminderStore.due(DUE - 1).filter((r) => r.userId === 'up').length, 0);
+  assert.equal(raidReminderStore.due(DUE).filter((r) => r.userId === 'up').length, 1);
+  raidReminderStore.update(row.id, { pausedReason: 'dm_closed', pausedAt: now });
+  assert.equal(raidReminderStore.due(DUE + 5 * MIN).filter((r) => r.userId === 'up').length, 1, 'paused row is not due');
+  raidReminderStore.update(row.id, { pausedReason: null, pausedAt: null, nextDueAt: DUE + 7 * 86_400_000 });
+  assert.equal(raidReminderStore.listByUser('gp', 'up')[0]!.nextDueAt, DUE + 7 * 86_400_000);
+  raidReminderStore.delete(second.id);
+  assert.equal(raidReminderStore.deleteAllByUser('gp', 'up'), 1);
+  assert.equal(raidReminderStore.listByUser('gp', 'up').length, 0);
+});
+
+// ─── command (real command + real temp DB; FAKE interaction objects) ───
+
+function fakeInteraction(opts: {
+  sub: string;
+  userId?: string;
+  guildId?: string | null;
+  strings?: Record<string, string | null>;
+  ints?: Record<string, number | null>;
+  bools?: Record<string, boolean | null>;
+  channel?: { id: string } | null;
+  memberCanWrite?: boolean;
+  botCanWrite?: boolean;
+}) {
+  const replies: Array<{ content: string; flags?: unknown; allowedMentions?: unknown }> = [];
+  const guildId = opts.guildId === undefined ? process.env.DISCORD_GUILD_ID! : opts.guildId;
+  const perms = (can: boolean) => ({ has: (p: bigint) => can && (p & PermissionFlagsBits.ViewChannel) !== 0n });
+  const interaction = {
+    inGuild: () => guildId !== null,
+    guildId,
+    guild: {
+      channels: {
+        fetch: async (id: string) => ({
+          id,
+          isThread: () => false,
+          permissionsFor: (who: { me?: boolean }) => perms(who.me ? opts.botCanWrite !== false : opts.memberCanWrite !== false),
+        }),
+      },
+      members: { fetch: async () => ({ me: false }), me: { me: true } },
+    },
+    user: { id: opts.userId ?? 'cmd-user' },
+    options: {
+      getSubcommand: () => opts.sub,
+      getString: (n: string) => opts.strings?.[n] ?? null,
+      getInteger: (n: string) => opts.ints?.[n] ?? null,
+      getBoolean: (n: string) => opts.bools?.[n] ?? null,
+      getChannel: () => opts.channel ?? null,
+    },
+    reply: async (r: { content: string; flags?: unknown; allowedMentions?: unknown }) => {
+      replies.push(r);
+    },
+  };
+  return { interaction: interaction as never, replies };
+}
+
+test('command: an → liste → aus end-to-end on the temp DB; replies are ephemeral with no mention parsing', async () => {
+  resetReminderCooldown();
+  const uid = 'cmd-user-1';
+  const created = fakeInteraction({
+    sub: 'an',
+    userId: uid,
+    strings: { art: 'mythicplus', uhrzeit: '19:45', text: '@everyone Key <@&1> **los**' },
+    ints: { tag: 2 },
+    bools: { woechentlich: true },
+  });
+  await erinnerung.execute(created.interaction);
+  assert.match(created.replies[0]!.content, /Mythic\+-Erinnerung #\d+ angelegt: Dienstag 19:45/);
+  assert.deepEqual(created.replies[0]!.allowedMentions, { parse: [] });
+  assert.ok(created.replies[0]!.flags);
+
+  const stored = raidReminderStore.listByUser(process.env.DISCORD_GUILD_ID!, uid);
+  assert.equal(stored.length, 1);
+  assert.ok(!/(^|[^\\])@everyone/.test(stored[0]!.text ?? ''));
+  assert.equal(stored[0]!.recurring, true);
+
+  const list = fakeInteraction({ sub: 'liste', userId: uid });
+  await erinnerung.execute(list.interaction);
+  assert.match(list.replies[0]!.content, /Dienstag 19:45/);
+  assert.match(list.replies[0]!.content, /wöchentlich/);
+
+  const off = fakeInteraction({ sub: 'aus', userId: uid });
+  await erinnerung.execute(off.interaction);
+  assert.match(off.replies[0]!.content, /abbestellt/);
+  assert.equal(raidReminderStore.listByUser(process.env.DISCORD_GUILD_ID!, uid).length, 0);
+});
+
+test('command: validation (bad time, cooldown, outside the guild / wrong guild, channel permission checks, limit)', async () => {
+  resetReminderCooldown();
+  const uid = 'cmd-user-2';
+  const base = { sub: 'an', userId: uid, strings: { art: 'raid', uhrzeit: '19:45' }, ints: { tag: 4 } };
+
+  const dm = fakeInteraction({ ...base, guildId: null });
+  await erinnerung.execute(dm.interaction);
+  assert.match(dm.replies[0]!.content, /nur im Server/);
+
+  const other = fakeInteraction({ ...base, guildId: '999' });
+  await erinnerung.execute(other.interaction);
+  assert.match(other.replies[0]!.content, /nur auf dem Magguu-Server/);
+
+  const badTime = fakeInteraction({ ...base, strings: { art: 'raid', uhrzeit: '25:99' } });
+  await erinnerung.execute(badTime.interaction);
+  assert.match(badTime.replies[0]!.content, /Uhrzeit nicht verstanden/);
+
+  const noWrite = fakeInteraction({ ...base, channel: { id: '5551' }, memberCanWrite: false });
+  await erinnerung.execute(noWrite.interaction);
+  assert.match(noWrite.replies[0]!.content, /darfst du selbst nicht schreiben/);
+
+  resetReminderCooldown();
+  const botNoWrite = fakeInteraction({ ...base, channel: { id: '5551' }, botCanWrite: false });
+  await erinnerung.execute(botNoWrite.interaction);
+  assert.match(botNoWrite.replies[0]!.content, /Bot darf in diesem Kanal nicht schreiben/);
+  assert.equal(raidReminderStore.listByUser(process.env.DISCORD_GUILD_ID!, uid).length, 0);
+
+  resetReminderCooldown();
+  const ok = fakeInteraction({ ...base, channel: { id: '5551' } });
+  await erinnerung.execute(ok.interaction);
+  assert.match(ok.replies[0]!.content, /in <#5551>/);
+  const again = fakeInteraction({ ...base, channel: { id: '5551' } });
+  await erinnerung.execute(again.interaction);
+  assert.match(again.replies[0]!.content, /Bitte kurz warten/);
+
+  // fill up to the limit (cooldown reset between calls)
+  for (let m = 0; m < 4; m += 1) {
+    resetReminderCooldown();
+    const f = fakeInteraction({ ...base, strings: { art: 'raid', uhrzeit: `10:0${m}` } });
+    await erinnerung.execute(f.interaction);
+  }
+  resetReminderCooldown();
+  const over = fakeInteraction({ ...base, strings: { art: 'raid', uhrzeit: '11:11' } });
+  await erinnerung.execute(over.interaction);
+  assert.match(over.replies[0]!.content, /Maximum/);
+
+  const wipe = fakeInteraction({ sub: 'aus', userId: uid });
+  await erinnerung.execute(wipe.interaction);
+  assert.match(wipe.replies[0]!.content, /Alle 5 Erinnerungen abbestellt/);
+});
+
+test('command: fortsetzen shows the DM hint in liste for a paused subscription and resumes it', async () => {
+  resetReminderCooldown();
+  const uid = 'cmd-user-3';
+  const gid = process.env.DISCORD_GUILD_ID!;
+  const row = raidReminderStore.insert({ ...BASE, guildId: gid, userId: uid, nextDueAt: Date.now() + 86_400_000 }, Date.now());
+  raidReminderStore.update(row.id, { pausedReason: 'dm_closed', pausedAt: Date.now() });
+  const list = fakeInteraction({ sub: 'liste', userId: uid });
+  await erinnerung.execute(list.interaction);
+  assert.match(list.replies[0]!.content, /pausiert: DMs vom Server sind für dich gesperrt/);
+  const resume = fakeInteraction({ sub: 'fortsetzen', userId: uid });
+  await erinnerung.execute(resume.interaction);
+  assert.match(resume.replies[0]!.content, /1 Erinnerung\(en\) wieder aktiv/);
+  assert.equal(raidReminderStore.listByUser(gid, uid)[0]!.pausedReason, null);
+  raidReminderStore.deleteAllByUser(gid, uid);
+});
