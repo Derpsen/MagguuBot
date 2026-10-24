@@ -6,8 +6,10 @@ import { botSettings, rioLink } from '../db/schema.js';
 import { fetchRioScore, type RioFailure, type RioResult } from '../services/raiderio.js';
 import { logger } from '../utils/logger.js';
 import {
+  checkScoreRole,
   parseRioThresholds,
   planRoleChange,
+  scoreRoleRefusal,
   serializeRioThresholds,
   type ParsedTiers,
   type RioCharacterInput,
@@ -43,10 +45,59 @@ function writeSetting(key: string, value: string): void {
     .onConflictDoUpdate({ target: [botSettings.guildId, botSettings.key], set: { value, updatedAt: new Date() } }).run();
 }
 
+/**
+ * Roles the startup audit refused (dangerous permission bits, @everyone, managed): roleId -> category. They are
+ * filtered out of every tier list for the rest of the process. Only ids and categories, nothing else is kept.
+ */
+const refusedRoles = new Map<string, string>();
+
 /** A stored value (even an empty list) overrides the env; no stored value = env. */
 export function getRioTiers(): ParsedTiers {
   const stored = readSetting(KEY_TIERS);
-  return parseRioThresholds(stored !== null ? stored : config.RIO_ROLE_THRESHOLDS);
+  const parsed = parseRioThresholds(stored !== null ? stored : config.RIO_ROLE_THRESHOLDS);
+  if (refusedRoles.size === 0) return parsed;
+  const problems = [...parsed.problems];
+  const tiers = parsed.tiers.filter((t) => {
+    const category = refusedRoles.get(t.roleId);
+    if (category) problems.push(`Rolle ${t.roleId} wird nicht genutzt (${category})`);
+    return !category;
+  });
+  return { tiers, problems };
+}
+
+/**
+ * At startup: every configured tier role (env or /rio-config) is checked against the guild. Roles that are
+ * @everyone, managed or carry moderation/admin bits are dropped from the tier list (warning with role id and
+ * category only). A role that does not exist (or cannot be fetched) is left alone here; the assignment re-checks
+ * it live and fails closed.
+ */
+export async function auditRioTiers(guild: Pick<RioGuildLike, 'id' | 'roles'>): Promise<{ checked: number; refused: Array<{ roleId: string; category: string }> }> {
+  refusedRoles.clear();
+  const parsed = getRioTiers();
+  if (parsed.problems.length > 0) logger.warn({ problems: parsed.problems }, 'rio: invalid score role thresholds were dropped');
+  const refused: Array<{ roleId: string; category: string }> = [];
+  for (const tier of parsed.tiers) {
+    let role: RioRoleLike | null;
+    try {
+      role = await loadRole(guild as RioGuildLike, tier.roleId);
+    } catch (err) {
+      logger.warn({ err, roleId: tier.roleId }, 'rio: could not check a score role at startup');
+      continue;
+    }
+    if (!role) continue;
+    const verdict = checkScoreRole(role, guild.id);
+    if (!verdict.ok) {
+      refusedRoles.set(tier.roleId, verdict.category);
+      refused.push({ roleId: tier.roleId, category: verdict.category });
+      logger.warn({ roleId: tier.roleId, category: verdict.category }, 'rio: score role refused at startup, it will not be assigned');
+    }
+  }
+  return { checked: parsed.tiers.length, refused };
+}
+
+/** Test seam. */
+export function resetRioRefusedRoles(): void {
+  refusedRoles.clear();
 }
 
 export function saveRioTiers(tiers: readonly RioTier[]): void {
@@ -147,7 +198,7 @@ export function resetRioGuards(): void {
 
 // ─── Discord surface (the slice we use; real discord.js objects satisfy it) ───
 
-export interface RioRoleLike { id: string; name: string; managed: boolean; editable: boolean }
+export interface RioRoleLike { id: string; name: string; managed: boolean; editable: boolean; permissions: unknown }
 export interface RioMemberLike {
   roles: {
     cache: { has(id: string): boolean; keys(): IterableIterator<string> };
@@ -169,6 +220,7 @@ export type RioLinkOutcome =
   | { kind: 'missing-manage-roles' }
   | { kind: 'role-missing'; roleId: string }
   | { kind: 'role-hierarchy'; roleId: string; roleName: string }
+  | { kind: 'role-unsafe'; roleId: string; reason: string }
   | { kind: 'missing-permissions' }
   | { kind: 'member-missing' }
   | { kind: 'api-error'; failure: RioFailure }
@@ -235,11 +287,18 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
   });
 
   // Preconditions for every role we are about to touch, before anything is changed.
+  // The matching score role is re-checked live on every link, held already or not (fail closed): a config that
+  // pointed at a harmless role yesterday must not hand out a moderator role today.
   let addRole: RioRoleLike | null = null;
-  if (plan.add) {
-    addRole = await loadRole(guild, plan.add);
-    if (!addRole) return { kind: 'role-missing', roleId: plan.add };
-    if (addRole.managed || !addRole.editable) return { kind: 'role-hierarchy', roleId: addRole.id, roleName: addRole.name };
+  if (plan.target) {
+    const targetRole = await loadRole(guild, plan.target);
+    if (!targetRole) return { kind: 'role-missing', roleId: plan.target };
+    const verdict = checkScoreRole(targetRole, guild.id);
+    if (!verdict.ok) return { kind: 'role-unsafe', roleId: targetRole.id, reason: scoreRoleRefusal(verdict, false) };
+    if (plan.add) {
+      addRole = targetRole;
+      if (addRole.managed || !addRole.editable) return { kind: 'role-hierarchy', roleId: addRole.id, roleName: addRole.name };
+    }
   }
   let removeRole: RioRoleLike | null = null;
   if (plan.remove) {
@@ -363,6 +422,7 @@ export function rioLinkMessage(outcome: RioLinkOutcome, seasonLabel: string): st
     case 'missing-manage-roles': return '⚠️ Ich darf hier keine Rollen vergeben („Rollen verwalten“ fehlt). Bitte einen Admin, die Bot-Rechte zu prüfen.';
     case 'role-missing': return `⚠️ Die Score-Rolle ${roleMention(outcome.roleId)} gibt es nicht mehr. Bitte einen Admin, die Schwellen zu prüfen. Ich lege keine Rollen selbst an.`;
     case 'role-hierarchy': return `⚠️ Ich kann die Rolle **${outcome.roleName}** nicht vergeben oder entfernen, weil sie über meiner eigenen Rolle liegt oder von einer Integration verwaltet wird. Bitte einen Admin, meine Rolle in der Rollenliste über die Score-Rollen zu schieben.`;
+    case 'role-unsafe': return `⚠️ Die Score-Rolle ${roleMention(outcome.roleId)} vergebe ich nicht: ${outcome.reason}. Score-Rollen müssen reine Anzeige-Rollen ohne Rechte sein. Bitte einen Admin, die Schwellen zu prüfen.`;
     case 'missing-permissions': return '⚠️ Discord hat das Vergeben der Rolle abgelehnt (fehlende Rechte). Bitte einen Admin, die Bot-Rechte zu prüfen.';
     case 'member-missing': return '❌ Ich finde dich nicht auf dem Server.';
     case 'api-error': return apiErrorMessage(outcome.failure);

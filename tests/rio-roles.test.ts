@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, beforeEach, test } from 'node:test';
-import { PermissionFlagsBits } from 'discord.js';
+import { PermissionFlagsBits, PermissionsBitField } from 'discord.js';
+import { mock } from 'node:test';
 
 const dir = mkdtempSync(join(tmpdir(), 'rio-roles-'));
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -22,6 +23,7 @@ const pure = await import('../src/utils/rio-roles.ts');
 const client = await import('../src/services/raiderio.ts');
 const svc = await import('../src/discord/rio-roles.ts');
 const { config } = await import('../src/config.ts');
+const { logger } = await import('../src/utils/logger.ts');
 const { sqliteHandle } = await import('../src/db/client.ts');
 const { rioLinkCommand, rioUnlinkCommand, rioConfigCommand } = await import('../src/discord/commands/rio.ts');
 
@@ -226,7 +228,7 @@ test('client: own global ceiling per minute (all users together) answers rate-li
 
 // ─── Discord side with fakes ───────────────────────────────────────────────────
 
-interface FakeRole { id: string; name: string; managed: boolean; editable: boolean }
+interface FakeRole { id: string; name: string; managed: boolean; editable: boolean; permissions: unknown }
 function rig(opts: { held?: string[]; roles?: Partial<Record<string, Partial<FakeRole>>>; missing?: string[]; manageRoles?: boolean; addError?: number; removeError?: number; memberMissing?: boolean } = {}) {
   const held = new Set(opts.held ?? []);
   const log: string[] = [];
@@ -247,7 +249,7 @@ function rig(opts: { held?: string[]; roles?: Partial<Record<string, Partial<Fak
     roles: {
       async fetch(id: string) {
         if (opts.missing?.includes(id)) return null;
-        return { id, name: `Rolle-${id.slice(-1)}`, managed: false, editable: true, ...(opts.roles?.[id] ?? {}) } as FakeRole;
+        return { id, name: `Rolle-${id.slice(-1)}`, managed: false, editable: true, permissions: '0', ...(opts.roles?.[id] ?? {}) } as FakeRole;
       },
     },
   };
@@ -515,7 +517,7 @@ test('/rio-config: needs ManageGuild, sets/removes thresholds and the season lab
     assert.match(String(denied.replies[0]!.content), /Server verwalten/);
 
     const set = fakeInteraction({}, { score: 1500 }, 'setzen');
-    (set.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => ({ id: R1, managed: false, editable: true });
+    (set.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => ({ id: R1, managed: false, editable: true, permissions: '0' });
     await rioConfigCommand.execute(set.i);
     assert.equal(svc.getRioTiers().tiers.length, 1);
     assert.deepEqual(svc.getRioTiers().tiers[0], { minScore: 1500, roleId: R1 });
@@ -546,4 +548,172 @@ test('/rio-config: needs ManageGuild, sets/removes thresholds and the season lab
     config.RIO_ROLE_THRESHOLDS = was;
     svc.resetRioConfig();
   }
+});
+
+// ─── Finding 1: score roles must be display roles without rights ───────────────
+
+const SAFE_BITS = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.AddReactions | PermissionFlagsBits.ChangeNickname;
+
+test('role safety (pure): every forbidden bit alone is refused, the list covers the dangerous ones, ordinary bits pass', () => {
+  for (const must of ['Administrator', 'ManageGuild', 'ManageRoles', 'ManageChannels', 'ManageMessages', 'KickMembers', 'BanMembers', 'ModerateMembers', 'MentionEveryone', 'ManageWebhooks', 'ManageNicknames', 'ManageEvents', 'ManageThreads', 'ManageGuildExpressions', 'ViewAuditLog', 'ViewGuildInsights']) {
+    assert.ok((pure.RIO_FORBIDDEN_PERMISSION_NAMES as readonly string[]).includes(must), `${must} is on the list`);
+  }
+  for (const name of pure.RIO_FORBIDDEN_PERMISSION_NAMES) {
+    const bit = PermissionFlagsBits[name];
+    assert.equal(typeof bit, 'bigint', `${name} exists in this discord.js (typo guard)`);
+    const verdict = pure.checkScoreRole({ id: R1, managed: false, permissions: String(bit | SAFE_BITS) }, GUILD);
+    assert.equal(verdict.ok, false, name);
+    assert.deepEqual(verdict.ok ? null : [verdict.category, verdict.permissions.includes(name)], ['dangerous', true], name);
+  }
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: String(SAFE_BITS) }, GUILD).ok, true);
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: '0' }, GUILD).ok, true);
+  // all three shapes of a bitfield
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: new PermissionsBitField(SAFE_BITS) }, GUILD).ok, true);
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: new PermissionsBitField(PermissionFlagsBits.BanMembers) }, GUILD).ok, false);
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: PermissionFlagsBits.Administrator }, GUILD).ok, false);
+  // @everyone, managed (bot / integration / booster) and unreadable permissions are refused
+  assert.deepEqual(pure.checkScoreRole({ id: GUILD, managed: false, permissions: '0' }, GUILD), { ok: false, category: 'everyone', permissions: [] });
+  assert.equal((pure.checkScoreRole({ id: R1, managed: true, permissions: '0' }, GUILD) as { category: string }).category, 'managed');
+  for (const odd of [undefined, null, 'abc', {}, -1, '']) {
+    assert.equal((pure.checkScoreRole({ id: R1, managed: false, permissions: odd }, GUILD) as { category?: string }).category, 'unreadable', String(odd));
+  }
+  assert.match(pure.scoreRoleRefusal({ ok: false, category: 'dangerous', permissions: ['BanMembers'] }, true), /BanMembers/);
+  assert.doesNotMatch(pure.scoreRoleRefusal({ ok: false, category: 'dangerous', permissions: ['BanMembers'] }, false), /BanMembers/);
+});
+
+test('(a) /rio-config setzen refuses dangerous, @everyone, managed and unreadable roles and saves nothing; a harmless role is saved', async () => {
+  const was = config.RIO_ROLE_THRESHOLDS;
+  try {
+    config.RIO_ROLE_THRESHOLDS = '';
+    svc.resetRioConfig();
+    const attempts: Array<[string, Record<string, unknown>, RegExp]> = [
+      ['administrator', { id: R2, managed: false, editable: true, permissions: new PermissionsBitField(PermissionFlagsBits.Administrator) }, /Moderations-\/Admin-Rechte \(Administrator\)/],
+      ['manage roles (string)', { id: R2, managed: false, editable: true, permissions: String(PermissionFlagsBits.ManageRoles) }, /ManageRoles/],
+      ['ban members', { id: R2, managed: false, editable: true, permissions: String(PermissionFlagsBits.BanMembers | SAFE_BITS) }, /BanMembers/],
+      ['@everyone', { id: GUILD, managed: false, editable: true, permissions: '0' }, /@everyone/],
+      ['managed', { id: R2, managed: true, editable: true, permissions: '0' }, /verwaltet/],
+      ['unreadable', { id: R2, managed: false, editable: true }, /nicht lesen/],
+    ];
+    for (const [label, role, re] of attempts) {
+      const set = fakeInteraction({}, { score: 2500 }, 'setzen');
+      (set.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => role;
+      await rioConfigCommand.execute(set.i);
+      assert.match(String(set.replies[0]!.content), /nicht als Score-Rolle/, label);
+      assert.match(String(set.replies[0]!.content), re, label);
+      assert.match(String(set.replies[0]!.content), /ohne Rechte/, label);
+      assert.deepEqual(svc.getRioTiers().tiers, [], `${label}: nothing saved`);
+    }
+    const ok = fakeInteraction({}, { score: 2500 }, 'setzen');
+    (ok.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => ({ id: R2, managed: false, editable: true, permissions: new PermissionsBitField(SAFE_BITS) });
+    await rioConfigCommand.execute(ok.i);
+    assert.deepEqual(svc.getRioTiers().tiers, [{ minScore: 2500, roleId: R2 }]);
+  } finally {
+    config.RIO_ROLE_THRESHOLDS = was;
+    svc.resetRioConfig();
+  }
+});
+
+test('(b) startup audit: env/stored tier roles with dangerous bits, @everyone or managed are dropped with a warning (role id + category only); invalid entries are dropped and logged', async () => {
+  const DANGEROUS = '1600000000000000011';
+  const MANAGED = '1600000000000000012';
+  const FINE = '1600000000000000013';
+  const GONE = '1600000000000000014';
+  const was = config.RIO_ROLE_THRESHOLDS;
+  const warns: unknown[][] = [];
+  const spy = mock.method(logger, 'warn', (...args: unknown[]) => { warns.push(args); });
+  try {
+    config.RIO_ROLE_THRESHOLDS = `1000=${FINE},2000=${DANGEROUS},3000=${MANAGED},4000=${GUILD},5000=${GONE},bogus=${FINE},6000=nope`;
+    svc.resetRioConfig();
+    const roles: Record<string, Record<string, unknown>> = {
+      [FINE]: { id: FINE, name: 'Fine', managed: false, editable: true, permissions: '0' },
+      [DANGEROUS]: { id: DANGEROUS, name: 'Mod', managed: false, editable: true, permissions: String(PermissionFlagsBits.KickMembers) },
+      [MANAGED]: { id: MANAGED, name: 'Bot', managed: true, editable: false, permissions: '0' },
+      [GUILD]: { id: GUILD, name: '@everyone', managed: false, editable: false, permissions: '0' },
+    };
+    const guild = { id: GUILD, roles: { async fetch(id: string) { return roles[id] ?? null; } } };
+    const result = await svc.auditRioTiers(guild as never);
+    assert.deepEqual(result.refused.map((r) => [r.roleId, r.category]).sort(), [[DANGEROUS, 'dangerous'], [MANAGED, 'managed'], [GUILD, 'everyone']].sort());
+    assert.deepEqual(svc.getRioTiers().tiers.map((t) => t.roleId), [FINE, GONE], 'refused ones are gone; the missing role is left to the live check');
+    assert.ok(svc.getRioTiers().problems.some((p) => p.includes(DANGEROUS)));
+    const logged = JSON.stringify(warns);
+    assert.ok(logged.includes(DANGEROUS) && logged.includes('dangerous'), 'role id + category are logged');
+    assert.ok(warns.some((w) => JSON.stringify(w).includes('invalid score role thresholds')), 'invalid entries are logged too');
+    assert.ok(!logged.includes('KickMembers'), 'no permission details in the log');
+
+    // an assignment can no longer happen through a refused role even if the live check would be skipped: the tier is gone
+    assert.ok(!svc.getRioTiers().tiers.some((t) => t.roleId === DANGEROUS));
+    // a fresh audit forgets the old verdicts
+    roles[DANGEROUS] = { ...roles[DANGEROUS]!, permissions: '0' };
+    await svc.auditRioTiers(guild as never);
+    assert.ok(svc.getRioTiers().tiers.some((t) => t.roleId === DANGEROUS));
+    // a fetch error is not a verdict (the live check at assignment decides)
+    const broken = { id: GUILD, roles: { async fetch(): Promise<never> { throw new Error('boom'); } } };
+    const res = await svc.auditRioTiers(broken as never);
+    assert.deepEqual(res.refused, []);
+  } finally {
+    spy.mock.restore();
+    config.RIO_ROLE_THRESHOLDS = was;
+    svc.resetRioRefusedRoles();
+    svc.resetRioConfig();
+  }
+});
+
+test('(c) /rio-link fails closed live: dangerous, managed, @everyone, unreadable or vanished tier roles are not assigned, nothing changes, clear message', async () => {
+  const cases: Array<[string, ReturnType<typeof rig>, RegExp]> = [
+    ['dangerous (config is stale)', rig({ roles: { [R2]: { permissions: String(PermissionFlagsBits.Administrator) } } }), /Moderations-\/Admin-Rechte/],
+    ['manage guild', rig({ roles: { [R2]: { permissions: String(PermissionFlagsBits.ManageGuild | SAFE_BITS) } } }), /Moderations-\/Admin-Rechte/],
+    ['managed', rig({ roles: { [R2]: { managed: true } } }), /Integration, einem Bot/],
+    ['@everyone', rig({ roles: { [R2]: { id: GUILD } } }), /@everyone/],
+    ['unreadable permissions', rig({ roles: { [R2]: { permissions: undefined } } }), /nicht lesen/],
+    ['vanished', rig({ missing: [R2] }), /gibt es nicht mehr/],
+  ];
+  for (const [label, r, re] of cases) {
+    const store = new MemStore();
+    const out = await link(r, store, 2500);
+    const text = svc.rioLinkMessage(out, '');
+    assert.match(text, re, label);
+    if (label !== 'vanished') assert.match(text, /reine Anzeige-Rollen ohne Rechte/, label);
+    assert.equal(out.kind, label === 'vanished' ? 'role-missing' : 'role-unsafe', label);
+    assert.deepEqual(r.log, [], `${label}: no role call`);
+    assert.equal(store.rows.size, 0, `${label}: no mapping`);
+    assert.doesNotMatch(text, /Administrator|ManageGuild/, 'members do not get the permission list');
+  }
+  // the member already holds the (now dangerous) target: still refused, the previous bot role stays untouched
+  const store = new MemStore();
+  store.upsert({ guildId: GUILD, userId: USER, characterName: 'Anna', realm: 'Blackrock', region: 'eu', lastScore: 1100, lastRoleId: R1, updatedAt: 1 });
+  const held = rig({ held: [R1, R2], roles: { [R2]: { permissions: String(PermissionFlagsBits.BanMembers) } } });
+  const out = await link(held, store, 2500);
+  assert.equal(out.kind, 'role-unsafe');
+  assert.deepEqual(held.log, []);
+  assert.equal(store.get(GUILD, USER)?.lastRoleId, R1);
+  assert.equal(store.get(GUILD, USER)?.lastScore, 1100);
+  // a harmless role in the same setup works (positive control)
+  const fine = await link(rig({ held: [R1] }), new MemStore(), 2500);
+  assert.equal(fine.kind, 'linked');
+});
+
+test('(c) end to end: /rio-link with a tier role that became dangerous answers ephemeral and assigns nothing', async () => {
+  const was = config.RIO_ROLE_THRESHOLDS;
+  const realFetch = globalThis.fetch;
+  config.RIO_ROLE_THRESHOLDS = pure.serializeRioThresholds(TIERS);
+  globalThis.fetch = (async () => json(200, profile(2100))) as unknown as typeof fetch;
+  try {
+    const r = rig({ roles: { [R2]: { permissions: String(PermissionFlagsBits.ModerateMembers) } } });
+    const a = fakeInteraction({ guild: r.guild }, { charakter: 'Anna', realm: 'Blackrock', region: 'eu' });
+    await rioLinkCommand.execute(a.i);
+    assert.match(String(a.replies[1]!.content), /vergebe ich nicht/);
+    assert.deepEqual((a.replies[1]!.allowedMentions as { parse: unknown[] }).parse, []);
+    assert.deepEqual(r.log, []);
+    assert.equal(svc.rioSqliteStore.get(GUILD, USER), null);
+  } finally {
+    globalThis.fetch = realFetch;
+    config.RIO_ROLE_THRESHOLDS = was;
+    sqliteHandle.prepare('DELETE FROM rio_link').run();
+  }
+});
+
+test('wiring: the startup audit runs on clientReady', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/discord/client.ts', import.meta.url), 'utf8');
+  assert.match(src, /c\.once\('clientReady'[\s\S]{0,200}auditRioTiers/);
 });

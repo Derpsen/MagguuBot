@@ -3,8 +3,10 @@ import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 import {
   RIO_REGIONS,
+  checkScoreRole,
   normaliseRioInput,
   parseRioThresholds,
+  scoreRoleRefusal,
   type RioTier,
 } from '../../utils/rio-roles.js';
 import {
@@ -199,8 +201,11 @@ export const rioConfigCommand: SlashCommand = {
     }
     // setzen
     const role = interaction.options.getRole('rolle', true);
-    if (role.id === interaction.guildId || ('managed' in role && role.managed)) {
-      await reply('❌ Diese Rolle kann nicht als Score-Rolle genutzt werden (@everyone oder von einer Integration verwaltet).');
+    // a score role is a display role without rights: @everyone, managed roles and anything with
+    // moderation/admin bits are refused (fail closed, also when the permissions cannot be read)
+    const verdict = checkScoreRole(role as { id: string; managed?: boolean; permissions?: unknown }, interaction.guildId ?? '');
+    if (!verdict.ok) {
+      await reply(`❌ Diese Rolle kann nicht als Score-Rolle genutzt werden: ${scoreRoleRefusal(verdict, true)}. Score-Rollen müssen reine Anzeige-Rollen ohne Rechte sein.`);
       return;
     }
     const merged = parseRioThresholds(`${[...tiers.filter((t) => t.minScore !== score), { minScore: score, roleId: role.id }].map((t) => `${t.minScore}=${t.roleId}`).join(',')}`);

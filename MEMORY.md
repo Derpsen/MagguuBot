@@ -2,6 +2,11 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Code-Review fixes 1ecbf48..942529c (Marco Go)
+
+- (2026-10-25: rollback branch `rollback/pre-reviewfix-942529c`) Finding 1 (Medium: tier roles had no permission-bit check, so a ManageGuild user could point a tier at an admin/mod role below the bot and give it to themselves) is closed in its own commit, before the rest. Rules: AGENTS.md "Score roles must be display roles without rights".
+- Decisions: fail closed everywhere (unreadable permissions = refused); the live check in `/rio-link` also covers a role the member already holds; the startup audit only drops refused roles from the in-memory tier list, it never edits stored settings or Discord; no caller-hierarchy check (the roles carry no rights, so there is nothing to escalate).
+
 ## 2026-10-25 Unseen media report (Step C, Marco Go)
 
 - Rollback branch `rollback/pre-unseen-report-ee9f403` (Dashboard has its own, see its MEMORY). Rules: AGENTS.md "Unseen media report".

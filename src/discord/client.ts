@@ -28,6 +28,7 @@ import { handleTicketButton } from './interactions/ticket-buttons.js';
 import { handleTicketCategorySelect } from './interactions/ticket-category-select.js';
 import { handleTicketModalSubmit } from './interactions/ticket-modal.js';
 import { handleMovieNightVote } from './movie-night.js';
+import { auditRioTiers } from './rio-roles.js';
 
 let client: Client | null = null;
 
@@ -92,6 +93,14 @@ export async function startDiscord(): Promise<void> {
     setTimeout(() => {
       void backfillWelcomePins().catch((err) => logger.warn({ err }, 'welcome-pin backfill failed'));
     }, 5000);
+  });
+
+  // Raider.IO score roles: refuse dangerous / managed / @everyone tier roles from the env or /rio-config up front
+  c.once('clientReady', () => {
+    void (async () => {
+      const guild = await c.guilds.fetch(config.DISCORD_GUILD_ID);
+      await auditRioTiers(guild as unknown as Parameters<typeof auditRioTiers>[0]);
+    })().catch((err) => logger.warn({ err }, 'rio: startup role audit failed'));
   });
 
   await registerCommands();

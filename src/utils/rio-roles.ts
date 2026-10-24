@@ -3,6 +3,8 @@
  * input normalisation). No Discord, no network, no DB - see src/discord/rio-roles.ts for the wiring.
  */
 
+import { PermissionFlagsBits } from 'discord.js';
+
 export interface RioTier {
   minScore: number;
   roleId: string;
@@ -14,6 +16,92 @@ export type RioRegion = (typeof RIO_REGIONS)[number];
 const SNOWFLAKE = /^\d{17,20}$/;
 export const RIO_MAX_SCORE = 10_000;
 export const RIO_MAX_TIERS = 15;
+
+// ─── role safety ────────────────────────────────────────────────────────────
+
+/**
+ * Permission bits a score role must NEVER carry. A score role is a display role without rights: if an admin picks a
+ * moderator/admin role by mistake (or the role gains such a bit later), the bot must not hand it out. Anything that
+ * manages the server, moderates members, pings everyone or reads internal logs is on the list.
+ */
+export const RIO_FORBIDDEN_PERMISSION_NAMES = [
+  'Administrator',
+  'ManageGuild',
+  'ManageRoles',
+  'ManageChannels',
+  'ManageMessages',
+  'ManageThreads',
+  'ManageWebhooks',
+  'ManageNicknames',
+  'ManageEvents',
+  'ManageGuildExpressions',
+  'KickMembers',
+  'BanMembers',
+  'ModerateMembers',
+  'MuteMembers',
+  'DeafenMembers',
+  'MoveMembers',
+  'MentionEveryone',
+  'ViewAuditLog',
+  'ViewGuildInsights',
+  'ViewCreatorMonetizationAnalytics',
+  'PinMessages',
+  'BypassSlowmode',
+] as const satisfies readonly (keyof typeof PermissionFlagsBits)[];
+
+export const RIO_FORBIDDEN_PERMISSIONS: bigint = RIO_FORBIDDEN_PERMISSION_NAMES.reduce(
+  (all, name) => all | PermissionFlagsBits[name],
+  0n,
+);
+
+/** Names of the forbidden bits set in `bits`. */
+export function forbiddenPermissionNames(bits: bigint): string[] {
+  return RIO_FORBIDDEN_PERMISSION_NAMES.filter((name) => (bits & PermissionFlagsBits[name]) !== 0n);
+}
+
+/** The bitfield of a role as discord.js (PermissionsBitField), the API (decimal string) or a bigint; null = unreadable. */
+export function rolePermissionBits(permissions: unknown): bigint | null {
+  if (typeof permissions === 'bigint') return permissions;
+  if (typeof permissions === 'string' && /^\d{1,20}$/.test(permissions)) return BigInt(permissions);
+  if (permissions && typeof permissions === 'object' && 'bitfield' in permissions) {
+    const field = (permissions as { bitfield: unknown }).bitfield;
+    if (typeof field === 'bigint') return field;
+  }
+  return null;
+}
+
+export type ScoreRoleVerdict =
+  | { ok: true }
+  | { ok: false; category: 'everyone' | 'managed' | 'dangerous' | 'unreadable'; permissions: string[] };
+
+/**
+ * Can this role be a score role? Fail closed: @everyone, managed roles (bot, integration, booster), a role carrying
+ * any forbidden permission bit and a role whose permissions cannot be read are all refused.
+ */
+export function checkScoreRole(
+  role: { id: string; managed?: boolean; permissions?: unknown },
+  guildId: string,
+): ScoreRoleVerdict {
+  if (role.id === guildId) return { ok: false, category: 'everyone', permissions: [] };
+  if (role.managed !== false) return { ok: false, category: 'managed', permissions: [] };
+  const bits = rolePermissionBits(role.permissions);
+  if (bits === null) return { ok: false, category: 'unreadable', permissions: [] };
+  const names = forbiddenPermissionNames(bits);
+  if (names.length > 0) return { ok: false, category: 'dangerous', permissions: names };
+  return { ok: true };
+}
+
+/** German reason (no permission list for members, only the category). */
+export function scoreRoleRefusal(verdict: Extract<ScoreRoleVerdict, { ok: false }>, detailed: boolean): string {
+  switch (verdict.category) {
+    case 'everyone': return '@everyone kann keine Score-Rolle sein';
+    case 'managed': return 'die Rolle wird von einer Integration, einem Bot oder dem Server-Boost verwaltet';
+    case 'unreadable': return 'ich kann die Rechte der Rolle nicht lesen';
+    case 'dangerous': return detailed
+      ? `die Rolle hat Moderations-/Admin-Rechte (${verdict.permissions.join(', ')})`
+      : 'die Rolle hat Moderations-/Admin-Rechte';
+  }
+}
 
 export interface ParsedTiers {
   tiers: RioTier[];

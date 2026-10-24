@@ -152,7 +152,7 @@
 
   <Config Name="DISCORD_CHANNEL_SERVER_HEALTH" Target="DISCORD_CHANNEL_SERVER_HEALTH" Default="" Mode="" Description="Optional channel ID for the server health card (default: health/status channel; without a channel no card)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 
-  <Config Name="RIO_ROLE_THRESHOLDS" Target="RIO_ROLE_THRESHOLDS" Default="" Mode="" Description="Optional Raider.IO score roles for /rio-link: JSON [{&quot;minScore&quot;:2000,&quot;roleId&quot;:&quot;...&quot;}] or short form 2000=roleId,2500=roleId (max 15 tiers). Empty = feature off. The roles must already exist, the bot needs Manage Roles and its role above them. /rio-config (Manage Server) can override this at runtime." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="RIO_ROLE_THRESHOLDS" Target="RIO_ROLE_THRESHOLDS" Default="" Mode="" Description="Optional Raider.IO score roles for /rio-link: JSON [{&quot;minScore&quot;:2000,&quot;roleId&quot;:&quot;...&quot;}] or short form 2000=roleId,2500=roleId (max 15 tiers). Empty = feature off. The roles must already exist and be plain display roles without moderation/admin permissions (others are refused, also at startup); the bot needs Manage Roles and its role above them. /rio-config (Manage Server) can override this at runtime." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 
   <Config Name="RIO_SEASON_LABEL" Target="RIO_SEASON_LABEL" Default="" Mode="" Description="Optional free-text season label (max 40 characters) shown in /rio-link replies, e.g. Midnight Season 1. The score itself always comes from the current Raider.IO season." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 
