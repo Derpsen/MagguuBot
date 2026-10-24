@@ -76,6 +76,11 @@ export interface CleanupDeps {
   sleep?: (ms: number) => Promise<void>;
   deleteDelayMs?: number;
   pageDelayMs?: number;
+  /**
+   * Re-checked before every single delete (emergency brake while a run is in progress). When it turns false the
+   * run stops at once and persists nothing, so the next enabled run starts clean (attempt counter untouched).
+   */
+  enabled?: () => boolean;
   log?: (level: 'info' | 'warn', msg: string, data?: Record<string, unknown>) => void;
 }
 
@@ -203,6 +208,13 @@ export async function runPlexCardCleanup(deps: CleanupDeps): Promise<CleanupOutc
   let consecutivePermission = 0;
   let consecutiveErrors = 0;
   for (const message of candidates) {
+    if (deps.enabled && !deps.enabled()) {
+      outcome.status = 'aborted';
+      log('warn', 'Plex card cleanup stopped: disabled while running', {
+        deleted: outcome.deleted, skipped: outcome.skipped, errors: outcome.errors, remaining: candidates.length - outcome.deleted - outcome.skipped - outcome.errors,
+      });
+      return outcome;
+    }
     try {
       await message.delete();
       outcome.deleted += 1;
@@ -229,6 +241,20 @@ export async function runPlexCardCleanup(deps: CleanupDeps): Promise<CleanupOutc
       }
     }
     await sleep(deleteDelay);
+  }
+
+  // Leftover cards (delete errors that are not 'already gone'): not 'done' - a bounded retry (the same 6 h spacing
+  // and 3-attempt cap as an abort) rescans and only ever sees what is left. Lower risk than silently leaving
+  // stale cards: the retry uses the identical classification, protected set and politeness, and it ends by itself.
+  if (outcome.errors > 0) {
+    const status: CleanupStatus = attempts >= PLEX_CLEANUP_MAX_ATTEMPTS ? 'failed' : 'aborted';
+    persist(status);
+    outcome.status = status;
+    log('warn', 'Plex card cleanup finished with leftovers', {
+      status, attempt: attempts, dryRun: false, deleted: outcome.deleted, skipped: outcome.skipped, errors: outcome.errors,
+      candidates: outcome.candidates, scanned: outcome.scanned, scanLimit: deps.scanLimit, scanLimitReached,
+    });
+    return outcome;
   }
 
   persist('done');
@@ -273,6 +299,12 @@ export function plexCleanupStateStore(channelId: string): CleanupStateStore {
       }).run();
     },
   };
+}
+
+/** The slice of the discord.js client the tick touches (injectable so tests can prove it is never reached). */
+export interface CleanupClient {
+  user?: { id: string } | null;
+  channels: { fetch(id: string): Promise<{ isTextBased(): boolean } | null> };
 }
 
 export interface CleanupGateState {
@@ -322,6 +354,7 @@ export async function runPlexCardCleanupTick(
   sync: PlexCardSyncStatus,
   now = Date.now(),
   run: (deps: CleanupDeps) => Promise<CleanupOutcome> = runPlexCardCleanup,
+  resolveClient: () => CleanupClient = getClient as unknown as () => CleanupClient,
 ): Promise<CleanupOutcome | null> {
   if (!config.PLEX_CARD_CLEANUP_ENABLED || cleanupGate.running) return null;
   if (config.PLEX_CARD_CLEANUP_DRY_RUN && cleanupGate.dryRunDone) return null;
@@ -332,7 +365,7 @@ export async function runPlexCardCleanupTick(
 
   cleanupGate.running = true;
   try {
-    const client = getClient();
+    const client = resolveClient();
     const botId = client.user?.id;
     if (!botId) return null;
     const channel = await client.channels.fetch(channelId);
@@ -345,6 +378,7 @@ export async function runPlexCardCleanupTick(
       state: store,
       scanLimit: config.PLEX_CARD_CLEANUP_SCAN_LIMIT,
       dryRun: config.PLEX_CARD_CLEANUP_DRY_RUN,
+      enabled: () => config.PLEX_CARD_CLEANUP_ENABLED,
       log: (level, msg, data) => logger[level](data ?? {}, msg),
     });
     if (config.PLEX_CARD_CLEANUP_DRY_RUN) cleanupGate.dryRunDone = true;

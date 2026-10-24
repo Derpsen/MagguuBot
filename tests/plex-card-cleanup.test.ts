@@ -241,16 +241,77 @@ test('scan depth is bounded and paginated; the log names it', async () => {
   assert.equal(out.deleted, 75);
 });
 
-test('per-message errors: 10008 is skipped and counted, other errors counted, the run continues and completes', async () => {
+test('per-message errors: 10008 is skipped and counted, other errors counted, the run continues; leftovers are retried (not done)', async () => {
   const gone = fromEmbed(1, singleCard(), { delete: async () => { throw Object.assign(new Error('Unknown Message'), { code: 10_008 }); } });
   const flaky = fromEmbed(2, singleCard(), { delete: async () => { throw new Error('socket hang up'); } });
   const ok = fromEmbed(3, singleCard());
   const state = new MemState();
   const out = await cleanup.runPlexCardCleanup(deps(new FakeChannel([gone, flaky, ok]), state).deps);
-  assert.equal(out.status, 'done');
+  assert.equal(out.status, 'aborted', 'errors>0: not final, a bounded retry follows');
   assert.deepEqual([out.deleted, out.skipped, out.errors], [1, 1, 1]);
   assert.equal(ok.deleted, true);
+  assert.equal(state.row?.status, 'aborted');
+  assert.equal(state.row?.attempts, 1);
+});
+
+test('F3: leftover cards are retried after 6 h, only the leftovers are touched, max 3 attempts, then failed (final)', async () => {
+  let failing = true;
+  let deleteCalls = 0;
+  const stubborn = fromEmbed(1, singleCard(), { delete: async () => { deleteCalls += 1; if (failing) throw new Error('socket hang up'); } });
+  const fine = fromEmbed(2, singleCard());
+  const channel = new FakeChannel([stubborn, fine]);
+  const state = new MemState();
+  let now = 7_000_000;
+  const t = deps(channel, state, { now: () => now });
+  const run = () => cleanup.runPlexCardCleanup(t.deps);
+
+  assert.equal((await run()).status, 'aborted');
+  assert.equal(fine.deleted, true);
+  assert.equal(state.row?.deleted, 1);
+  now += 60 * 60_000;
+  assert.equal((await run()).status, 'skipped', 'too early for the retry');
+  assert.equal(deleteCalls, 1);
+
+  now += cleanup.PLEX_CLEANUP_RETRY_MS;
+  assert.equal((await run()).status, 'aborted', 'attempt 2 still fails');
+  assert.equal(deleteCalls, 2);
+  assert.equal(state.row?.attempts, 2);
+  failing = false;
+  now += cleanup.PLEX_CLEANUP_RETRY_MS + 1;
+  const third = await run();
+  assert.equal(third.status, 'done', 'attempt 3 clears the leftover');
+  assert.equal(deleteCalls, 3, "only the leftover was touched again");
   assert.equal(state.row?.status, 'done');
+  assert.equal(state.row?.attempts, 3);
+
+  // permanently failing: the third attempt ends as failed and nothing runs again
+  const hard = fromEmbed(1, singleCard(), { delete: async () => { deleteCalls += 1; throw new Error('boom'); } });
+  const s2 = new MemState();
+  let n2 = 1_000;
+  const d2 = deps(new FakeChannel([hard]), s2, { now: () => n2 });
+  for (let i = 0; i < 3; i += 1) { await cleanup.runPlexCardCleanup(d2.deps); n2 += cleanup.PLEX_CLEANUP_RETRY_MS + 1; }
+  assert.equal(s2.row?.status, 'failed');
+  const before = deleteCalls;
+  assert.equal((await cleanup.runPlexCardCleanup(d2.deps)).status, 'skipped');
+  assert.equal(deleteCalls, before);
+});
+
+test('F3: PLEX_CARD_CLEANUP_ENABLED is re-checked before every delete; turning it off mid-run stops at once and persists nothing', async () => {
+  const msgs = Array.from({ length: 5 }, (_, i) => fromEmbed(i + 1, singleCard()));
+  let enabled = true;
+  let checks = 0;
+  const state = new MemState();
+  const t = deps(new FakeChannel(msgs), state, {
+    enabled: () => { checks += 1; return enabled; },
+    sleep: async () => { if (msgs.filter((m) => m.deleted).length === 2) enabled = false; },
+  });
+  const out = await cleanup.runPlexCardCleanup(t.deps);
+  assert.equal(out.status, 'aborted');
+  assert.equal(out.deleted, 2, 'no delete after the switch went off');
+  assert.deepEqual(msgs.map((m) => m.deleted), [false, false, false, true, true]);
+  assert.equal(state.saves, 0, 'nothing persisted: the next enabled run starts clean');
+  assert.equal(checks, 3);
+  assert.ok(t.logs.some((l) => l.msg === 'Plex card cleanup stopped: disabled while running'));
 });
 
 test('50001 aborts at channel level immediately; 50013 skips per message but aborts after three in a row; warn logged', async () => {
@@ -275,7 +336,7 @@ test('50001 aborts at channel level immediately; 50013 skips per message but abo
   // a single 50013 between successes does not abort
   const mixed = [fromEmbed(1, singleCard(), { delete: async () => { throw Object.assign(new Error('x'), { code: 50_013 }); } }), fromEmbed(2, singleCard()), fromEmbed(3, singleCard())];
   const o3 = await cleanup.runPlexCardCleanup(deps(new FakeChannel(mixed), new MemState()).deps);
-  assert.equal(o3.status, 'done');
+  assert.equal(o3.status, 'aborted', 'one error: the leftover is retried later');
   assert.deepEqual([o3.deleted, o3.errors], [2, 1]);
 });
 
@@ -338,33 +399,158 @@ test('gate: needs a posted, fully synced, unpaused state for a full minute and n
   assert.equal(g(sync(), T + 240_000 + cleanup.PLEX_CLEANUP_STABLE_MS), 'start');
 });
 
-test('tick wiring: disabled by env, final state and not-live state never start a run (injected run, no Discord)', async () => {
+/** A client spy: every touch is recorded; `live` makes it usable so a positive control can prove the spy works. */
+function spyClient(channelId: string) {
+  const touched: string[] = [];
+  const fetched: string[] = [];
+  const client = {
+    get user() { touched.push('user'); return { id: BOT }; },
+    channels: {
+      fetch: async (id: string) => {
+        touched.push('channels.fetch');
+        fetched.push(id);
+        return { isTextBased: () => true, messages: { fetch: async () => { touched.push('messages.fetch'); return new Map(); } }, expectedId: channelId };
+      },
+    },
+  };
+  return { client, touched, fetched, resolve: () => { touched.push('getClient'); return client; } };
+}
+
+const liveSync = { cards: 1, posted: 1, unsynced: 0, paused: false, lastPostAt: 0 };
+const okOutcome = { ran: true, dryRun: false, status: 'done' as const, scanned: 0, candidates: 0, deleted: 0, skipped: 0, errors: 0 };
+
+test('F1 tick emergency brake: with PLEX_CARD_CLEANUP_ENABLED=false neither the client, nor the channel, nor fetch/delete is touched (spy; fails without the check)', async () => {
   const { config } = await import('../src/config.ts');
-  const live = { cards: 1, posted: 1, unsynced: 0, paused: false, lastPostAt: 0 };
+  const spy = spyClient('cb');
   let runs = 0;
-  const run = async () => { runs += 1; return { ran: true, dryRun: false, status: 'done' as const, scanned: 0, candidates: 0, deleted: 0, skipped: 0, errors: 0 }; };
+  const run = async () => { runs += 1; return okOutcome; };
   cleanup.resetCleanupGate();
   const was = config.PLEX_CARD_CLEANUP_ENABLED;
+  const wasDry = config.PLEX_CARD_CLEANUP_DRY_RUN;
   try {
+    config.PLEX_CARD_CLEANUP_DRY_RUN = false;
     config.PLEX_CARD_CLEANUP_ENABLED = false;
-    await cleanup.runPlexCardCleanupTick('c1', live, 1_000_000, run);
-    await cleanup.runPlexCardCleanupTick('c1', live, 1_000_000 + 10 * 60_000, run);
+    for (let i = 0; i < 4; i += 1) await cleanup.runPlexCardCleanupTick('cb', liveSync, 1_000_000 + i * 10 * 60_000, run, spy.resolve as never);
+    assert.deepEqual(spy.touched, [], 'a disabled cleanup must not reach getClient / channels.fetch / messages.fetch / delete');
     assert.equal(runs, 0, 'emergency brake');
 
+    // positive control: the very same calls with the switch on DO reach the client (so the spy and the gate work)
     config.PLEX_CARD_CLEANUP_ENABLED = true;
-    cleanup.plexCleanupStateStore('c2').save({ status: 'done', attempts: 1, scanned: 5, candidates: 2, deleted: 2, skipped: 0, errors: 0, scanLimit: 1000, finishedAt: 1 });
-    await cleanup.runPlexCardCleanupTick('c2', live, 1_000_000, run);
-    await cleanup.runPlexCardCleanupTick('c2', live, 1_000_000 + 10 * 60_000, run);
-    assert.equal(runs, 0, 'persisted done: never again');
-    assert.equal(cleanup.plexCleanupStateStore('c2').load()?.deleted, 2);
-
-    await cleanup.runPlexCardCleanupTick('c3', { ...live, unsynced: 1 }, 1_000_000, run);
-    await cleanup.runPlexCardCleanupTick('c3', { ...live, unsynced: 1 }, 1_000_000 + 10 * 60_000, run);
-    assert.equal(runs, 0, 'cards not live yet');
+    cleanup.resetCleanupGate();
+    await cleanup.runPlexCardCleanupTick('cb', liveSync, 5_000_000, run, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('cb', liveSync, 5_000_000 + 10 * 60_000, run, spy.resolve as never);
+    assert.equal(runs, 1, 'enabled: the run starts on the second live tick');
+    assert.ok(spy.touched.includes('getClient') && spy.touched.includes('channels.fetch'));
   } finally {
     config.PLEX_CARD_CLEANUP_ENABLED = was;
+    config.PLEX_CARD_CLEANUP_DRY_RUN = wasDry;
     cleanup.resetCleanupGate();
+    sqliteHandle.prepare("DELETE FROM plex_cleanup_state WHERE channel_id IN ('cb')").run();
   }
+});
+
+test('tick wiring: final state and not-live state never start a run; 0 cards never reaches the client', async () => {
+  const { config } = await import('../src/config.ts');
+  let runs = 0;
+  const run = async () => { runs += 1; return okOutcome; };
+  cleanup.resetCleanupGate();
+  const was = config.PLEX_CARD_CLEANUP_ENABLED;
+  const wasDry = config.PLEX_CARD_CLEANUP_DRY_RUN;
+  try {
+    config.PLEX_CARD_CLEANUP_DRY_RUN = false;
+    config.PLEX_CARD_CLEANUP_ENABLED = true;
+    const spy = spyClient('c2');
+    cleanup.plexCleanupStateStore('c2').save({ status: 'done', attempts: 1, scanned: 5, candidates: 2, deleted: 2, skipped: 0, errors: 0, scanLimit: 1000, finishedAt: 1 });
+    await cleanup.runPlexCardCleanupTick('c2', liveSync, 1_000_000, run, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('c2', liveSync, 1_000_000 + 10 * 60_000, run, spy.resolve as never);
+    // ... even 30 days later: a persisted 'done' is final (once-flag beyond the 6 h retry window)
+    await cleanup.runPlexCardCleanupTick('c2', liveSync, 1_000_000 + 30 * 24 * 60 * 60_000, run, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('c2', liveSync, 1_000_000 + 30 * 24 * 60 * 60_000 + 120_000, run, spy.resolve as never);
+    assert.equal(runs, 0, 'persisted done: never again');
+    assert.deepEqual(spy.touched, []);
+    assert.equal(cleanup.plexCleanupStateStore('c2').load()?.deleted, 2);
+
+    const notLive = spyClient('c3');
+    await cleanup.runPlexCardCleanupTick('c3', { ...liveSync, unsynced: 1 }, 1_000_000, run, notLive.resolve as never);
+    await cleanup.runPlexCardCleanupTick('c3', { ...liveSync, unsynced: 1 }, 1_000_000 + 10 * 60_000, run, notLive.resolve as never);
+    assert.equal(runs, 0, 'cards not live yet');
+
+    // 0 cards: nothing to be synced against, so the cleanup (which would delete the old cards) must wait
+    const none = spyClient('c4');
+    const zero = { cards: 0, posted: 0, unsynced: 0, paused: false, lastPostAt: 0 };
+    await cleanup.runPlexCardCleanupTick('c4', zero, 1_000_000, run, none.resolve as never);
+    await cleanup.runPlexCardCleanupTick('c4', zero, 1_000_000 + 10 * 60_000, run, none.resolve as never);
+    assert.equal(runs, 0);
+    assert.deepEqual(none.touched, []);
+  } finally {
+    config.PLEX_CARD_CLEANUP_ENABLED = was;
+    config.PLEX_CARD_CLEANUP_DRY_RUN = wasDry;
+    cleanup.resetCleanupGate();
+    sqliteHandle.prepare("DELETE FROM plex_cleanup_state WHERE channel_id IN ('c2','c3','c4')").run();
+  }
+});
+
+test('F4 tick: the channel id passed to the tick is the one fetched and handed to the run; an aborted state older than 6 h starts again', async () => {
+  const { config } = await import('../src/config.ts');
+  const spy = spyClient('1530000000000000777');
+  let seenChannel: unknown = null;
+  const run = async (d: { channel: unknown }) => { seenChannel = d.channel; return okOutcome; };
+  cleanup.resetCleanupGate();
+  const was = config.PLEX_CARD_CLEANUP_ENABLED;
+  const wasDry = config.PLEX_CARD_CLEANUP_DRY_RUN;
+  try {
+    config.PLEX_CARD_CLEANUP_DRY_RUN = false;
+    config.PLEX_CARD_CLEANUP_ENABLED = true;
+    const store = cleanup.plexCleanupStateStore('1530000000000000777');
+    const T = 100 * 60 * 60_000;
+    store.save({ status: 'aborted', attempts: 1, scanned: 0, candidates: 1, deleted: 0, skipped: 0, errors: 1, scanLimit: 1000, finishedAt: T });
+    // inside 6 h: still blocked
+    await cleanup.runPlexCardCleanupTick('1530000000000000777', liveSync, T + 60 * 60_000, run as never, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('1530000000000000777', liveSync, T + 2 * 60 * 60_000, run as never, spy.resolve as never);
+    assert.equal(seenChannel, null);
+    assert.deepEqual(spy.touched, []);
+    // beyond 6 h: runs, with exactly this channel
+    cleanup.resetCleanupGate();
+    const late = T + cleanup.PLEX_CLEANUP_RETRY_MS + 1;
+    await cleanup.runPlexCardCleanupTick('1530000000000000777', liveSync, late, run as never, spy.resolve as never);
+    await cleanup.runPlexCardCleanupTick('1530000000000000777', liveSync, late + 120_000, run as never, spy.resolve as never);
+    assert.deepEqual(spy.fetched, ['1530000000000000777']);
+    assert.ok(seenChannel, 'run got the fetched channel');
+    // a dry run only happens once per process (dryRunDone), also long after
+    cleanup.resetCleanupGate();
+    config.PLEX_CARD_CLEANUP_DRY_RUN = true;
+    const dry = spyClient('dry');
+    let dryRuns = 0;
+    const dryRun = async () => { dryRuns += 1; return { ...okOutcome, dryRun: true, status: 'dry-run' as const }; };
+    for (let i = 0; i < 6; i += 1) await cleanup.runPlexCardCleanupTick('dry', liveSync, 9_000_000 + i * 7 * 60 * 60_000, dryRun, dry.resolve as never);
+    assert.equal(dryRuns, 1, 'dry-run flag: once per process, also beyond 6 h');
+  } finally {
+    config.PLEX_CARD_CLEANUP_ENABLED = was;
+    config.PLEX_CARD_CLEANUP_DRY_RUN = wasDry;
+    cleanup.resetCleanupGate();
+    sqliteHandle.prepare("DELETE FROM plex_cleanup_state WHERE channel_id IN ('1530000000000000777','dry')").run();
+  }
+});
+
+test('F4 gate: a card reposted while everything reads as synced (no unsynced) still delays the cleanup by a full minute', () => {
+  const gate = { syncedSince: null as number | null, running: false, dryRunDone: false };
+  const T = 50_000_000;
+  const sync = (lastPostAt: number) => ({ cards: 2, posted: 2, unsynced: 0, paused: false, lastPostAt });
+  assert.equal(cleanup.evaluateCleanupGate(sync(0), T, gate), 'wait');
+  assert.equal(cleanup.evaluateCleanupGate(sync(0), T + 5 * 60_000, gate), 'start', 'long synced, no recent post');
+  // repost 10 s ago without any unsynced tick in between: must wait
+  assert.equal(cleanup.evaluateCleanupGate(sync(T + 5 * 60_000 + 20_000), T + 5 * 60_000 + 30_000, gate), 'wait');
+  assert.equal(cleanup.evaluateCleanupGate(sync(T + 5 * 60_000 + 20_000), T + 5 * 60_000 + 20_000 + cleanup.PLEX_CLEANUP_STABLE_MS, gate), 'start');
+});
+
+test('F4 once-flag: done and failed stay final for any age, aborted only blocks for 6 h', () => {
+  const row = (status: 'done' | 'failed' | 'aborted'): CleanupStateRow => ({ status, attempts: 1, scanned: 0, candidates: 0, deleted: 0, skipped: 0, errors: 0, scanLimit: 1, finishedAt: 1_000 });
+  const far = 1_000 + 365 * 24 * 60 * 60_000;
+  assert.equal(cleanup.cleanupIsFinal(row('done'), far), true);
+  assert.equal(cleanup.cleanupIsFinal(row('failed'), far), true);
+  assert.equal(cleanup.cleanupIsFinal(row('aborted'), 1_000 + cleanup.PLEX_CLEANUP_RETRY_MS - 1), true);
+  assert.equal(cleanup.cleanupIsFinal(row('aborted'), 1_000 + cleanup.PLEX_CLEANUP_RETRY_MS), false);
+  assert.equal(cleanup.cleanupIsFinal(null, far), false);
 });
 
 test('real SQLite: the cleanup state round-trips and upserts', () => {

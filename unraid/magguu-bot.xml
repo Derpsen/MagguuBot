@@ -121,4 +121,34 @@
   <Config Name="PLEX_ACTIVITY_RETENTION_DAYS" Target="PLEX_ACTIVITY_RETENTION_DAYS" Default="7" Mode="" Description="Delete old Plex activity cards from Discord after this many days (1-90). Set 0 to keep them forever." Type="Variable" Display="advanced" Required="false" Mask="false">7</Config>
 
   <Config Name="PLEX_STALE_SESSION_MINUTES" Target="PLEX_STALE_SESSION_MINUTES" Default="20" Mode="" Description="Terminate paused or stuck Plex sessions via Tautulli after this many minutes (1-180). Also closes Discord activity cards that no longer have a live session. Set 0 to disable." Type="Variable" Display="advanced" Required="false" Mask="false">20</Config>
+
+  <Config Name="PLEX_CARD_CLEANUP_ENABLED" Target="PLEX_CARD_CLEANUP_ENABLED" Default="true" Mode="" Description="Emergency brake for the one-time removal of the former Plex activity cards (per-user cards must be live first). Set false to never delete anything; also re-checked before every single delete." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="PLEX_CARD_CLEANUP_DRY_RUN" Target="PLEX_CARD_CLEANUP_DRY_RUN" Default="false" Mode="" Description="true = the cleanup only counts and logs what it would delete (once per process), deletes nothing and persists nothing." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+
+  <Config Name="PLEX_CARD_CLEANUP_SCAN_LIMIT" Target="PLEX_CARD_CLEANUP_SCAN_LIMIT" Default="1000" Mode="" Description="How many recent messages in the Plex channel the cleanup scans (100-2000)." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
+
+  <Config Name="PLEX_CARD_USER_ALIASES" Target="PLEX_CARD_USER_ALIASES" Default="" Mode="" Description="Optional display names for the per-user Plex cards: name=alias,name2=alias2 (or a JSON object). Empty = Plex names as they are." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="PLEX_CARD_USER_EXCLUDE" Target="PLEX_CARD_USER_EXCLUDE" Default="" Mode="" Description="Optional comma-separated Plex user names that get no card." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="PLEX_NEW_DIGEST_ENABLED" Target="PLEX_NEW_DIGEST_ENABLED" Default="true" Mode="" Description="Enable the weekly &quot;Neu hinzugefügt&quot; digest (one embed with new additions since the last digest, Tautulli). Nothing new = no message." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="PLEX_NEW_DIGEST_DAY" Target="PLEX_NEW_DIGEST_DAY" Default="5" Mode="" Description="Digest weekday: 0=Sunday, 1=Monday through 6=Saturday (default Friday)." Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
+
+  <Config Name="PLEX_NEW_DIGEST_HOUR" Target="PLEX_NEW_DIGEST_HOUR" Default="18" Mode="" Description="Local hour (0-23, TIME_ZONE) after which the digest is posted." Type="Variable" Display="advanced" Required="false" Mask="false">18</Config>
+
+  <Config Name="DISCORD_CHANNEL_NEW_ADDED" Target="DISCORD_CHANNEL_NEW_ADDED" Default="" Mode="" Description="Optional channel ID for the &quot;Neu hinzugefügt&quot; digest (default: New-on-Plex channel, else the weekly digest channel)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="FAQ_TOP_ENABLED" Target="FAQ_TOP_ENABLED" Default="true" Mode="" Description="Enable the weekly &quot;FAQ der Woche&quot; embed (most used FAQ question, anonymous counters). No usage = no message." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="FAQ_TOP_DAY" Target="FAQ_TOP_DAY" Default="1" Mode="" Description="FAQ of the week weekday: 0=Sunday, 1=Monday through 6=Saturday." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+
+  <Config Name="FAQ_TOP_HOUR" Target="FAQ_TOP_HOUR" Default="10" Mode="" Description="Local hour (0-23, TIME_ZONE) after which the FAQ of the week is posted." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
+
+  <Config Name="DISCORD_CHANNEL_FAQ_TOP" Target="DISCORD_CHANNEL_FAQ_TOP" Default="" Mode="" Description="Optional channel ID for &quot;FAQ der Woche&quot; (default: weekly digest channel)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="SERVER_HEALTH_CARD_ENABLED" Target="SERVER_HEALTH_CARD_ENABLED" Default="true" Mode="" Description="Enable the self-updating server health card (members, active users of the week, commands). Needs a channel, otherwise nothing happens." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+
+  <Config Name="DISCORD_CHANNEL_SERVER_HEALTH" Target="DISCORD_CHANNEL_SERVER_HEALTH" Default="" Mode="" Description="Optional channel ID for the server health card (default: health/status channel; without a channel no card)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 </Container>

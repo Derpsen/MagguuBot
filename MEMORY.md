@@ -2,6 +2,13 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Plex cleanup follow-ups (code review)
+
+- Request (Marco, via Buddy): F1 make the emergency-brake test effective, F2 Unraid template envs, F3 `done` with errors, F4 test gaps. Rollback branch `rollback/pre-plexcleanup-followups-1ecbf48`.
+- F1: the old test stayed green without the ENABLED check because `getClient()` throws inside the tick's try/catch. Tick now takes an injectable client resolver; the test uses a spy (any touch of getClient/channels.fetch/messages.fetch counts as failure) plus a positive control with the switch on. Verified: removing the check turns the test red; removing the per-delete re-check turns the new mid-run test red.
+- F3 decision: retry instead of documenting (lower risk: same classification and protected set, 6 h spacing, max 3 attempts, ends as `failed`, not `done`, with leftovers). ENABLED is re-checked before every delete; off mid-run = stop at once, persist nothing.
+- F2: only the repo template `unraid/magguu-bot.xml` changed (advanced, no secrets). The live Unraid template belongs to Unraid & Server; envs have working defaults, so nothing is required there.
+
 ## 2026-10-25 Server health card (Feature 3 of 3)
 
 - Rollback branch `rollback/pre-serverhealth-3c0288e`. Rules: AGENTS.md "Server health card".
