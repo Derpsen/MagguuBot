@@ -57,3 +57,15 @@ jobs:
           echo "${OSV_SHA256}  osv-scanner" | sha256sum -c -
           chmod +x osv-scanner
           ./osv-scanner scan source --recursive .
+
+  alarm:
+    name: failure alarm
+    needs: [quality]
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ci-alarm.yml
+    secrets:
+      ESCALATION_WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+      ESCALATION_BEARER: ${{ secrets.ESCALATION_BEARER }}

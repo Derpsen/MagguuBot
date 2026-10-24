@@ -1,0 +1,90 @@
+# Reusable failure alarm (called by ci, docker and quality, only for pushes to main).
+# Posts ONE small JSON message (repository, workflow, commit SHA, run URL, last ~20 redacted log lines)
+# to the escalation webhook. Both secrets are optional: if either is empty the job skips quietly.
+# The alarm can never turn a run red: the step is continue-on-error with short curl timeouts.
+# Dedupe: one alarm job per workflow run, none for re-runs (run_attempt > 1), plus an
+# Idempotency-Key header (sha256 of repository|workflow|sha) for the receiver.
+name: ci-alarm
+
+on:
+  workflow_call:
+    secrets:
+      ESCALATION_WEBHOOK_URL:
+        required: false
+      ESCALATION_BEARER:
+        required: false
+
+permissions: {}
+
+jobs:
+  alarm:
+    name: failure alarm
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Post failure alarm
+        continue-on-error: true
+        env:
+          WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+          BEARER: ${{ secrets.ESCALATION_BEARER }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.workflow }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set +x
+          set -u
+          if [ -z "${WEBHOOK_URL}" ] || [ -z "${BEARER}" ]; then
+            echo "escalation secrets set: no (alarm skipped)"
+            exit 0
+          fi
+          echo "escalation secrets set: yes"
+          case "${WEBHOOK_URL}" in
+            https://*) ;;
+            *) echo "webhook is not https (alarm skipped)"; exit 0 ;;
+          esac
+          if [ "${RUN_ATTEMPT}" != "1" ]; then
+            echo "re-run attempt ${RUN_ATTEMPT}: alarm already sent for this run"
+            exit 0
+          fi
+
+          # Last lines of the first failed job (job logs exist once that job has finished).
+          LOG_TAIL=""
+          JOB_ID="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.conclusion == "failure")][0].id // empty' 2>/dev/null || true)"
+          if [ -n "${JOB_ID}" ]; then
+            LOG_TAIL="$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs" 2>/dev/null \
+              | tail -n 60 \
+              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g; s/^[0-9T:.-]+Z //' \
+              | sed -E '/(token|secret|bearer|authorization|password|passwd|api[_-]?key|key=|cookie|x-plex)/I s/.*/[line redacted]/' \
+              | cut -c1-300 \
+              | tail -n 20 || true)"
+          fi
+
+          jq -n \
+            --arg repository "${REPO}" \
+            --arg workflow "${WORKFLOW}" \
+            --arg sha "${SHA}" \
+            --arg run_url "${RUN_URL}" \
+            --arg log "${LOG_TAIL}" \
+            '{repository: $repository, workflow: $workflow, sha: $sha, run_url: $run_url, log_tail: ($log | split("\n") | map(select(length > 0)))}' \
+            > payload.json
+
+          KEY="$(printf '%s|%s|%s' "${REPO}" "${WORKFLOW}" "${SHA}" | sha256sum | cut -d' ' -f1)"
+
+          # URL and bearer go through curl's config on stdin (printf is a shell builtin): never on a command line, never echoed.
+          STATUS="$(printf 'url = "%s"\nheader = "Authorization: Bearer %s"\n' "${WEBHOOK_URL}" "${BEARER}" \
+            | curl --silent --config - --request POST \
+                --connect-timeout 5 --max-time 10 \
+                --header 'Content-Type: application/json' \
+                --header "Idempotency-Key: ${KEY}" \
+                --data @payload.json \
+                --output /dev/null --write-out '%{http_code}' 2>/dev/null || true)"
+          rm -f payload.json
+          echo "alarm POST finished, HTTP status: ${STATUS:-none}"
