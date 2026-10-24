@@ -4,9 +4,17 @@
 # The alarm can never turn a run red: the step is continue-on-error with short curl timeouts.
 # Dedupe: one alarm job per workflow run, none for re-runs (run_attempt > 1), plus an
 # Idempotency-Key header (sha256 of repository|workflow|sha) for the receiver.
+# Controlled test: `gh workflow run ci-alarm.yml --ref main -f test=true` (workflow_dispatch, main only) sends ONE clearly
+# marked test payload ("CI-Alarm Test, kein echter Fehler") through the same curl path, without any failure().
 name: ci-alarm
 
 on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Send one marked test alarm (no real failure)'
+        type: boolean
+        default: false
   workflow_call:
     secrets:
       ESCALATION_WEBHOOK_URL:
@@ -19,6 +27,8 @@ permissions: {}
 jobs:
   alarm:
     name: failure alarm
+    # Called by other workflows: always runs (the caller gates on failure()). Manual dispatch: only the test on main.
+    if: github.event_name != 'workflow_dispatch' || (github.ref == 'refs/heads/main' && inputs.test == true)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -36,6 +46,7 @@ jobs:
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
+          TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.test == true && 'true' || 'false' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set +x
@@ -49,7 +60,7 @@ jobs:
             https://*) ;;
             *) echo "webhook is not https (alarm skipped)"; exit 0 ;;
           esac
-          if [ "${RUN_ATTEMPT}" != "1" ]; then
+          if [ "${TEST_MODE}" != "true" ] && [ "${RUN_ATTEMPT}" != "1" ]; then
             echo "re-run attempt ${RUN_ATTEMPT}: alarm already sent for this run"
             exit 0
           fi
@@ -69,8 +80,17 @@ jobs:
 
           # Last lines of the first failed job (job logs exist once that job has finished).
           LOG_TAIL=""
-          JOB_ID="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100" \
-            --jq '[.jobs[] | select(.conclusion == "failure")][0].id // empty' 2>/dev/null || true)"
+          JOB_ID=""
+          KEY_WORKFLOW="${WORKFLOW}"
+          if [ "${TEST_MODE}" = "true" ]; then
+            echo "test mode: sending a marked test payload (no real failure)"
+            WORKFLOW="${WORKFLOW} TEST (kein echter Fehler)"
+            LOG_TAIL="CI-Alarm Test, kein echter Fehler"
+            KEY_WORKFLOW="test-${RUN_ID}"
+          else
+            JOB_ID="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.conclusion == "failure")][0].id // empty' 2>/dev/null || true)"
+          fi
           if [ -n "${JOB_ID}" ]; then
             LOG_TAIL="$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs" 2>/dev/null \
               | tail -n 60 \
@@ -88,7 +108,7 @@ jobs:
             '{repository: $repository, workflow: $workflow, sha: $sha, run_url: $run_url, log_tail: ($log | split("\n") | map(select(length > 0)))}' \
             > payload.json
 
-          KEY="$(printf '%s|%s|%s' "${REPO}" "${WORKFLOW}" "${SHA}" | sha256sum | cut -d' ' -f1)"
+          KEY="$(printf '%s|%s|%s' "${REPO}" "${KEY_WORKFLOW}" "${SHA}" | sha256sum | cut -d' ' -f1)"
 
           # URL and bearer go through curl's config on stdin (printf is a shell builtin): never on a command line, never echoed.
           STATUS="$(printf 'url = "%s"\nheader = "Authorization: Bearer %s"\n' "${WEBHOOK_URL}" "${BEARER}" \

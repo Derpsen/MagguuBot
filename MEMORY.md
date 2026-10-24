@@ -174,3 +174,6 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - New `/faq suche:<autocomplete> [privat]` over the website FAQ cache (`faq-autoanswer.ts` `getCachedFaqEntries`; ranking in `src/utils/faq-search.ts`); command count 56. Autocomplete never touches the network; with a cold cache (before the first hourly refresh succeeded) it returns no choices, execute then loads the list. Hourly refresh is now always on (was only with `FAQ_AUTOANSWER_CHANNEL_IDS`).
 - Choice value = FAQ id (≤100 chars), unknown id → friendly embed with page link + contact@magguu.xyz; free text resolves best hit + up to 4 similar questions.
 - Tested only with fakes (fake interaction, in-memory cache); real autocomplete latency/Discord rendering not seen live.
+
+## 2026-10-24 CI alarm test path (Welle d, part 2)
+- `ci-alarm.yml` has `workflow_dispatch` input `test`; job `if` lets the dispatch run only on main with `test=true`, called runs are unchanged (`failure()` gate stays in the callers). Test payload: workflow `<name> TEST (kein echter Fehler)`, log_tail `CI-Alarm Test, kein echter Fehler`, Idempotency-Key by run id.
