@@ -2,6 +2,14 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-24 Plex card flood → single card
+
+- Symptom (Marco): "wieder hunderte" Plex cards in `🎬・plex-aktivität`. No earlier fix for this exact flood in MEMORY/git log: lifecycle cards (75fe681, 73c4b76) and the stale-session tick (4f4582c) only limited cards per session; the 2026-10-22 flood fix (0ee51f2) covered Arr deletes/grabs/imports/neu-auf-plex, not playback. Rollback branch `rollback/pre-plex-card-76f2c9b`.
+- Root cause (code reading, live DB not inspected): playback was one card per correlation key, and (1) Tautulli Discord-format payloads got a key from user+player+*notification text*, so play/pause/stop of one stream got different keys (or `null` without User/Player fields = untracked, never edited, never retention-deleted) → each event posted a new card; (2) every `play` older than 2 min posted a new card (each episode/reconnect/auto-play); (3) any failed edit (not only deleted message) fell through to `postEmbed`; (4) no debounce/hash, so bursts (buffer/pause/resume) and redeliveries produced edits/posts.
+- Decision: ONE card per channel, edited in place, never a new message per event. Why not "new post on play/stop": that is exactly what flooded the channel; edits do not ping and keep history compact. "Someone watched" stays visible in the card's "Zuletzt" list (last 6). New post only when the message is missing/gone (10008, 50005) or ≥5 failed edits, with repost cooldowns. State + message id in SQLite `plex_activity_card` (same DB as everything else, backed up, survives restart).
+- Not deleted: old cards stay. Tracked old cards (from `plex_activity_messages`) are removed by the existing retention (`PLEX_ACTIVITY_RETENTION_DAYS`, default 7); untracked ones (null key) are recognisable as: author = bot, channel `plex-aktivität`, not pinned, embed footer not `MagguuBot · Plex-Aktivität (eine Karte, wird aktualisiert)`, title `▶️ Spielt ab` / `⏸️ Pausiert` / `⏹️ Gestoppt` / `✅ Zu Ende geschaut` / `🔄 Buffering`. Bulk delete = separate, explicit decision by Marco.
+- Deploy: needs the green Docker publish, then Unraid pull (Plex session gate if a restart is needed). First events after deploy post the new card once.
+
 ## 2026-10-23 Security audit fixes
 
 - Audit `~/security-audit-skill/magguubot/run-20261023/REPORT.md`: MEDIUM hierarchy bypass (ban/kick/timeout only checked bot side) fixed via `checkModerationTarget`; LOW invoker channel perms (announce/schedule-announce/purge-user) and `ping-role` mention bypass fixed via `channel-authority.ts`.

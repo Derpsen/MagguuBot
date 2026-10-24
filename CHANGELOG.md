@@ -12,6 +12,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - Webhook rate-limit client IP: forwarded headers are only trusted from peers listed in the new `TRUSTED_PROXIES` (IP/CIDR allowlist, X-Forwarded-For walked right-to-left). `TRUST_PROXY=true` alone no longer trusts headers (startup warning).
 
 ### Fixed
+- Plex activity channel flood: playback events no longer post a card each. One card in `🎬・plex-aktivität` lists running sessions and the last finished ones and is edited in place (message id persisted in SQLite, debounced, skipped when unchanged, reposted only when the message is gone or edits keep failing). Discord-format Tautulli events are correlated by user + player instead of the notification text.
 - Discord Seerr Approve/Decline failed with HTTP 403 because MagguuBot used a stale Seerr API key. Doctor and service health now probe `/api/v1/request/count` (authenticated) instead of the public `/status` endpoint.
 
 ### Changed
