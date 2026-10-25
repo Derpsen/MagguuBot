@@ -52,6 +52,22 @@ function writeSetting(key: string, value: string): void {
  */
 const refusedRoles = new Map<string, string>();
 
+/** The configured tiers exactly as stored (env or /rio-config), WITHOUT the in-memory refusal filter: what edits must start from. */
+export function getRioTiersUnfiltered(): ParsedTiers {
+  const stored = readSetting(KEY_TIERS);
+  return parseRioThresholds(stored !== null ? stored : config.RIO_ROLE_THRESHOLDS);
+}
+
+/** Forget a startup refusal (the role passed a live check, e.g. `/rio-config setzen` right now). */
+export function clearRioRefusal(roleId: string): void {
+  refusedRoles.delete(roleId);
+}
+
+/** Category the startup audit refused this role for, or null. */
+export function rioRefusalCategory(roleId: string): string | null {
+  return refusedRoles.get(roleId) ?? null;
+}
+
 /** A stored value (even an empty list) overrides the env; no stored value = env. */
 export function getRioTiers(): ParsedTiers {
   const stored = readSetting(KEY_TIERS);
@@ -99,6 +115,20 @@ export async function auditRioTiers(guild: Pick<RioGuildLike, 'id' | 'roles'>): 
 /** Test seam. */
 export function resetRioRefusedRoles(): void {
   refusedRoles.clear();
+  unsafeWarnedAt.clear();
+}
+
+/** One admin-facing warning per refused role and 24 h (a member retrying must not flood the log). */
+const UNSAFE_WARN_EVERY_MS = 24 * 60 * 60_000;
+const unsafeWarnedAt = new Map<string, number>();
+
+/** Role id + category only: no user, character or permission list. Returns true when it logged. */
+export function warnRioRoleUnsafeOnce(roleId: string, category: string, nowMs: number): boolean {
+  const last = unsafeWarnedAt.get(roleId);
+  if (last !== undefined && nowMs - last >= 0 && nowMs - last < UNSAFE_WARN_EVERY_MS) return false;
+  unsafeWarnedAt.set(roleId, nowMs);
+  logger.warn({ roleId, category }, 'rio: /rio-link refused a score role that is not a display role (admins: check /rio-config anzeigen)');
+  return true;
 }
 
 export function saveRioTiers(tiers: readonly RioTier[]): void {
@@ -297,7 +327,10 @@ export async function linkRioCharacter(deps: RioLinkDeps): Promise<RioLinkOutcom
     const targetRole = await loadRole(guild, plan.target);
     if (!targetRole) return { kind: 'role-missing', roleId: plan.target };
     const verdict = checkScoreRole(targetRole, guild.id);
-    if (!verdict.ok) return { kind: 'role-unsafe', roleId: targetRole.id, reason: scoreRoleRefusal(verdict, false) };
+    if (!verdict.ok) {
+      warnRioRoleUnsafeOnce(targetRole.id, verdict.category, now());
+      return { kind: 'role-unsafe', roleId: targetRole.id, reason: scoreRoleRefusal(verdict, false) };
+    }
     if (plan.add) {
       addRole = targetRole;
       if (addRole.managed || !addRole.editable) return { kind: 'role-hierarchy', roleId: addRole.id, roleName: addRole.name };

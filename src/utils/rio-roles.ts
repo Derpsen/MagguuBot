@@ -55,6 +55,59 @@ export const RIO_FORBIDDEN_PERMISSIONS: bigint = RIO_FORBIDDEN_PERMISSION_NAMES.
   0n,
 );
 
+/**
+ * Allowlist (the real gate): the only permission bits a score role may carry are the harmless ones every ordinary
+ * member has anyway (read, write, react, voice participation, own nickname, slash commands, ...). A role is safe only
+ * when ALL of its bits are in this set, so a permission Discord adds in the future is refused until someone reviews
+ * and lists it here. `permissions == 0` (the recommended shape) is always safe. The forbidden list above stays as the
+ * explicit "never" list: it names the worst offenders in the refusal text and a test pins that the two never overlap.
+ * Deliberately NOT listed: TTS, priority speaker, create events / expressions, everything that manages or moderates.
+ */
+export const RIO_ALLOWED_PERMISSION_NAMES = [
+  'CreateInstantInvite',
+  'ViewChannel',
+  'SendMessages',
+  'SendMessagesInThreads',
+  'CreatePublicThreads',
+  'CreatePrivateThreads',
+  'EmbedLinks',
+  'AttachFiles',
+  'AddReactions',
+  'UseExternalEmojis',
+  'UseExternalStickers',
+  'ReadMessageHistory',
+  'UseApplicationCommands',
+  'UseExternalApps',
+  'SendPolls',
+  'SendVoiceMessages',
+  'Connect',
+  'Speak',
+  'Stream',
+  'UseVAD',
+  'UseEmbeddedActivities',
+  'UseSoundboard',
+  'UseExternalSounds',
+  'RequestToSpeak',
+  'ChangeNickname',
+] as const satisfies readonly (keyof typeof PermissionFlagsBits)[];
+
+export const RIO_ALLOWED_PERMISSIONS: bigint = RIO_ALLOWED_PERMISSION_NAMES.reduce(
+  (all, name) => all | PermissionFlagsBits[name],
+  0n,
+);
+
+/** Names of the bits in `bits` that are NOT on the allowlist (known flag name, else `Bit<n>` for a bit this build does not know). */
+export function disallowedPermissionNames(bits: bigint): string[] {
+  const out: string[] = [];
+  const known = Object.entries(PermissionFlagsBits) as Array<[string, bigint]>;
+  for (let n = 0; n < 64; n += 1) {
+    const bit = 1n << BigInt(n);
+    if ((bits & bit) === 0n || (RIO_ALLOWED_PERMISSIONS & bit) !== 0n) continue;
+    out.push(known.find(([, v]) => v === bit)?.[0] ?? `Bit${n}`);
+  }
+  return out;
+}
+
 /** Names of the forbidden bits set in `bits`. */
 export function forbiddenPermissionNames(bits: bigint): string[] {
   return RIO_FORBIDDEN_PERMISSION_NAMES.filter((name) => (bits & PermissionFlagsBits[name]) !== 0n);
@@ -77,7 +130,8 @@ export type ScoreRoleVerdict =
 
 /**
  * Can this role be a score role? Fail closed: @everyone, managed roles (bot, integration, booster), a role carrying
- * any forbidden permission bit and a role whose permissions cannot be read are all refused.
+ * ANY permission bit outside the allowlist (so also every forbidden bit and every bit Discord adds later) and a role
+ * whose permissions cannot be read are all refused.
  */
 export function checkScoreRole(
   role: { id: string; managed?: boolean; permissions?: unknown },
@@ -87,8 +141,12 @@ export function checkScoreRole(
   if (role.managed !== false) return { ok: false, category: 'managed', permissions: [] };
   const bits = rolePermissionBits(role.permissions);
   if (bits === null) return { ok: false, category: 'unreadable', permissions: [] };
-  const names = forbiddenPermissionNames(bits);
-  if (names.length > 0) return { ok: false, category: 'dangerous', permissions: names };
+  // allowlist: anything outside it is refused; the explicitly forbidden bits are listed first
+  const rest = disallowedPermissionNames(bits);
+  if (rest.length > 0) {
+    const worst = forbiddenPermissionNames(bits);
+    return { ok: false, category: 'dangerous', permissions: [...worst, ...rest.filter((n) => !worst.includes(n))] };
+  }
   return { ok: true };
 }
 

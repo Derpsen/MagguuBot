@@ -16,6 +16,9 @@ import {
   endRio,
   getRioSeasonLabel,
   getRioTiers,
+  getRioTiersUnfiltered,
+  clearRioRefusal,
+  rioRefusalCategory,
   linkRioCharacter,
   resetRioConfig,
   rioLinkMessage,
@@ -134,9 +137,13 @@ export const rioUnlinkCommand: SlashCommand = {
 };
 
 function describeTiers(tiers: readonly RioTier[], label: string, problems: readonly string[], source: string): string {
+  const refusedNote = (roleId: string): string => {
+    const category = rioRefusalCategory(roleId);
+    return category ? ` ⚠️ wird nicht vergeben (${category}), bleibt aber gespeichert` : '';
+  };
   const lines = tiers.length === 0
     ? ['Keine Schwellen gesetzt (die Funktion ist nicht eingerichtet).']
-    : tiers.map((t) => `ab **${t.minScore}** → <@&${t.roleId}>`);
+    : tiers.map((t) => `ab **${t.minScore}** → <@&${t.roleId}>${refusedNote(t.roleId)}`);
   const head = `**Raider.IO-Rollen** (Quelle: ${source}${label ? `, Season-Label: ${rioText(label, 40)}` : ''})`;
   const tail = problems.length ? [`⚠️ Probleme: ${problems.join('; ')}`] : [];
   return [head, ...lines, ...tail].join('\n');
@@ -174,7 +181,7 @@ export const rioConfigCommand: SlashCommand = {
     const source = (): string => (config.RIO_ROLE_THRESHOLDS ? 'Umgebung oder /rio-config' : '/rio-config');
 
     if (sub === 'anzeigen') {
-      const parsed = getRioTiers();
+      const parsed = getRioTiersUnfiltered(); // refused tiers stay visible (marked), so an admin can fix or remove them
       await reply(describeTiers(parsed.tiers, getRioSeasonLabel(), parsed.problems, source()));
       return;
     }
@@ -191,15 +198,19 @@ export const rioConfigCommand: SlashCommand = {
     }
     // one decimal, exactly like stored thresholds (parseRioThresholds), so entfernen finds what setzen stored
     const score = roundRioScore(interaction.options.getNumber('score', true));
-    const tiers = getRioTiers().tiers;
+    // Edits start from the stored list, NOT from the in-memory view without refused roles: a tier the startup audit
+    // refused must survive every other edit (it is only removed by an explicit `entfernen` of exactly that score).
+    const tiers = getRioTiersUnfiltered().tiers;
     if (sub === 'entfernen') {
       const next = tiers.filter((t) => t.minScore !== score);
       if (next.length === tiers.length) {
         await reply(`ℹ️ Es gibt keine Schwelle bei ${score}.`);
         return;
       }
+      const gone = tiers.find((t) => t.minScore === score);
       saveRioTiers(next);
-      await reply(`✅ Schwelle ${score} entfernt. Rollen, die der Bot schon vergeben hat, bleiben bis zum nächsten /rio-link oder /rio-unlink bestehen.`);
+      const wasRefused = gone && rioRefusalCategory(gone.roleId) ? ' (die Stufe war ohnehin gesperrt)' : '';
+      await reply(`✅ Schwelle ${score} entfernt${wasRefused}. Rollen, die der Bot schon vergeben hat, bleiben bis zum nächsten /rio-link oder /rio-unlink bestehen.`);
       return;
     }
     // setzen
@@ -211,10 +222,15 @@ export const rioConfigCommand: SlashCommand = {
       await reply(`❌ Diese Rolle kann nicht als Score-Rolle genutzt werden: ${scoreRoleRefusal(verdict, true)}. Score-Rollen müssen reine Anzeige-Rollen ohne Rechte sein.`);
       return;
     }
+    clearRioRefusal(role.id); // the live check just passed: an earlier startup refusal of this very role is outdated
     const merged = parseRioThresholds(`${[...tiers.filter((t) => t.minScore !== score), { minScore: score, roleId: role.id }].map((t) => `${t.minScore}=${t.roleId}`).join(',')}`);
     saveRioTiers(merged.tiers);
     const editable = 'editable' in role ? role.editable : null;
     const hint = editable === false ? '\n⚠️ Meine Rolle liegt nicht über dieser Rolle, ich kann sie so nicht vergeben.' : '';
-    await reply(`✅ Ab ${score} Punkten gibt es <@&${role.id}>.${hint}\n${describeTiers(merged.tiers, getRioSeasonLabel(), merged.problems, '/rio-config')}`);
+    const kept = merged.tiers.filter((t) => t.roleId !== role.id && rioRefusalCategory(t.roleId));
+    const keptNote = kept.length > 0
+      ? `\nℹ️ ${kept.length} gesperrte Stufe(n) bleiben gespeichert (nicht gelöscht, werden aber nicht vergeben); mit \`/rio-config entfernen\` kannst du sie bewusst löschen.`
+      : '';
+    await reply(`✅ Ab ${score} Punkten gibt es <@&${role.id}>.${hint}${keptNote}\n${describeTiers(merged.tiers, getRioSeasonLabel(), merged.problems, '/rio-config')}`);
   },
 };

@@ -2,6 +2,12 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-10-25 Raider.IO review lows + score role rollout (Marco Go)
+
+- (2026-10-25: rollback branch `rollback/pre-riolows-0e019e3`) Part 1 (create the Discord roles) was NOT executed: the repo defines no default role names/thresholds/colors (`RIO_ROLE_THRESHOLDS` is empty by default, thresholds are admin data) and has no provisioning tool or repo-local token for it (no `.env`, only `.env.example`; `setup-server`/`cleanup-server` are in-bot slash commands). Nothing was invented, no token was searched for. Proposal and exact steps went into the report to Marco.
+- Part 2: allowlist instead of blocklist (decision: risk-low because the refusal is the safe direction; roles created by hand with default permissions may now be refused if they carry bits like TTS/priority speaker, the reply names the bits for admins); once-per-24h warn for `role-unsafe`; refused tiers stay stored (edits start from `getRioTiersUnfiltered`); channel overwrites are a documented known limit.
+- Open: nobody could check whether a member holds a dangerous old role from before the fix (live data on Unraid, no legitimate access from here); proposal: a read-only `/rio-config pruefen` (ManageGuild) that counts linked members whose stored role is refused, without ids.
+
 ## 2026-10-25 Code-Review fixes 1ecbf48..942529c (Marco Go)
 
 - (2026-10-25: rollback branch `rollback/pre-reviewfix-942529c`) Finding 1 (Medium: tier roles had no permission-bit check, so a ManageGuild user could point a tier at an admin/mod role below the bot and give it to themselves) is closed in its own commit, before the rest. Rules: AGENTS.md "Score roles must be display roles without rights".

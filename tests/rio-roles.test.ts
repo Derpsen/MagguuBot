@@ -555,7 +555,12 @@ test('/rio-config: needs ManageGuild, sets/removes thresholds and the season lab
 const SAFE_BITS = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages | PermissionFlagsBits.AddReactions | PermissionFlagsBits.ChangeNickname;
 
 test('role safety (pure): every forbidden bit alone is refused, the list covers the dangerous ones, ordinary bits pass', () => {
-  for (const must of ['Administrator', 'ManageGuild', 'ManageRoles', 'ManageChannels', 'ManageMessages', 'KickMembers', 'BanMembers', 'ModerateMembers', 'MentionEveryone', 'ManageWebhooks', 'ManageNicknames', 'ManageEvents', 'ManageThreads', 'ManageGuildExpressions', 'ViewAuditLog', 'ViewGuildInsights']) {
+  // the complete list, pinned: a removed or added name must be a conscious change of this test
+  const ALL_22 = ['Administrator', 'ManageGuild', 'ManageRoles', 'ManageChannels', 'ManageMessages', 'ManageThreads', 'ManageWebhooks', 'ManageNicknames', 'ManageEvents', 'ManageGuildExpressions', 'KickMembers', 'BanMembers', 'ModerateMembers', 'MuteMembers', 'DeafenMembers', 'MoveMembers', 'MentionEveryone', 'ViewAuditLog', 'ViewGuildInsights', 'ViewCreatorMonetizationAnalytics', 'PinMessages', 'BypassSlowmode'];
+  assert.equal(ALL_22.length, 22);
+  assert.equal(pure.RIO_FORBIDDEN_PERMISSION_NAMES.length, 22, 'the forbidden list has exactly 22 entries');
+  assert.deepEqual([...pure.RIO_FORBIDDEN_PERMISSION_NAMES].sort(), [...ALL_22].sort(), 'and exactly these');
+  for (const must of ALL_22) {
     assert.ok((pure.RIO_FORBIDDEN_PERMISSION_NAMES as readonly string[]).includes(must), `${must} is on the list`);
   }
   for (const name of pure.RIO_FORBIDDEN_PERMISSION_NAMES) {
@@ -921,4 +926,140 @@ test('docs in the product: /rio-link says it is unverified and the role carries 
   assert.match(desc, /ohne Rechte/);
   assert.ok(desc.length <= 100, 'within the Discord limit');
   assert.equal(svc.RIO_DISCLAIMER.includes('nicht verifiziert') && svc.RIO_DISCLAIMER.includes('ohne Rechte'), true);
+});
+
+// ─── review lows: allowlist (c), warn once (b), refused tiers survive edits (d) ──
+
+const ALLOWED_NOW = ['CreateInstantInvite', 'ViewChannel', 'SendMessages', 'SendMessagesInThreads', 'CreatePublicThreads', 'CreatePrivateThreads', 'EmbedLinks', 'AttachFiles', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers', 'ReadMessageHistory', 'UseApplicationCommands', 'UseExternalApps', 'SendPolls', 'SendVoiceMessages', 'Connect', 'Speak', 'Stream', 'UseVAD', 'UseEmbeddedActivities', 'UseSoundboard', 'UseExternalSounds', 'RequestToSpeak', 'ChangeNickname'];
+
+test('(c) allowlist: only permissions == 0 or harmless participation bits pass; every other bit (known, future, unknown) is refused; the forbidden list is a subset of the refused', () => {
+  assert.deepEqual([...pure.RIO_ALLOWED_PERMISSION_NAMES].sort(), [...ALLOWED_NOW].sort(), 'the allowlist is pinned (adding a bit is a conscious change)');
+  const forbidden = new Set<string>(pure.RIO_FORBIDDEN_PERMISSION_NAMES);
+  for (const name of pure.RIO_ALLOWED_PERMISSION_NAMES) {
+    assert.ok(!forbidden.has(name), `${name} is not both allowed and forbidden`);
+    assert.equal(typeof PermissionFlagsBits[name], 'bigint', `${name} exists in this discord.js`);
+    assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: String(PermissionFlagsBits[name]) }, GUILD).ok, true, `${name} alone is fine`);
+  }
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: String(pure.RIO_ALLOWED_PERMISSIONS) }, GUILD).ok, true, 'all harmless bits together');
+  assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: '0' }, GUILD).ok, true, 'permissions == 0');
+
+  // EVERY flag discord.js knows that is not allowlisted is refused, not only the 22 named ones
+  const allowed = new Set<string>(pure.RIO_ALLOWED_PERMISSION_NAMES);
+  let refusedCount = 0;
+  for (const [name, bit] of Object.entries(PermissionFlagsBits)) {
+    if (allowed.has(name)) continue;
+    const verdict = pure.checkScoreRole({ id: R1, managed: false, permissions: String(bit | SAFE_BITS) }, GUILD);
+    assert.equal(verdict.ok, false, `${name} is refused`);
+    assert.ok(verdict.ok === false && verdict.permissions.includes(name), `${name} is named in the reason`);
+    refusedCount += 1;
+  }
+  assert.ok(refusedCount >= 22, 'at least the 22 forbidden ones are among the refused');
+  for (const name of ['SendTTSMessages', 'PrioritySpeaker', 'CreateEvents', 'CreateGuildExpressions', 'ManageEvents']) {
+    assert.equal(pure.checkScoreRole({ id: R1, managed: false, permissions: String(PermissionFlagsBits[name as keyof typeof PermissionFlagsBits]) }, GUILD).ok, false, name);
+  }
+
+  // a permission bit Discord adds tomorrow (unknown to this build) is refused until it is reviewed and listed
+  for (const n of [47n, 60n, 63n]) {
+    const verdict = pure.checkScoreRole({ id: R1, managed: false, permissions: String((1n << n) | SAFE_BITS) }, GUILD);
+    assert.deepEqual(verdict.ok ? null : [verdict.category, verdict.permissions.includes(`Bit${n}`) || verdict.permissions.length > 0], ['dangerous', true], String(n));
+  }
+  const future = pure.checkScoreRole({ id: R1, managed: false, permissions: String(1n << 62n) }, GUILD);
+  assert.deepEqual(future, { ok: false, category: 'dangerous', permissions: ['Bit62'] });
+  // the worst offenders come first in the reason
+  const mixed = pure.checkScoreRole({ id: R1, managed: false, permissions: String(PermissionFlagsBits.SendTTSMessages | PermissionFlagsBits.BanMembers) }, GUILD);
+  assert.deepEqual(mixed.ok ? null : mixed.permissions, ['BanMembers', 'SendTTSMessages']);
+});
+
+test('(b) /rio-link logs a refused score role once per role and 24 h (role id + category only, no user data) and still answers every member', async () => {
+  const warns: unknown[][] = [];
+  const spy = mock.method(logger, 'warn', (...args: unknown[]) => { warns.push(args); });
+  const unsafe = (id: string) => rig({ roles: { [id]: { permissions: String(PermissionFlagsBits.Administrator) } } });
+  const DAY = 24 * 60 * 60_000;
+  try {
+    svc.resetRioRefusedRoles();
+    const at = (ms: number) => svc.linkRioCharacter({ guild: unsafe(R2).guild as never, userId: USER, input: INPUT, tiers: TIERS, store: new MemStore(), fetchScore: scoreOf(2500), now: () => ms });
+    const count = () => warns.filter((w) => JSON.stringify(w).includes('refused a score role')).length;
+    for (const ms of [1_000, 2_000, 60_000, DAY - 1]) {
+      const out = await at(ms);
+      assert.equal(out.kind, 'role-unsafe', 'the member still gets the answer');
+    }
+    assert.equal(count(), 1, 'logged once for the same role within 24 h');
+    await at(1_000 + DAY);
+    assert.equal(count(), 2, 'logged again after 24 h');
+    // another role has its own budget
+    await svc.linkRioCharacter({ guild: unsafe(R1).guild as never, userId: USER, input: INPUT, tiers: [{ minScore: 0, roleId: R1 }], store: new MemStore(), fetchScore: scoreOf(2500), now: () => 1_000 + DAY });
+    assert.equal(count(), 3);
+    const logged = JSON.stringify(warns);
+    assert.ok(logged.includes(R2) && logged.includes('dangerous'), 'role id and category');
+    assert.ok(!logged.includes(USER) && !logged.includes('Administrator') && !logged.includes(INPUT.name), 'no user id, character or permission names');
+  } finally {
+    spy.mock.restore();
+    svc.resetRioRefusedRoles();
+  }
+});
+
+test('(d) /rio-config setzen/entfernen never silently delete a tier the startup audit refused: it stays stored, is shown as refused, and only an explicit entfernen of that score removes it', async () => {
+  const BAD = '1600000000000000021';
+  const GOOD = '1600000000000000022';
+  const NEW = '1600000000000000023';
+  const was = config.RIO_ROLE_THRESHOLDS;
+  const warn = mock.method(logger, 'warn', () => {});
+  const roles: Record<string, Record<string, unknown>> = {
+    [BAD]: { id: BAD, name: 'Mod', managed: false, editable: true, permissions: String(PermissionFlagsBits.BanMembers) },
+    [GOOD]: { id: GOOD, name: 'Good', managed: false, editable: true, permissions: '0' },
+  };
+  const guild = { id: GUILD, roles: { async fetch(id: string) { return roles[id] ?? null; } } };
+  const stored = () => svc.getRioTiersUnfiltered().tiers.map((t) => `${t.minScore}=${t.roleId}`);
+  const run = async (sub: string, opts: Record<string, unknown>, role?: Record<string, unknown>) => {
+    const x = fakeInteraction({}, opts, sub);
+    if (role) (x.i as unknown as { options: { getRole: () => unknown } }).options.getRole = () => role;
+    await rioConfigCommand.execute(x.i);
+    return String(x.replies[0]!.content);
+  };
+  try {
+    // 1) env-only config (nothing stored yet) with a refused tier
+    config.RIO_ROLE_THRESHOLDS = `1000=${GOOD},2000=${BAD}`;
+    svc.resetRioConfig();
+    svc.resetRioRefusedRoles();
+    await svc.auditRioTiers(guild as never);
+    assert.deepEqual(svc.getRioTiers().tiers.map((t) => t.roleId), [GOOD], 'the bot does not assign it');
+
+    // anzeigen still shows it, marked
+    const shown = await run('anzeigen', {});
+    assert.match(shown, new RegExp(`ab \\*\\*2000\\*\\* → <@&${BAD}> ⚠️ wird nicht vergeben \\(dangerous\\)`));
+
+    // 2) setzen of another tier keeps the refused one in the STORED settings and says so
+    const reply = await run('setzen', { score: 3000 }, { id: NEW, managed: false, editable: true, permissions: '0' });
+    assert.deepEqual(stored(), [`1000=${GOOD}`, `2000=${BAD}`, `3000=${NEW}`], 'refused tier kept');
+    assert.match(reply, /1 gesperrte Stufe\(n\) bleiben gespeichert/);
+    assert.match(reply, /wird nicht vergeben \(dangerous\)/);
+
+    // 3) entfernen of a different score keeps it too
+    await run('entfernen', { score: 1000 });
+    assert.deepEqual(stored(), [`2000=${BAD}`, `3000=${NEW}`]);
+
+    // 4) setzen on the refused score with a harmless role replaces it (explicit), nothing else is lost
+    await run('setzen', { score: 2000 }, { id: GOOD, managed: false, editable: true, permissions: '0' });
+    assert.deepEqual(stored(), [`2000=${GOOD}`, `3000=${NEW}`]);
+
+    // 5) an explicit entfernen of exactly the refused score removes it and says it was blocked anyway
+    await run('setzen', { score: 4000 }, { id: GOOD, managed: false, editable: true, permissions: '0' });
+    svc.resetRioConfig();
+    config.RIO_ROLE_THRESHOLDS = `1000=${GOOD},2000=${BAD}`;
+    await svc.auditRioTiers(guild as never);
+    const gone = await run('entfernen', { score: 2000 });
+    assert.match(gone, /entfernt \(die Stufe war ohnehin gesperrt\)/);
+    assert.deepEqual(stored(), [`1000=${GOOD}`]);
+
+    // 6) a refused role is still refused by setzen itself (nothing saved)
+    const before = stored();
+    const refused = await run('setzen', { score: 5000 }, roles[BAD]);
+    assert.match(refused, /kann nicht als Score-Rolle genutzt werden/);
+    assert.deepEqual(stored(), before);
+  } finally {
+    warn.mock.restore();
+    config.RIO_ROLE_THRESHOLDS = was;
+    svc.resetRioRefusedRoles();
+    svc.resetRioConfig();
+  }
 });
