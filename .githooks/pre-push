@@ -5,15 +5,15 @@
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 # Marco rule 2026-10-25: every step runs via tools/run-limited.sh (hard limit, nice 19, idle I/O).
-RL="sh tools/run-limited.sh"
-echo "[pre-push] drift guard"; $RL 120 python3 tools/magguu-drift.py --repo bot --allow tools/drift-allow.txt
-echo "[pre-push] npm run typecheck"; $RL 600 npm run typecheck
-echo "[pre-push] npm test"; $RL 900 npm test
+rl() { sh tools/run-limited.sh "$@"; }
+echo "[pre-push] drift guard"; rl 120 python3 tools/magguu-drift.py --repo bot --allow tools/drift-allow.txt
+echo "[pre-push] npm run typecheck"; rl 600 npm run typecheck
+echo "[pre-push] npm test"; rl 900 npm test
 if command -v actionlint >/dev/null 2>&1; then
-  echo "[pre-push] actionlint"; $RL 120 actionlint .github/workflows/*.yml
+  echo "[pre-push] actionlint"; rl 120 actionlint .github/workflows/*.yml
 else echo "[pre-push] WARNING: actionlint not installed, skipping" >&2; fi
 if command -v shellcheck >/dev/null 2>&1; then
-  files=$(git ls-files '*.sh')
-  if [ -n "$files" ]; then echo "[pre-push] shellcheck"; echo "$files" | xargs $RL 120 shellcheck; fi
+  files=$(git ls-files '*.sh' '.githooks/*')
+  if [ -n "$files" ]; then echo "[pre-push] shellcheck"; echo "$files" | xargs sh tools/run-limited.sh 120 shellcheck; fi
 else echo "[pre-push] WARNING: shellcheck not installed, skipping" >&2; fi
 echo "[pre-push] all checks passed"
