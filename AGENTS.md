@@ -23,6 +23,7 @@ Human install docs live in `README.md`. This file is the agent entrypoint (stack
 - Keep changes small and focused. Do not publish unrelated dirty WIP.
 - Never commit `.env`, secrets, `data/`, or `dist/`.
 - Never expose webhook port 3000 publicly; never skip shared-secret auth.
+- Run limits on the Ubuntu VM (Marco rule 2026-10-25, all runs: tests, builds, scripts, mutation, reviews): every run has a hard limit (`setsid timeout -k 5 -s KILL <sec> …`, own process group; bwrap with `--die-with-parent`), prefixed with `nice -n 19 ionice -c3`; no endless loops or watch modes (no `tsx watch`, `vitest --watch`, `tsc -w`); no run over 15 min without a status message to Marco; afterwards `pgrep -af 'node|tsx|bwrap'` must show nothing left over and temp dirs (`/tmp/mut*`, `~/.cache/tmp/rv-*`) are deleted. `~/bin/kill-stuck-tests.sh` (cron, kills >20 min and >80% CPU) is the safety net, do not touch it. `tools/run-limited.sh <sec> <cmd…>` does all of this for local helpers (also sweeps leftover children by session, exit 124/137 = limit hit; pinned by `tests/run-limited.test.ts`); the `.githooks/pre-push` steps run through it (drift 120 s, typecheck 600 s, tests 900 s, actionlint/shellcheck 120 s). CI workflows are unchanged (runner limits apply). `npm run dev` (`tsx watch`) is a manual dev server only, never start it in an automated run.
 - MagguuUI FAQ/tag answers that describe the addon must stay in sync with
   current MagguuUI releases/versions.
 
