@@ -729,6 +729,20 @@ export const serverHealthCard = sqliteTable(
   (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
 );
 
+// Welcome counter card in the public welcome channel: only message id + content hash, nothing about people.
+export const welcomeCounterCard = sqliteTable(
+  'welcome_counter_card',
+  {
+    guildId: text('guild_id').notNull(),
+    channelId: text('channel_id').notNull(),
+    messageId: text('message_id'),
+    contentHash: text('content_hash'),
+    postedAt: integer('posted_at', { mode: 'timestamp_ms' }),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.guildId, t.channelId] })],
+);
+
 // Counters of the current local week only (rows of older weeks are deleted at the rollover). `active_count` is
 // just a number: the hashed user ids behind it live in memory and are never written anywhere.
 export const serverHealthWeek = sqliteTable('server_health_week', {

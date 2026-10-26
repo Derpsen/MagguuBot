@@ -133,7 +133,7 @@
       "allowedVersions": "<0.48"
     },
     {
-      "description": "undici 8 blocked (tried 2026-10-26, rolled back): @discordjs/rest 2.6.3 uploads (files/AttachmentBuilder: welcome card, /rank, /db-backup, tickets) throw InvalidArgumentError 'body must be a FormData created by this undici package instance' because undici 8 rejects Node's global FormData; also outside the declared ranges of discord.js/@discordjs/rest (^6.27) and cheerio (^7.19). Re-check when discord.js 15 / @discordjs/rest 3 (undici ^8.10.1) is stable.",
+      "description": "undici 8 blocked (tried 2026-10-26, rolled back): @discordjs/rest 2.6.3 uploads (files/AttachmentBuilder: /rank, level-up card, /db-backup, tickets) throw InvalidArgumentError 'body must be a FormData created by this undici package instance' because undici 8 rejects Node's global FormData; also outside the declared ranges of discord.js/@discordjs/rest (^6.27) and cheerio (^7.19). Re-check when discord.js 15 / @discordjs/rest 3 (undici ^8.10.1) is stable.",
       "matchPackageNames": [
         "undici"
       ],

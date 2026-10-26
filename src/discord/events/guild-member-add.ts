@@ -1,13 +1,7 @@
-import {
-  AttachmentBuilder,
-  EmbedBuilder,
-  type GuildMember,
-} from 'discord.js';
+import { EmbedBuilder, type GuildMember } from 'discord.js';
 import { and, eq } from 'drizzle-orm';
-import { renderWelcomeCard } from '../cards/welcome-card.js';
 import { Colors, FOOTER_ICONS } from '../../embeds/colors.js';
 import {
-  buildWelcomeChannelEmbed,
   buildWelcomeDmEmbed,
   buildWelcomeOnboardingButtons,
 } from '../../embeds/welcome-onboarding.js';
@@ -18,6 +12,7 @@ import { logger } from '../../utils/logger.js';
 import { checkAntiRaid, checkUsernameFilter } from '../anti-raid.js';
 import { applyAutoRole } from '../auto-role.js';
 import { getChannel } from '../channel-store.js';
+import { requestWelcomeCounterRefresh } from '../welcome-counter.js';
 import type { BotEvent } from './types.js';
 
 const SUSPICIOUS_ACCOUNT_AGE_DAYS = 7;
@@ -90,45 +85,9 @@ export const guildMemberAddEvent: BotEvent<'guildMemberAdd'> = {
     }
 
     try {
-      const welcomeChannelId = getChannel('welcome');
-      if (welcomeChannelId) {
-        const channel = await member.guild.channels.fetch(welcomeChannelId).catch(() => null);
-        if (channel && channel.isSendable()) {
-          let cardAttachment: AttachmentBuilder | null = null;
-          try {
-            const buffer = await renderWelcomeCard({
-              username: member.user.globalName ?? member.user.username,
-              avatarUrl: member.user.displayAvatarURL({ extension: 'png', size: 256 }),
-              memberCount: member.guild.memberCount,
-              serverName: member.guild.name,
-              accountAgeDays,
-              isReturning: history.isReturning,
-              serverBoostLevel: member.guild.premiumTier ?? 0,
-            });
-            cardAttachment = new AttachmentBuilder(buffer, { name: 'welcome.png' });
-          } catch (err) {
-            logger.warn(
-              { err, userId: member.id },
-              'welcome card render failed, falling back to embed only',
-            );
-          }
-
-          const embed = buildWelcomeChannelEmbed({
-            member,
-            isReturning: history.isReturning,
-            accountAgeDays,
-          });
-          await channel.send({
-            content: history.isReturning
-              ? `↩️ ${member.toString()} ist zurück.`
-              : `🎉 ${member.toString()} hat den Server betreten!`,
-            embeds: [embed],
-            components: buildWelcomeOnboardingButtons(),
-            files: cardAttachment ? [cardAttachment] : undefined,
-            allowedMentions: { users: [member.id] },
-          });
-        }
-      }
+      // Public welcome channel: no per-join card (no name, ping, avatar or image). Only the anonymous counter
+      // message is asked to refresh; the throttle collapses a join wave into at most one edit per window.
+      requestWelcomeCounterRefresh();
 
       await sendWelcomeDM(member, history.isReturning);
 

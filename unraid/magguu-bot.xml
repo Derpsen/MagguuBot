@@ -13,7 +13,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Derpsen/MagguuBot/issues</Support>
   <Project>https://github.com/Derpsen/MagguuBot</Project>
-  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome/audit, a GitHub webhook feed, and an optional WoW Blue-Tracker RSS channel (Retail + PTR only). Slash commands include /queue, /arr-status, /calendar, /search, /db-backup, /purge. Ships with an embedded admin dashboard (Discord OAuth2, warnings/XP/webhook views, filterable) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Role-gated channels: Newcomer sees only Info/Chat, Plex-User/Regular/VIP unlock MEDIA + DOWNLOADS. Single container, runs headless with an append-only activity log under /app/data.</Overview>
+  <Overview>Discord bot for the download side of a media homelab (Sonarr / Radarr / Seerr / Tautulli / SABnzbd / Prowlarr) with moderation, XP/leveling, reminders, reaction-role panels, starboard, automod, welcome counter/audit, a GitHub webhook feed, and an optional WoW Blue-Tracker RSS channel (Retail + PTR only). Slash commands include /queue, /arr-status, /calendar, /search, /db-backup, /purge. Ships with an embedded admin dashboard (Discord OAuth2, warnings/XP/webhook views, filterable) at DASHBOARD_BASE_URL. Channel IDs are auto-discovered + persisted by /setup-server into SQLite — no template edits required for channel routing. Role-gated channels: Newcomer sees only Info/Chat, Plex-User/Regular/VIP unlock MEDIA + DOWNLOADS. Single container, runs headless with an append-only activity log under /app/data.</Overview>
   <Category>Tools: MediaApp:Other Network:Messenger</Category>
   <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL/>
@@ -147,6 +147,8 @@
   <Config Name="FAQ_TOP_HOUR" Target="FAQ_TOP_HOUR" Default="10" Mode="" Description="Local hour (0-23, TIME_ZONE) after which the FAQ of the week is posted." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
 
   <Config Name="DISCORD_CHANNEL_FAQ_TOP" Target="DISCORD_CHANNEL_FAQ_TOP" Default="" Mode="" Description="Optional channel ID for &quot;FAQ der Woche&quot; (default: weekly digest channel)." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+
+  <Config Name="WELCOME_COUNTER_ENABLED" Target="WELCOME_COUNTER_ENABLED" Default="true" Mode="" Description="Enable the self-updating welcome counter (members, new this week) in the welcome channel instead of a card per join. No names, no pings. Needs the welcome channel, otherwise nothing happens." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
 
   <Config Name="SERVER_HEALTH_CARD_ENABLED" Target="SERVER_HEALTH_CARD_ENABLED" Default="true" Mode="" Description="Enable the self-updating server health card (members, active users of the week, commands). Needs a channel, otherwise nothing happens." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
 

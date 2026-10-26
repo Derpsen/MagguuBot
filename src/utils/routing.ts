@@ -37,7 +37,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { source: 'GitHub (CI, PRs, Issues)', keys: ['github'], integrated: true, delivery: 'channel' },
   { source: 'MagguuUI Releases', keys: ['addonUpdates'], integrated: true, delivery: 'channel' },
   { source: 'Blizzard/Blue-Tracker', keys: ['blizzard'], integrated: true, delivery: 'channel' },
-  { source: 'Join (Willkommen)', keys: ['welcome'], integrated: true, delivery: 'channel', note: 'plus einmalige DM' },
+  { source: 'Willkommen-Zähler (editiert sich selbst)', keys: ['welcome'], integrated: true, delivery: 'channel', note: 'nur Mitglieder/Neu-diese-Woche, keine Namen; Join-DM separat; Abschalten: WELCOME_COUNTER_ENABLED=false' },
   { source: 'Join/Leave/Rollen (Audit)', keys: ['auditLog'], integrated: true, delivery: 'channel' },
   { source: 'Moderation', keys: ['modLog'], integrated: true, delivery: 'channel' },
   { source: 'Tickets (Transkripte)', keys: ['ticketLogs'], integrated: true, delivery: 'channel', note: `Ticket-Kanäle on demand in ${TICKET_CATEGORY_NAME}` },
@@ -157,6 +157,7 @@ export function classifyBotEmbed(embed: EmbedView): ChannelKey[] | null {
   if (footer === 'MagguuBot · Plex-Wochenstatistik') return ['weeklyDigest'];
   if (footer === 'MagguuBot · FAQ der Woche') return ['weeklyDigest'];
   if (footer === 'MagguuBot · Server-Health') return ['health'];
+  if (footer === 'MagguuBot · Willkommen-Zähler') return ['welcome'];
   if (footer === 'MagguuBot · Neu-hinzugefügt-Digest') return ['newOnPlex', 'weeklyDigest'];
   if (footer.startsWith('MagguuBot · WoW Blue-Tracker')) return ['blizzard'];
   if (/^MagguuUI · (neues Release|Vorabversion|stabiles Update)$/.test(footer)) return ['addonUpdates', 'github'];

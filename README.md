@@ -115,6 +115,8 @@ Once a week (default Monday 10:00 in `TIME_ZONE`; `FAQ_TOP_ENABLED`, `FAQ_TOP_DA
 
 FAQ use (`/faq` search, picked autocomplete suggestion, FAQ auto-answer) is counted anonymously per day and entry (no user, channel or text) and deleted after 90 days. The authenticated `GET /api/status` shows the last 7 days (total, per way, top 5) for the Magguu dashboard. The bot has no "helped" feedback button, so only usage is counted.
 
+**Welcome counter:** the public welcome channel gets no card per new member any more (no names, pings or avatars). One self-editing message "👋 Willkommen" shows `Mitglieder` and `Neu diese Woche`; it is edited at most once a minute even when many people join at once (`WELCOME_COUNTER_ENABLED=false` turns it off, channel = the `welcome` channel). New members still get the welcome DM with the role buttons; the roles can also be picked on the pinned roles card in the channel. Old per-join cards stay until an admin removes them.
+
 **Server health card:** one self-updating "📊 Server-Health" message (edited in place every 15 minutes, only when something changed) with the member count, the active users of the week and the commands of the week (total and top 5). It posts to `DISCORD_CHANNEL_SERVER_HEALTH`, otherwise to the health channel; without a channel nothing happens (`SERVER_HEALTH_CARD_ENABLED=false` turns it off). Active users are counted anonymously: the id is hashed in memory with a random weekly key and never stored, only the number is kept, and the week's data is dropped on Monday.
 
 Sonarr/Radarr multi-episode packs (for example `S06E17-E18`) render as one grab/import card. File-deletes whose reason is an upgrade are ignored because the following import already posts an *Upgraded* card.

@@ -33,7 +33,11 @@ export interface ServerHealthManagerOptions {
   store: ServerHealthStore;
   gateway: PlexCardGateway;
   /** Current numbers (members come from the Discord cache, the rest from the anonymous counters). */
-  stats: (nowMs: number) => ServerHealthStats;
+  stats?: (nowMs: number) => ServerHealthStats;
+  /** Other self-updating cards (welcome counter) reuse this manager with their own embed; default = health embed from `stats`. */
+  render?: (nowMs: number) => EmbedBuilder;
+  /** Log label, default `server health card`. */
+  label?: string;
   now?: () => number;
   /** Minimum time between two refresh attempts (default 60 s); `force` skips it. */
   debounceMs?: number;
@@ -62,6 +66,10 @@ export class ServerHealthManager {
 
   private now(): number {
     return this.opts.now ? this.opts.now() : Date.now();
+  }
+
+  private get label(): string {
+    return this.opts.label ?? 'server health card';
   }
 
   private log(level: 'info' | 'warn', msg: string, data?: Record<string, unknown>): void {
@@ -93,7 +101,7 @@ export class ServerHealthManager {
     if (!isPermanentDiscordError(err)) return false;
     const pauseMs = this.opts.permanentPauseMs ?? PLEX_CARD_PERMANENT_PAUSE_MS;
     this.pausedUntil.set(channelId, this.now() + pauseMs);
-    this.log('warn', `server health card ${op} blocked by Discord, pausing the card`, {
+    this.log('warn', `${this.label} ${op} blocked by Discord, pausing the card`, {
       channelId,
       code: discordErrorCode(err),
       pauseMs,
@@ -121,9 +129,12 @@ export class ServerHealthManager {
 
     let embed: EmbedBuilder;
     try {
-      embed = buildServerHealthEmbed(this.opts.stats(t));
+      const { render, stats } = this.opts;
+      if (render) embed = render(t);
+      else if (stats) embed = buildServerHealthEmbed(stats(t));
+      else throw new Error('no render or stats provider');
     } catch (err) {
-      this.log('warn', 'server health stats failed', { err });
+      this.log('warn', `${this.label} stats failed`, { err });
       return this.fail(channelId);
     }
     const hash = serverHealthHash(embed);
@@ -142,10 +153,10 @@ export class ServerHealthManager {
       } catch (err) {
         if (!isMessageGone(err)) {
           if (this.pauseOnPermanent(channelId, 'edit', err)) return 'paused';
-          this.log('warn', 'server health card edit failed', { channelId, err });
+          this.log('warn', `${this.label} edit failed`, { channelId, err });
           return this.fail(channelId);
         }
-        this.log('info', 'server health card message is gone, posting a new one', { channelId, code: discordErrorCode(err) });
+        this.log('info', `${this.label} message is gone, posting a new one`, { channelId, code: discordErrorCode(err) });
         return this.post(channelId, embed, hash, 'reposted');
       }
     }
@@ -160,7 +171,7 @@ export class ServerHealthManager {
       return result;
     } catch (err) {
       if (this.pauseOnPermanent(channelId, 'post', err)) return 'paused';
-      this.log('warn', 'server health card post failed', { channelId, err });
+      this.log('warn', `${this.label} post failed`, { channelId, err });
       return this.fail(channelId);
     }
   }

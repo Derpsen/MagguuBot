@@ -28,6 +28,7 @@ import { runRaidReminderTick } from './raid-reminders.js';
 import { runFaqTopTick } from './faq-top.js';
 import { runUnseenReportTick } from '../services/unseen-report.js';
 import { runServerHealthTick } from './server-health.js';
+import { runWelcomeCounterTick } from './welcome-counter.js';
 import { runPlexNewDigestTick } from './plex-new-digest.js';
 import { plexWeeklyNextRun, runPlexWeeklyTick } from './plex-weekly.js';
 import { runPlexStaleSessionTick } from './plex-stale-sessions.js';
@@ -59,6 +60,7 @@ const PLEX_WEEKLY_TICK_MS = 30 * 60_000;
 const PLEX_NEW_DIGEST_TICK_MS = 5 * 60_000;
 const FAQ_TOP_TICK_MS = 4 * 60_000;
 const SERVER_HEALTH_TICK_MS = 15 * 60_000;
+const WELCOME_COUNTER_TICK_MS = 15 * 60_000;
 const UNSEEN_REPORT_TICK_MS = 60 * 60_000;
 const PLEX_STALE_SESSION_TICK_MS = 60_000;
 const SELF_CHECK_TICK_MS = 60 * 60_000;
@@ -87,6 +89,7 @@ let plexWeeklyTimer: NodeJS.Timeout | null = null;
 let plexNewDigestTimer: NodeJS.Timeout | null = null;
 let faqTopTimer: NodeJS.Timeout | null = null;
 let serverHealthTimer: NodeJS.Timeout | null = null;
+let welcomeCounterTimer: NodeJS.Timeout | null = null;
 let unseenReportTimer: NodeJS.Timeout | null = null;
 let plexStaleSessionTimer: NodeJS.Timeout | null = null;
 let selfCheckTimer: NodeJS.Timeout | null = null;
@@ -199,6 +202,10 @@ export function startScheduler(): void {
     runTick('server-health', async () => { await runServerHealthTick(); }, 'Server health card tick failed');
   }, SERVER_HEALTH_TICK_MS);
 
+  welcomeCounterTimer = setInterval(() => {
+    runTick('welcome-counter', async () => { await runWelcomeCounterTick(); }, 'Welcome counter tick failed');
+  }, WELCOME_COUNTER_TICK_MS);
+
   unseenReportTimer = setInterval(() => {
     runTick('unseen-report', async () => { await runUnseenReportTick(); }, 'unseen media report tick failed');
   }, UNSEEN_REPORT_TICK_MS);
@@ -268,6 +275,7 @@ export function startScheduler(): void {
       plexNewDigestMs: config.PLEX_NEW_DIGEST_ENABLED ? PLEX_NEW_DIGEST_TICK_MS : 'disabled',
       faqTopMs: config.FAQ_TOP_ENABLED ? FAQ_TOP_TICK_MS : 'disabled',
       unseenReportMs: config.PLEX_UNSEEN_REPORT_ENABLED ? UNSEEN_REPORT_TICK_MS : 'disabled',
+      welcomeCounterMs: config.WELCOME_COUNTER_ENABLED ? WELCOME_COUNTER_TICK_MS : 'disabled',
       serverHealthMs: config.SERVER_HEALTH_CARD_ENABLED ? SERVER_HEALTH_TICK_MS : 'disabled',
       plexWeeklyNext: config.PLEX_WEEKLY_ENABLED ? plexWeeklyNextRun()?.toISOString() : 'disabled',
       plexStaleSessionMs: config.PLEX_STALE_SESSION_MINUTES > 0 ? PLEX_STALE_SESSION_TICK_MS : 'disabled',
@@ -312,6 +320,7 @@ export function stopScheduler(): void {
   if (plexNewDigestTimer) clearInterval(plexNewDigestTimer);
   if (faqTopTimer) clearInterval(faqTopTimer);
   if (serverHealthTimer) clearInterval(serverHealthTimer);
+  if (welcomeCounterTimer) clearInterval(welcomeCounterTimer);
   if (unseenReportTimer) clearInterval(unseenReportTimer);
   if (plexStaleSessionTimer) clearInterval(plexStaleSessionTimer);
   if (selfCheckTimer) clearInterval(selfCheckTimer);
@@ -339,6 +348,7 @@ export function stopScheduler(): void {
   plexNewDigestTimer = null;
   faqTopTimer = null;
   serverHealthTimer = null;
+  welcomeCounterTimer = null;
   unseenReportTimer = null;
   plexStaleSessionTimer = null;
   selfCheckTimer = null;

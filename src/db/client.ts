@@ -552,6 +552,16 @@ export function ensureSchema(): void {
       PRIMARY KEY (guild_id, channel_id)
     );
 
+    CREATE TABLE IF NOT EXISTS welcome_counter_card (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT,
+      content_hash TEXT,
+      posted_at INTEGER,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
+    );
+
     CREATE TABLE IF NOT EXISTS server_health_week (
       week TEXT PRIMARY KEY,
       active_count INTEGER NOT NULL DEFAULT 0,

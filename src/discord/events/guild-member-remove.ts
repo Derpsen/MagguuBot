@@ -5,6 +5,7 @@ import { memberHistory } from '../../db/schema.js';
 import { Colors } from '../../embeds/colors.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
+import { requestWelcomeCounterRefresh } from '../welcome-counter.js';
 import { getRaidReminders } from '../raid-reminders.js';
 import { forgetRioLink } from '../rio-roles.js';
 import type { BotEvent } from './types.js';
@@ -20,6 +21,8 @@ export const guildMemberRemoveEvent: BotEvent<'guildMemberRemove'> = {
     } catch (err) {
       logger.warn({ err, userId: member.id }, 'member_history left-update failed');
     }
+
+    requestWelcomeCounterRefresh();
 
     try {
       const removed = getRaidReminders().removeAllForLeftUser(member.guild.id, member.id);

@@ -7,7 +7,7 @@ export const CHANNEL_CATALOG = [
   { key: 'approvals', label: 'Approvals', description: 'Seerr Pending mit Approve/Decline' },
   { key: 'newOnPlex', label: 'New on Plex', description: 'Tautulli recently_added' },
   { key: 'health', label: 'Health', description: 'Sonarr/Radarr/Prowlarr Health Warnings' },
-  { key: 'welcome', label: 'Welcome', description: 'Member-Join Welcome' },
+  { key: 'welcome', label: 'Welcome', description: 'Willkommen-Zähler (Mitglieder, neu diese Woche)' },
   { key: 'auditLog', label: 'Audit Log', description: 'Joins/Leaves/Role-Changes' },
   { key: 'modLog', label: 'Mod Log', description: 'Moderation Actions' },
   { key: 'github', label: 'GitHub', description: 'GitHub Webhook Feed' },
