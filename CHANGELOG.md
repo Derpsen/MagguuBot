@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Added
+- `docs/templates/renovate/` (`README.md`, `renovate.base.json`): shared Renovate template and Dependabot migration plan for the four Magguu repos (documentation only).
 - `/healthz` reports the Discord gateway (`status` ok/degraded/unhealthy, `gateway` with ready/state/pingMs/lastReadyAt/notReadySeconds): 200 while the gateway is up or not ready for at most `GATEWAY_GRACE_SECONDS` (default 300), 503 only on DB failure or a longer gateway outage. No secrets or ids in the body. Docs-drift variable `DOCS_DRIFT_MODE=warn` set.
 - Docs drift: `tools/docs-sync.py` + `.github/docs-sync.txt` (docs vs. paths, npm scripts, `.env.example`, Unraid XML, config schema), Node-major rule in `.github/docs-drift-rules.txt`, `docs-drift.yml` now with modes `issue` (default, deduplicated issue with label) / `warn` / `fail` via `DOCS_DRIFT_MODE`, both scripts in the pre-push hook, `tests/docs-drift.test.ts`.
 - One-time CLI `dist/rollout/discord-welcome-cleanup.js` for the old public per-join welcome cards: dry run by default (counters only), `--execute` deletes single messages at >= 1.2 s spacing with a strict selector (welcome channel, bot author, `welcome.png`, exact join text, not pinned/tracked/counter), aborts on 10003/50001/50013, `--scan-limit`. No command, no tick.

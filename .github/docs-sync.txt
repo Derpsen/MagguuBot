@@ -5,3 +5,5 @@
 ^DISCORD_CHANNEL_BLUE_TRACKER$
 # Legacy flag that is now ignored; replaced by TRUSTED_PROXIES (see the comment in .env.example).
 ^TRUST_PROXY$
+# Lives in another repo (AGENTS says so explicitly); only becomes visible to the path check because docs/ now exists.
+^docs/store-descriptions/$

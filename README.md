@@ -215,6 +215,10 @@ Agent rules, channel keys, and command inventory live in `AGENTS.md`.
 - Image is multi-stage (build chain dropped) and exposes `/healthz` for container health checks (DB plus Discord gateway: HTTP 200 with `status` `ok` or `degraded`; 503 `unhealthy` only on DB failure or a gateway not ready for longer than `GATEWAY_GRACE_SECONDS`, default 300; no secrets or ids in the body)
 - Webhook payloads are validated with Zod before being touched
 
+## Dependency updates
+
+Renovate (`renovate.json`) keeps dependencies, GitHub Action pins and the Node image digest current. The shared template for all Magguu repos (grouping, auto-merge rules, locks, Dependabot migration) is in `docs/templates/renovate/README.md`.
+
 ## Publishing the image (CI)
 
 Push to `main` → `.github/workflows/docker.yml` builds + pushes `ghcr.io/<owner>/magguu-bot:latest` (+ SHA tag).
