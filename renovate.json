@@ -133,7 +133,7 @@
       "allowedVersions": "<0.48"
     },
     {
-      "description": "undici 8 blocked: only used as npm override for discord.js/@discordjs/rest 14.27/2.6.3 (declare undici ^6.27) and cheerio 1.2 (^7.19); 8.x is outside their ranges and the PR #112 lockfile was broken. Re-check when discord.js/cheerio support undici 8.",
+      "description": "undici 8 blocked (tried 2026-10-26, rolled back): @discordjs/rest 2.6.3 uploads (files/AttachmentBuilder: welcome card, /rank, /db-backup, tickets) throw InvalidArgumentError 'body must be a FormData created by this undici package instance' because undici 8 rejects Node's global FormData; also outside the declared ranges of discord.js/@discordjs/rest (^6.27) and cheerio (^7.19). Re-check when discord.js 15 / @discordjs/rest 3 (undici ^8.10.1) is stable.",
       "matchPackageNames": [
         "undici"
       ],
