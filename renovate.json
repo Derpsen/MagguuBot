@@ -119,13 +119,6 @@
       "automerge": false
     },
     {
-      "description": "TypeScript 7 locked",
-      "matchPackageNames": [
-        "typescript"
-      ],
-      "allowedVersions": "<7"
-    },
-    {
       "description": "h3 2 locked (stay on 1.x)",
       "matchPackageNames": [
         "h3"

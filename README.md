@@ -32,7 +32,7 @@ See also [CHANGELOG.md](./CHANGELOG.md).
 
 ## Stack
 
-Node 26 · TypeScript 6 · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
+Node 26 · TypeScript 7 (native `tsc`; TS 6 API shim for vue-tsc) · Vue 3 · Vite 8 · discord.js 14 · Hono 4 · better-sqlite3 (WAL) · Drizzle · Zod · Pino
 
 ## Install on Unraid (via the custom template)
 
