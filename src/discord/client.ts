@@ -29,6 +29,7 @@ import { handleTicketCategorySelect } from './interactions/ticket-category-selec
 import { handleTicketModalSubmit } from './interactions/ticket-modal.js';
 import { handleMovieNightVote } from './movie-night.js';
 import { auditRioTiers } from './rio-roles.js';
+import { noteGatewayDown, noteGatewayReady, setGatewayProbe } from './gateway-health.js';
 
 let client: Client | null = null;
 
@@ -57,6 +58,13 @@ export async function startDiscord(): Promise<void> {
   });
   client = c;
 
+  // Gateway state for /healthz (booleans, ping and timestamps only).
+  setGatewayProbe(() => ({ ready: c.isReady(), pingMs: c.ws.ping }));
+  c.on('clientReady', () => noteGatewayReady());
+  c.on('shardReady', () => noteGatewayReady());
+  c.on('shardResume', () => noteGatewayReady());
+  c.on('shardReconnecting', () => noteGatewayDown());
+
   c.once('clientReady', () => {
     logger.info({ tag: c.user?.tag }, 'discord connected');
   });
@@ -65,9 +73,10 @@ export async function startDiscord(): Promise<void> {
   // or shard error doesn't leave the bot half-dead with nothing in the logs.
   c.on('error', (err) => logger.error({ err }, 'discord client error'));
   c.on('shardError', (err, shardId) => logger.error({ err, shardId }, 'discord shard error'));
-  c.on('shardDisconnect', (event, shardId) =>
-    logger.warn({ code: event.code, shardId }, 'discord shard disconnect'),
-  );
+  c.on('shardDisconnect', (event, shardId) => {
+    noteGatewayDown();
+    logger.warn({ code: event.code, shardId }, 'discord shard disconnect');
+  });
   c.on('invalidated', () => {
     logger.fatal('discord session invalidated — exiting so the supervisor can restart');
     process.exit(1);

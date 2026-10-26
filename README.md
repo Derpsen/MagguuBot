@@ -212,7 +212,7 @@ Agent rules, channel keys, and command inventory live in `AGENTS.md`.
 - Bot token never logged; config validation fails loud on missing required vars
 - `.env` / `.env.*` / `data/` / `dist/` are gitignored — **never commit secrets**
 - Don't expose port 3000 publicly — stay on the internal Docker network, or wrap with Cloudflared + mTLS
-- Image is multi-stage (build chain dropped) and exposes `/healthz` for container health checks
+- Image is multi-stage (build chain dropped) and exposes `/healthz` for container health checks (DB plus Discord gateway: HTTP 200 with `status` `ok` or `degraded`; 503 `unhealthy` only on DB failure or a gateway not ready for longer than `GATEWAY_GRACE_SECONDS`, default 300; no secrets or ids in the body)
 - Webhook payloads are validated with Zod before being touched
 
 ## Publishing the image (CI)
@@ -237,7 +237,7 @@ New slash command:
 
 ## Docs drift
 
-Docs must not contradict the repo. `bash tools/docs-drift.sh` flags stale words (rules: `.github/docs-drift-rules.txt`), `python3 tools/docs-sync.py` checks docs against repo facts: paths named in README/AGENTS exist, `npm run` names are `package.json` scripts, `.env.example`, `unraid/magguu-bot.xml` and the schema in `src/config.ts` agree (config: `.github/docs-sync.txt`). Structure checks (engines, locked majors, container user) stay in `tools/magguu-drift.py`. The weekly workflow `docs-drift.yml` runs both; the repository variable `DOCS_DRIFT_MODE` selects `issue` (default: one deduplicated "Docs-Drift" issue, closed when clean), `warn` (annotations on every push/PR) or `fail`. Both scripts also run in the pre-push hook.
+Docs must not contradict the repo. `bash tools/docs-drift.sh` flags stale words (rules: `.github/docs-drift-rules.txt`), `python3 tools/docs-sync.py` checks docs against repo facts: paths named in README/AGENTS exist, `npm run` names are `package.json` scripts, `.env.example`, `unraid/magguu-bot.xml` and the schema in `src/config.ts` agree (config: `.github/docs-sync.txt`). Structure checks (engines, locked majors, container user) stay in `tools/magguu-drift.py`. The weekly workflow `docs-drift.yml` runs both; the repository variable `DOCS_DRIFT_MODE` (set to `warn` on 2026-10-26) selects `issue` (default if unset: one deduplicated "Docs-Drift" issue, closed when clean), `warn` (annotations on every push/PR, never a red run or an issue) or `fail`. Both scripts also run in the pre-push hook.
 
 ## Git pre-push hook
 

@@ -120,6 +120,8 @@ const schema = z.object({
   /** Optional display label of the season the thresholds are meant for (e.g. "Season 2"). */
   RIO_SEASON_LABEL: z.string().max(40).default(''),
   STATUS_STALE_HOURS: z.coerce.number().positive().max(8760).default(24),
+  /** /healthz stays HTTP 200 (status degraded) while the Discord gateway is not ready for at most this many seconds. */
+  GATEWAY_GRACE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
 
   OPENAI_API_KEY: z.string().optional(),
 

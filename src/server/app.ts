@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
+import { gatewayReport } from '../discord/gateway-health.js';
 import { adminRouter } from './admin/index.js';
 import { clientIp } from './client-ip.js';
 import { constantTimeEquals, createWebhookGuard, RATE_WINDOW_MS } from './webhook-guard.js';
@@ -72,7 +73,12 @@ export function buildApp(): Hono {
     } catch (err) {
       logger.warn({ err }, 'healthz db check failed');
     }
-    return c.json({ ok: dbOk, db: dbOk ? 'ok' : 'fail' }, dbOk ? 200 : 503);
+    // Gateway: HTTP 200 (status degraded) while it is not ready for at most GATEWAY_GRACE_SECONDS (startup, short
+    // reconnects: discord.js reconnects by itself). 503 only for a DB failure or a gateway down longer than the grace.
+    const gateway = gatewayReport(config.GATEWAY_GRACE_SECONDS);
+    const healthy = dbOk && !gateway.beyondGrace;
+    const status = !healthy ? 'unhealthy' : gateway.ready ? 'ok' : 'degraded';
+    return c.json({ ok: healthy, status, db: dbOk ? 'ok' : 'fail', gateway }, healthy ? 200 : 503);
   });
 
   // Read-only status JSON for Home Assistant. Off unless STATUS_API_TOKEN is set, because the
