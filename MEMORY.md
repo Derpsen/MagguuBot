@@ -307,3 +307,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Old per-join cards: NOT deleted, no delete code. Recognition rule documented in AGENTS (bot author + `welcome.png` + `🎉 <@…> hat den Server betreten!` / `↩️ <@…> ist zurück.` + not pinned + not in `welcome_messages`). Volume ≈ one card per non-filtered join since the feature existed (≈ SUM(`member_history.join_count`) as an upper bound; not readable from git). `/purge` is unsuitable (hits pins and the counter, only < 14 days).
 - Seerr cards untouched (Marco: unchanged).
 - Shipped: commit `02f83f4` (CI green incl. docker), image digest `sha256:7ba17d0d7b08246efa170f5bac2b164f8d7bd1b73f18452555ecaded6612ef9a`; 717 tests (13 new in `tests/welcome-counter.test.ts`). Not pulled/deployed (Marco decides).
+
+## 2026-10-26 One-time cleanup CLI for the old welcome cards (Marco go via Buddy)
+- Rollback branch `rollback/pre-welcomecleanup-f8d8431` (local, not pushed). Commit `37248b0` (CI green incl. docker), image digest `sha256:32dafe15cded9e071e975bad8bececcec14bf299179c54b2887467663d2e8b3d`; 739 tests (22 new in `tests/welcome-cleanup.test.ts`, each selector condition mutation-checked: removing any one makes tests red).
+- Tool: `docker exec -u 99:100 MagguuBot node dist/rollout/discord-welcome-cleanup.js` (dry run, counters only) then `... --execute`; details and selector in AGENTS. Not run by me (no access): needs the Bot pull of `37248b0` first; deleted messages are not restorable, so Marco/Buddy check the dry-run number before `--execute`.
