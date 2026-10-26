@@ -42,7 +42,7 @@
     "@lucide/vue": "^1.58.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
     "autoprefixer": "^10.6.1",
     "drizzle-kit": "^0.31.11",
