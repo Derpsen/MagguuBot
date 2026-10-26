@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-push gate: drift guard, typecheck, tests, actionlint, shellcheck.
+# Pre-push gate: drift guard, docs drift (words + docs-sync), typecheck, tests, actionlint, shellcheck.
 # Enable once per checkout: git config core.hooksPath .githooks
 # (No lint script exists: repo has no ESLint/Prettier by design.)
 set -eu
@@ -7,6 +7,7 @@ cd "$(git rev-parse --show-toplevel)"
 # Marco rule 2026-10-25: every step runs via tools/run-limited.sh (hard limit, nice 19, idle I/O).
 rl() { sh tools/run-limited.sh "$@"; }
 echo "[pre-push] drift guard"; rl 120 python3 tools/magguu-drift.py --repo bot --allow tools/drift-allow.txt
+echo "[pre-push] docs drift"; rl 60 bash tools/docs-drift.sh; rl 60 python3 tools/docs-sync.py
 echo "[pre-push] npm run typecheck"; rl 600 npm run typecheck
 echo "[pre-push] npm test"; rl 900 npm test
 if command -v actionlint >/dev/null 2>&1; then

@@ -1,0 +1,7 @@
+# docs-sync config for MagguuBot (read by tools/docs-sync.py). MEMORY.md is history and mentions other repos, so it is not checked.
+@docs README.md AGENTS.md
+
+# Deprecated alias of DISCORD_CHANNEL_BLIZZARD: the schema still reads it as a fallback (src/discord/channel-store.ts), docs name only the current key.
+^DISCORD_CHANNEL_BLUE_TRACKER$
+# Legacy flag that is now ignored; replaced by TRUSTED_PROXIES (see the comment in .env.example).
+^TRUST_PROXY$

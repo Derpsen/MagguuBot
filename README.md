@@ -235,6 +235,10 @@ New slash command:
 1. `src/discord/commands/<name>.ts` — implement `SlashCommand`
 2. Add to `all[]` in `src/discord/commands/index.ts`
 
+## Docs drift
+
+Docs must not contradict the repo. `bash tools/docs-drift.sh` flags stale words (rules: `.github/docs-drift-rules.txt`), `python3 tools/docs-sync.py` checks docs against repo facts: paths named in README/AGENTS exist, `npm run` names are `package.json` scripts, `.env.example`, `unraid/magguu-bot.xml` and the schema in `src/config.ts` agree (config: `.github/docs-sync.txt`). Structure checks (engines, locked majors, container user) stay in `tools/magguu-drift.py`. The weekly workflow `docs-drift.yml` runs both; the repository variable `DOCS_DRIFT_MODE` selects `issue` (default: one deduplicated "Docs-Drift" issue, closed when clean), `warn` (annotations on every push/PR) or `fail`. Both scripts also run in the pre-push hook.
+
 ## Git pre-push hook
 
 Enable the in-repo pre-push checks once per checkout: `git config core.hooksPath .githooks`
