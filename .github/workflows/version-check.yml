@@ -8,13 +8,20 @@ on:
     branches: [main]
     paths:
       - 'scripts/check-versions.mjs'
+      - 'scripts/undici-watch.mjs'
+      - 'tools/undici-watch-issue.sh'
       - '.github/workflows/version-check.yml'
 
 permissions:
   contents: read
 
+concurrency:
+  group: version-check-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check:
+    name: check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -34,3 +41,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MAGGUUUI_READ_TOKEN || github.token }}
         run: node scripts/check-versions.mjs
+
+  # Watches for the moment the undici 8 lock (renovate.json) may be worth a look. Report only: one issue per
+  # trigger (exact title, deduped over open and closed issues), never a bump, PR or dependency change.
+  undici-watch:
+    name: undici lock watch
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # checkout
+      issues: write # create the report issue (only this job)
+    steps:
+      - name: Checkout repository
+        # actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        # actions/setup-node@v6.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26
+      - name: Read discord.js and @discordjs/rest latest from npm
+        run: node scripts/undici-watch.mjs --out undici-watch.json
+      - name: Report once per trigger
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: sh tools/undici-watch-issue.sh undici-watch.json

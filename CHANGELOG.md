@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Added
+- `version-check.yml`: job `undici lock watch` (`scripts/undici-watch.mjs`, `tools/undici-watch-issue.sh`) reports once per trigger via issue when discord.js latest is major 15+ or discord.js/@discordjs/rest latest needs undici ^8; no bump, no PR, the undici 8 lock stays.
 - `docs/templates/renovate/` (`README.md`, `renovate.base.json`): shared Renovate template and Dependabot migration plan for the four Magguu repos (documentation only).
 - `/healthz` reports the Discord gateway (`status` ok/degraded/unhealthy, `gateway` with ready/state/pingMs/lastReadyAt/notReadySeconds): 200 while the gateway is up or not ready for at most `GATEWAY_GRACE_SECONDS` (default 300), 503 only on DB failure or a longer gateway outage. No secrets or ids in the body. Docs-drift variable `DOCS_DRIFT_MODE=warn` set.
 - Docs drift: `tools/docs-sync.py` + `.github/docs-sync.txt` (docs vs. paths, npm scripts, `.env.example`, Unraid XML, config schema), Node-major rule in `.github/docs-drift-rules.txt`, `docs-drift.yml` now with modes `issue` (default, deduplicated issue with label) / `warn` / `fail` via `DOCS_DRIFT_MODE`, both scripts in the pre-push hook, `tests/docs-drift.test.ts`.
