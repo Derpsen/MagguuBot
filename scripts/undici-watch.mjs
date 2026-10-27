@@ -49,11 +49,17 @@ export function evaluate(data) {
   return { state, issues };
 }
 
+// Registry URL of a package's latest manifest. encodeURIComponent escapes EVERY '/', '@' and backslash (a plain
+// replace('/', ...) would only touch the first slash).
+export function registryUrl(pkg) {
+  return `https://registry.npmjs.org/${encodeURIComponent(pkg)}/latest`;
+}
+
 async function fetchLatest(pkg) {
   let last;
   for (let i = 0; i < 3; i++) {
     try {
-      const res = await fetch(`https://registry.npmjs.org/${pkg.replace('/', '%2F')}/latest`, { headers: { accept: 'application/json', 'user-agent': 'magguu-undici-watch' } });
+      const res = await fetch(registryUrl(pkg), { headers: { accept: 'application/json', 'user-agent': 'magguu-undici-watch' } });
       if (!res.ok) throw new Error(`npm registry ${pkg}: ${res.status}`);
       const j = await res.json();
       return { version: j.version, dependencies: j.dependencies ?? {} };

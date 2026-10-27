@@ -4,6 +4,9 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Fixed
+- `scripts/undici-watch.mjs`: the npm registry URL escaped only the first `/` of a package name (CodeQL `js/incomplete-sanitization`, alert 110); it now uses `encodeURIComponent` for the whole name (`registryUrl`, tested with several slashes and a backslash). Behaviour for the two watched packages is unchanged.
+
 ### Added
 - `version-check.yml`: job `undici lock watch` (`scripts/undici-watch.mjs`, `tools/undici-watch-issue.sh`) reports once per trigger via issue when discord.js latest is major 15+ or discord.js/@discordjs/rest latest needs undici ^8; no bump, no PR, the undici 8 lock stays.
 - `docs/templates/renovate/` (`README.md`, `renovate.base.json`): shared Renovate template and Dependabot migration plan for the four Magguu repos (documentation only).

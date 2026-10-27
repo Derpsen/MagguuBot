@@ -62,6 +62,15 @@ test('both triggers give two separate reports; no secrets or tokens in the outpu
   assert.doesNotMatch(JSON.stringify(r.result), /token|secret|ghp_/i);
 });
 
+test('registry URL escapes every slash, backslash and the scope marker (not just the first one)', async () => {
+  const { registryUrl } = (await import(watch)) as { registryUrl: (p: string) => string };
+  assert.equal(registryUrl('discord.js'), 'https://registry.npmjs.org/discord.js/latest');
+  assert.equal(registryUrl('@discordjs/rest'), 'https://registry.npmjs.org/%40discordjs%2Frest/latest');
+  const odd = registryUrl('a/b/c\\d');
+  assert.equal(odd, 'https://registry.npmjs.org/a%2Fb%2Fc%5Cd/latest');
+  assert.equal(odd.slice('https://registry.npmjs.org/'.length, -'/latest'.length).includes('/'), false);
+});
+
 test('unreadable fixture fails with exit 1 (no report)', () => {
   const r = spawnSync('node', [watch, '--fixture', join(tmp(), 'missing.json'), '--out', join(tmp(), 'o.json')], { encoding: 'utf8', timeout: 30_000 });
   assert.equal(r.status, 1);
