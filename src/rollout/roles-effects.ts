@@ -3,7 +3,6 @@
  * (b) turned into exactly one REST call and (c) described in the diff. Apply and restore both plan as effects, so
  * every safety rule is checked on the SIMULATED result before anything is sent, and again on the live result after.
  */
-import { DiscordError } from './rest.js';
 import type { RestLike } from './execute.js';
 import {
   BOT_POST_REQUIRED, CATEGORY_TYPE, CRITICAL_PERMS, P, basePermissions, botRoleIds, channelPermissions, cloneSnapshot, permNames,
@@ -227,7 +226,9 @@ export async function executeSteps(rest: RestLike, guildId: string, steps: reado
       if (step.effect.t === 'roleCreate' && res?.id) ids.set(step.effect.id, res.id);
       done++;
     } catch (err) {
-      const status = err instanceof DiscordError ? err.status : null;
+      // Duck-typed on purpose: importing rest.js would pull the env config + database into this pure module (and its tests).
+      const raw = (err as { status?: unknown } | null)?.status;
+      const status = typeof raw === 'number' ? raw : null;
       return { done, failed: { label: step.label, status, message: status ? `HTTP ${status}` : (err as Error).message.slice(0, 120) }, notRun: ordered.length - done - 1 };
     }
   }

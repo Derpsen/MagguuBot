@@ -4,7 +4,7 @@
  * roles it handed out), the layout roles it looks up by name, and every channel it posts to.
  */
 import { ROLE, ROLES } from '../discord/server-layout.js';
-import { RANK_RULES } from '../discord/xp.js';
+import { RANK_RULES } from '../discord/xp-ranks.js';
 import { collectStoredRefs, type SqliteLike } from '../utils/stale-ids.js';
 import { SNOWFLAKE } from './roles-model.js';
 

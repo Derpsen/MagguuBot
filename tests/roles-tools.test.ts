@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { CHANNEL, ROLE, STRUCTURE } from '../src/discord/server-layout.js';
-import { DiscordError } from '../src/rollout/rest.js';
 import { buildBackup, parseBackup, snapshotFromBackup, verifyFreshBackup, writeBackup, fileMode } from '../src/rollout/roles-backup.js';
 import { checkInvariants, executeSteps, guardedUsers } from '../src/rollout/roles-effects.js';
 import { buildInventory, formatInventory } from '../src/rollout/roles-inventory.js';
@@ -13,6 +12,11 @@ import { DEFAULT_EVERYONE_REMOVE, defaultRolesPlan, formatApplyPlan, parseRolesP
 import { emptyRefs } from '../src/rollout/roles-refs.js';
 import { formatRestorePlan, planRestore } from '../src/rollout/roles-restore.js';
 import { takeRolesSnapshot } from '../src/rollout/roles-snapshot.js';
+
+/** Same shape as rest.ts DiscordError (status); local so the test never loads the env config. */
+class DiscordError extends Error {
+  constructor(readonly method: string, readonly path: string, readonly status: number, readonly body: string) { super(`${method} ${path} → ${status}`); }
+}
 
 // ─── Fixture: a small guild + a stateful fake REST (records every write) ───
 const G = '1400000000000000001';

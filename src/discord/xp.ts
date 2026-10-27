@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { userXp } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
+import { RANK_RULES } from './xp-ranks.js';
 
 const XP_PER_MESSAGE = 15;
 const COOLDOWN_MS = 60_000;
@@ -15,15 +16,8 @@ export function xpForLevel(level: number): number {
   return Math.ceil(Math.pow(level / 0.1, 2));
 }
 
-export interface XpRankRule {
-  atLevel: number;
-  roleName: string;
-  removeRoles?: string[];
-}
-
-export const RANK_RULES: XpRankRule[] = [
-  { atLevel: 2, roleName: 'Regular', removeRoles: ['Newcomer'] },
-];
+// Rank rules live in xp-ranks.ts (pure data, no db/config import) so the roles tooling and its tests can read them.
+export { RANK_RULES, type XpRankRule } from './xp-ranks.js';
 
 interface XpRow {
   guildId: string;
