@@ -113,10 +113,21 @@ function isChannelLevel(code: number | null): boolean {
   return code === 50_001 || code === 10_003;
 }
 
-/** Whether a persisted result still blocks a new run. */
-export function cleanupIsFinal(row: CleanupStateRow | null, now: number): boolean {
+/**
+ * Whether a persisted result still blocks a new run.
+ *
+ * `done` normally stays final. One deliberate exception: when that run stopped at its scan limit (it scanned as
+ * many messages as its limit allowed, so older cards beyond it may remain) and the configured limit has since
+ * been RAISED, the run is not final and starts again with the new limit (same classifier, same protected set,
+ * same gate, same pacing). This is the intended way to re-run: raise PLEX_CARD_CLEANUP_SCAN_LIMIT (max 2000).
+ */
+export function cleanupIsFinal(row: CleanupStateRow | null, now: number, scanLimit?: number): boolean {
   if (!row) return false;
-  if (row.status === 'done' || row.status === 'failed') return true;
+  if (row.status === 'done') {
+    const stoppedAtLimit = row.scanLimit > 0 && row.scanned >= row.scanLimit;
+    return !(scanLimit !== undefined && stoppedAtLimit && scanLimit > row.scanLimit);
+  }
+  if (row.status === 'failed') return true;
   return now - row.finishedAt < PLEX_CLEANUP_RETRY_MS;
 }
 
@@ -134,9 +145,10 @@ export async function runPlexCardCleanup(deps: CleanupDeps): Promise<CleanupOutc
   const outcome: CleanupOutcome = {
     ran: true, dryRun: deps.dryRun, status: 'done', scanned: 0, candidates: 0, deleted: 0, skipped: 0, errors: 0,
   };
-  if (!deps.dryRun && cleanupIsFinal(previous, now())) return { ...outcome, ran: false, status: 'skipped' };
+  if (!deps.dryRun && cleanupIsFinal(previous, now(), deps.scanLimit)) return { ...outcome, ran: false, status: 'skipped' };
 
-  const attempts = (previous?.attempts ?? 0) + 1;
+  // A re-run after a raised scan limit (previous run `done`) is a fresh run with its own attempt budget.
+  const attempts = previous?.status === 'done' ? 1 : (previous?.attempts ?? 0) + 1;
   const persist = (status: CleanupStatus): void => {
     if (deps.dryRun) return;
     deps.state.save({
@@ -359,7 +371,7 @@ export async function runPlexCardCleanupTick(
   if (!config.PLEX_CARD_CLEANUP_ENABLED || cleanupGate.running) return null;
   if (config.PLEX_CARD_CLEANUP_DRY_RUN && cleanupGate.dryRunDone) return null;
   const store = plexCleanupStateStore(channelId);
-  if (!config.PLEX_CARD_CLEANUP_DRY_RUN && cleanupIsFinal(store.load(), now)) return null;
+  if (!config.PLEX_CARD_CLEANUP_DRY_RUN && cleanupIsFinal(store.load(), now, config.PLEX_CARD_CLEANUP_SCAN_LIMIT)) return null;
 
   if (evaluateCleanupGate(sync, now) !== 'start') return null;
 

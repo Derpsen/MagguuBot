@@ -594,3 +594,52 @@ test('real SQLite: the cleanup state round-trips and upserts', () => {
   assert.deepEqual(store.load(), { status: 'done', attempts: 2, scanned: 20, candidates: 3, deleted: 3, skipped: 0, errors: 0, scanLimit: 1000, finishedAt: 1_700_000_100_000 });
   assert.equal((sqliteHandle.prepare("SELECT COUNT(*) c FROM plex_cleanup_state WHERE channel_id = 'state-ch'").get() as { c: number }).c, 1);
 });
+
+test('raised scan limit: a done run that stopped at its limit runs again with the new limit, once, and only then', async () => {
+  const old = fromEmbed(1, singleCard());
+  const filler = Array.from({ length: 249 }, (_, i) => fromEmbed(i + 2, null, { authorId: HUMAN }));
+  const channel = new FakeChannel([old, ...filler]);
+  const state = new MemState();
+
+  // limit 100: the old card sits beyond the limit, run ends `done` (nothing found) and is final for this limit
+  const first = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 100 }).deps);
+  assert.equal(first.status, 'done');
+  assert.equal(first.scanned, 100);
+  assert.equal(old.deleted, false);
+  const again = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 100 }).deps);
+  assert.equal(again.ran, false, 'same limit: stays final');
+  const lower = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 50 }).deps);
+  assert.equal(lower.ran, false, 'a lowered limit never re-runs');
+
+  // dry run with the raised limit counts, deletes nothing, persists nothing (the preview step)
+  const dry = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 300, dryRun: true }).deps);
+  assert.equal(dry.status, 'dry-run');
+  assert.equal(dry.candidates, 1);
+  assert.equal(old.deleted, false);
+  assert.equal(state.row?.scanLimit, 100, 'dry run left the state alone');
+
+  // raised limit: runs again, deletes the old card, fresh attempt budget
+  const raised = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 300 }).deps);
+  assert.equal(raised.ran, true);
+  assert.equal(raised.status, 'done');
+  assert.equal(raised.deleted, 1);
+  assert.equal(old.deleted, true);
+  assert.equal(state.row?.attempts, 1);
+  assert.equal(state.row?.scanLimit, 300);
+  assert.equal(channel.bulkDeleteCalls, 0);
+
+  // scanned 250 < 300: the channel was exhausted, so even a higher limit does not run again
+  const exhausted = await cleanup.runPlexCardCleanup(deps(channel, state, { scanLimit: 2000 }).deps);
+  assert.equal(exhausted.ran, false);
+});
+
+test('cleanupIsFinal: only a done run that hit its limit is released by a higher limit; failed/legacy rows are not', () => {
+  const row = (status: 'done' | 'failed', scanned: number, scanLimit: number): CleanupStateRow => ({ status, attempts: 1, scanned, candidates: 0, deleted: 0, skipped: 0, errors: 0, scanLimit, finishedAt: 1_000 });
+  const far = 1_000 + 365 * 24 * 60 * 60_000;
+  assert.equal(cleanup.cleanupIsFinal(row('done', 1000, 1000), far, 2000), false, 'limit hit and raised');
+  assert.equal(cleanup.cleanupIsFinal(row('done', 1000, 1000), far, 1000), true, 'limit not raised');
+  assert.equal(cleanup.cleanupIsFinal(row('done', 400, 1000), far, 2000), true, 'channel exhausted before the limit');
+  assert.equal(cleanup.cleanupIsFinal(row('done', 0, 0), far, 2000), true, 'legacy row without a stored limit');
+  assert.equal(cleanup.cleanupIsFinal(row('failed', 1000, 1000), far, 2000), true, 'failed stays failed');
+  assert.equal(cleanup.cleanupIsFinal(row('done', 1000, 1000), far), true, 'no limit passed: unchanged behaviour');
+});

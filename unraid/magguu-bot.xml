@@ -126,7 +126,7 @@
 
   <Config Name="PLEX_CARD_CLEANUP_DRY_RUN" Target="PLEX_CARD_CLEANUP_DRY_RUN" Default="false" Mode="" Description="true = the cleanup only counts and logs what it would delete (once per process), deletes nothing and persists nothing." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
 
-  <Config Name="PLEX_CARD_CLEANUP_SCAN_LIMIT" Target="PLEX_CARD_CLEANUP_SCAN_LIMIT" Default="1000" Mode="" Description="How many recent messages in the Plex channel the cleanup scans (100-2000)." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
+  <Config Name="PLEX_CARD_CLEANUP_SCAN_LIMIT" Target="PLEX_CARD_CLEANUP_SCAN_LIMIT" Default="1000" Mode="" Description="How many recent messages in the Plex channel the cleanup scans (100-2000). Raising it after a run that hit the old limit makes the cleanup run once more." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
 
   <Config Name="PLEX_CARD_USER_ALIASES" Target="PLEX_CARD_USER_ALIASES" Default="" Mode="" Description="Optional display names for the per-user Plex cards: name=alias,name2=alias2 (or a JSON object). Empty = Plex names as they are." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
 

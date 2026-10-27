@@ -5,13 +5,15 @@
  *   docker exec -u 99:100 MagguuBot node dist/rollout/discord-rollout.js --dry-run
  *   docker exec -u 99:100 MagguuBot node dist/rollout/discord-rollout.js --apply
  *   docker exec -u 99:100 -e DELETE_APPROVED=yes MagguuBot node dist/rollout/discord-rollout.js --delete-archived --dry-run
+ *   docker exec -u 99:100 -e DELETE_APPROVED=yes MagguuBot node dist/rollout/discord-rollout.js --delete-archived --dry-run --count-messages
  *   docker exec -u 99:100 -e DELETE_APPROVED=yes MagguuBot node dist/rollout/discord-rollout.js --delete-archived --apply
  *
  * Default is --dry-run. Idempotent: a second --apply plans nothing. Rate-limit
  * aware (429 retry_after, bucket reset). Never calls /cleanup-server. Deletion
  * is a separate step, gated by --delete-archived AND DELETE_APPROVED=yes, and
  * only touches channels inside 🗄️ ARCHIV without open bot cards plus empty
- * non-layout roles/categories.
+ * non-layout roles/categories. `--count-messages` (only with --delete-archived) adds a read-only inventory
+ * per archived channel (message count up to 500+, newest message date); it never changes anything.
  */
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -20,24 +22,28 @@ import { sqliteHandle } from '../db/client.js';
 import { createDatabaseSnapshot, databaseBackupDirectory } from '../db/backup.js';
 import { executeActions, executeDeletion } from './execute.js';
 import { describeAction, planDeletion, planRollout } from './plan.js';
+import { describeInventory, inventoryChannel, type ChannelInventory } from './inventory.js';
 import { DiscordRest, takeSnapshot } from './rest.js';
 
 interface Args {
   apply: boolean;
   deleteArchived: boolean;
+  countMessages: boolean;
   ignoreRetryQueue: boolean;
   jsonOnly: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const known = new Set(['--apply', '--dry-run', '--delete-archived', '--ignore-retry-queue', '--json']);
+  const known = new Set(['--apply', '--dry-run', '--delete-archived', '--count-messages', '--ignore-retry-queue', '--json']);
   for (const arg of argv) {
     if (!known.has(arg)) throw new Error(`Unbekannte Option: ${arg} (erlaubt: ${[...known].join(', ')})`);
   }
   if (argv.includes('--apply') && argv.includes('--dry-run')) throw new Error('--apply und --dry-run schließen sich aus');
+  if (argv.includes('--count-messages') && !argv.includes('--delete-archived')) throw new Error('--count-messages gehört zu --delete-archived');
   return {
     apply: argv.includes('--apply'),
     deleteArchived: argv.includes('--delete-archived'),
+    countMessages: argv.includes('--count-messages'),
     ignoreRetryQueue: argv.includes('--ignore-retry-queue'),
     jsonOnly: argv.includes('--json'),
   };
@@ -141,10 +147,17 @@ async function main(): Promise<{ code: number; output: string }> {
     report.deletion = plan;
     report.deleteApproved = approved;
     lines.push(`Löschen: ${plan.channels.length} Kanäle, ${plan.categories.length} Kategorien, ${plan.roles.length} Rollen · übersprungen: ${plan.skippedChannels.length} Kanäle, ${plan.skippedRoles.length} Rollen`);
-    for (const c of plan.channels) lines.push(`  - Kanal ${c.name} (${c.id})`);
+    // Read-only inventory (opt-in): message count and newest message per archived channel, deletable and kept ones.
+    const inventory: Record<string, ChannelInventory> = {};
+    if (args.countMessages) {
+      for (const c of [...plan.channels, ...plan.skippedChannels]) inventory[c.id] = await inventoryChannel(rest, c.id);
+      report.inventory = inventory;
+    }
+    const inv = (id: string): string => (inventory[id] ? describeInventory(inventory[id]!) : '');
+    for (const c of plan.channels) lines.push(`  - Kanal ${c.name} (${c.id})${inv(c.id)}`);
     for (const c of plan.categories) lines.push(`  - Kategorie ${c.name} (${c.id})`);
     for (const r of plan.roles) lines.push(`  - Rolle ${r.name} (${r.id})`);
-    for (const c of plan.skippedChannels) lines.push(`  · behalten: ${c.name}: ${c.reasons.join(', ')}`);
+    for (const c of plan.skippedChannels) lines.push(`  · behalten: ${c.name} (${c.id}): ${c.reasons.join(', ')}${inv(c.id)}`);
     for (const r of plan.skippedRoles) lines.push(`  · behalten: Rolle ${r.name}: ${r.reason}`);
     if (!approved) lines.push('DELETE_APPROVED=yes fehlt: es wird nichts gelöscht.');
     if (args.apply) {
