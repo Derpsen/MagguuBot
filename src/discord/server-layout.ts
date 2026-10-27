@@ -267,9 +267,9 @@ export const STRUCTURE: CategoryPlan[] = [
       {
         name: CHANNEL.plexActivity,
         oldNames: ['🎬・aktivität'],
-        topic: 'Wer gerade was auf Plex schaut (Tautulli). Automatisch.',
+        topic: 'Wer gerade was auf Plex schaut (Tautulli). Nur Team. Automatisch.',
         readOnly: true,
-        allowedRoles: [...PLEX_ACCESS],
+        adminOnly: true,
         refs: ['plexActivity'],
       },
     ],
