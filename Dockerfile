@@ -3,7 +3,7 @@
 # node:26-alpine multi-arch index digest (26.12.1, 2026-10-22); Renovate keeps it current via the comment below
 # renovate: image=node:26-alpine
 ARG NODE_VERSION=26
-ARG NODE_DIGEST=sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f80497af48797
+ARG NODE_DIGEST=sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
 FROM node:${NODE_VERSION}-alpine@${NODE_DIGEST} AS builder
 
 WORKDIR /app
