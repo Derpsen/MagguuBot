@@ -5,6 +5,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 ## [Unreleased]
 
 ### Security
+- Action pins in one line with the verified tag (`@<sha> # vX.Y.Z`, 31 of 33 fixed); rulesets for main (no force-push/deletion; required checks with admin bypass) and admin-only `v*` tags; dead h3/satori Renovate rules removed.
 - docker.yml: no unsigned `:latest` window any more. The build pushes only `sha-<short>`; latest/semver are published via `docker buildx imagetools create` after signing + attestation (digest check per tag), followed by `cosign verify` on the floating tags with the Unraid gate identity.
 - GitHub repo setting "Require actions to be pinned to a full-length commit SHA" enabled (all external actions were already SHA-pinned).
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.

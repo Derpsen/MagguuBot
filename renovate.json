@@ -119,20 +119,6 @@
       "automerge": false
     },
     {
-      "description": "h3 2 locked (stay on 1.x)",
-      "matchPackageNames": [
-        "h3"
-      ],
-      "allowedVersions": "<2"
-    },
-    {
-      "description": "satori >=0.48 locked (repo family uses 0.47.x); stays below 0.48",
-      "matchPackageNames": [
-        "satori"
-      ],
-      "allowedVersions": "<0.48"
-    },
-    {
       "description": "discord.js 15 locked (pre-release, not for production): only 14.x minor/patch (Marco 2026-11-02: 14.28.0)",
       "matchPackageNames": [
         "discord.js"
