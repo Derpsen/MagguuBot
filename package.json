@@ -59,7 +59,7 @@
   },
   "overrides": {
     "esbuild": "0.28.2",
-    "fast-copy": "4.1.2",
+    "fast-copy": "4.3.1",
     "source-map-js": "1.2.2",
     "discord.js": {
       "undici": "6.29.1"
