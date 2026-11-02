@@ -90,7 +90,10 @@ jobs:
         id: img
         run: echo "name=${REGISTRY}/${IMAGE_NAME,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Extract metadata
+      # Order matters (2026-11-02, same as MagguuUI-Website 496fc99): the build pushes ONLY the immutable
+      # sha-<short> tag. The floating tags (latest, semver) are set by "Publish floating tags" after cosign sign
+      # + attestation on the digest, so the Unraid auto-update gate never sees an unsigned :latest.
+      - name: Extract metadata (all tags, published after signing)
         id: meta
         # docker/metadata-action@v6.2.0
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
@@ -102,6 +105,15 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
 
+      - name: Extract metadata (immutable sha tag for the build push)
+        id: meta-sha
+        # docker/metadata-action@v6.2.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
+        with:
+          images: ${{ steps.img.outputs.name }}
+          tags: |
+            type=sha,format=short
+
       - name: Build and push
         id: build
         # docker/build-push-action@v7.3.0
@@ -111,7 +123,7 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta-sha.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VCS_REF=${{ github.sha }}
@@ -143,6 +155,42 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
+
+      - name: Publish floating tags (after signing, same digest)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMG: ${{ steps.img.outputs.name }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && args+=(-t "$tag")
+          done <<< "$TAGS"
+          docker buildx imagetools create "${args[@]}" "${IMG}@${DIGEST}"
+          echo "floating tags published at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            got=$(docker buildx imagetools inspect "$tag" --format '{{json .Manifest}}' | jq -r .digest)
+            [ "$got" = "$DIGEST" ] || { echo "::error::$tag points to $got, expected $DIGEST"; exit 1; }
+          done <<< "$TAGS"
+
+      # Same identity the Unraid gate checks: this repo's docker.yml on the pushed ref (refs/heads/main or a v tag).
+      - name: Verify signature via the floating tags
+        env:
+          IMG: ${{ steps.img.outputs.name }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref }}
+        run: |
+          ref_re=$(printf '%s' "$REF" | sed 's/[.]/\\./g')
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            case "$tag" in "${IMG}:sha-"*) continue ;; esac
+            cosign verify "$tag" \
+              --certificate-identity-regexp "^https://github.com/${REPO}/\\.github/workflows/docker\\.yml@${ref_re}\$" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
+            echo "cosign verify ${tag}: OK"
+          done <<< "$TAGS"
 
   alarm:
     name: failure alarm
