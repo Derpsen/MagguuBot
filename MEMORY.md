@@ -333,3 +333,4 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - discord.js 14.28.0 (published 2026-10-30, under Renovate's 3-day age; explicit Marco ask). Renovate rules: discord.js `<15`, @types/node `<27`.
 - docker.yml: `push-to-registry: true` for the provenance attestation (Website parity); SBOM/provenance via BuildKit and Cosign keyless were already there (not doubled).
 
+- Result: commit `18c9ce9`, ci/docker/zizmor/Scorecard/Quality/Docs drift green; image digest `sha256:df6a67ab29697e4e9c02a506fdd1d6ed68ac21218de596bc12eeb75900c0b0d5` (`:latest`, 2026-11-02 09:32 Berlin). Tested on the VM: `cosign verify` (cosign v3.1.4 in `~/.local/bin`, checksum-checked) with the docker.yml@refs/heads/main identity OK, `gh attestation verify oci://… -R Derpsen/MagguuBot` OK, also with `--bundle-from-oci` (registry referrer). Signing step, identity, workflow file/name unchanged (Unraid signature gate). Pull not done (Unraid & Server).
