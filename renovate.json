@@ -133,6 +133,20 @@
       "allowedVersions": "<0.48"
     },
     {
+      "description": "discord.js 15 locked (pre-release, not for production): only 14.x minor/patch (Marco 2026-11-02: 14.28.0)",
+      "matchPackageNames": [
+        "discord.js"
+      ],
+      "allowedVersions": "<15"
+    },
+    {
+      "description": "@types/node stays on major 26 (matches Node 26 LTS runtime); 27 is a manual decision",
+      "matchPackageNames": [
+        "@types/node"
+      ],
+      "allowedVersions": "<27"
+    },
+    {
       "description": "undici 8 blocked (tried 2026-10-26, rolled back): @discordjs/rest 2.6.3 uploads (files/AttachmentBuilder: /rank, level-up card, /db-backup, tickets) throw InvalidArgumentError 'body must be a FormData created by this undici package instance' because undici 8 rejects Node's global FormData; also outside the declared ranges of discord.js/@discordjs/rest (^6.27) and cheerio (^7.19). Re-check when discord.js 15 / @discordjs/rest 3 (undici ^8.10.1) is stable.",
       "matchPackageNames": [
         "undici"

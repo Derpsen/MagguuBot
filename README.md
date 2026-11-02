@@ -65,6 +65,9 @@ In Unraid:
    - `WEBHOOK_SECRET` — generate with `openssl rand -hex 32`
    - `ADDON_REPO_FULL_NAMES` already defaults to `Derpsen/MagguuUI`
 4. *Apply* — the image pulls from `ghcr.io/derpsen/magguu-bot:latest` and the container starts.
+   Optional, before pulling: every published image is Cosign-signed (keyless, GitHub OIDC) and carries SBOM + provenance attestations. Check it with
+   `cosign verify ghcr.io/derpsen/magguu-bot:latest --certificate-identity-regexp '^https://github.com/Derpsen/MagguuBot/.github/workflows/docker.yml@refs/heads/main$' --certificate-oidc-issuer https://token.actions.githubusercontent.com`
+   or `gh attestation verify oci://ghcr.io/derpsen/magguu-bot:latest -R Derpsen/MagguuBot`.
 
 ### 3. First boot
 

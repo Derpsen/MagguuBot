@@ -131,15 +131,17 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMG}@${DIGEST}"
 
-      # GitHub build-provenance attestation (stored in GitHub's attestation store; not pushed to the registry,
-      # no storage record, so no extra permission). Does not change the image. No SBOM attestation, no cosign verify yet.
+      # GitHub build-provenance attestation, like MagguuUI-Website: stored in GitHub's attestation store AND pushed
+      # to GHCR as an OCI referrer (push-to-registry, uses the existing packages: write). No storage record, so no
+      # artifact-metadata permission. The BuildKit SBOM + provenance (sbom/provenance above) are already attached
+      # to the image index. Verify: cosign verify ... / gh attestation verify oci://... (see AGENTS.md).
       - name: Attest build provenance
         # actions/attest-build-provenance@v4.2.2
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
           subject-name: ${{ steps.img.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: false
+          push-to-registry: true
           create-storage-record: false
 
   alarm:

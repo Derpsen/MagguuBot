@@ -4,6 +4,13 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 
 ## [Unreleased]
 
+### Security
+- GitHub repo setting "Require actions to be pinned to a full-length commit SHA" enabled (all external actions were already SHA-pinned).
+- docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
+
+### Changed
+- discord.js 14.27.0 → 14.28.0 (@discordjs/builders 1.15.0). Renovate: discord.js stays below 15, @types/node below 27.
+
 ### Docs
 - ARCHIV deletion retry 2026-11-02 marked done (per the Unraid & Server dry run: category and both archived channels already deleted, nothing listed, retry queue 0); 2026-11-16 channel-list note: not relevant while the bot role has Administrator, kept for a future role change. Audit-log reason strings per delete path listed in AGENTS.
 
