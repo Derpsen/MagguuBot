@@ -2,14 +2,21 @@ name: version-check
 
 on:
   schedule:
-    - cron: '23 6 * * *'
+    - cron: '23 6 * * *' # check, undici-watch, upstream-watch
+    - cron: '53 17 * * *' # upstream-watch watchdog only (late/dropped morning schedule)
   workflow_dispatch:
+    inputs:
+      test:
+        description: 'upstream-watch: send one payload titled TEST to the escalation webhook (baseline unchanged)'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
       - 'scripts/check-versions.mjs'
       - 'scripts/undici-watch.mjs'
       - 'tools/undici-watch-issue.sh'
+      - 'tools/upstream-watch.mjs'
       - '.github/workflows/version-check.yml'
 
 permissions:
@@ -22,6 +29,7 @@ concurrency:
 jobs:
   check:
     name: check
+    if: ${{ github.event.schedule != '53 17 * * *' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -44,7 +52,7 @@ jobs:
   # trigger (exact title, deduped over open and closed issues), never a bump, PR or dependency change.
   undici-watch:
     name: undici lock watch
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event_name == 'schedule' && github.event.schedule != '53 17 * * *') || (github.event_name == 'workflow_dispatch' && inputs.test != true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -66,3 +74,95 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: sh tools/undici-watch-issue.sh undici-watch.json
+
+  # Daily upstream watch (tools/upstream-watch.mjs): lock-lift conditions (typescript-eslint TS 7 peer, nuxt-og-image
+  # satori >=0.48, nuxt 5, stable nitro 3, discord.js 15 / @discordjs/rest undici 8, @types/node 27), Node LTS,
+  # Sonarr v5 / Profilarr releases, and per public Magguu repo: open Renovate PRs, red CI on main, open alerts
+  # ("n/a" when GITHUB_TOKEN cannot read them). State lives in the Actions cache; the webhook is called ONLY when a
+  # value changed (title "upstream-watch"), or once with title "TEST" on workflow_dispatch test=true. Report only.
+  upstream-watch:
+    name: upstream watch
+    if: ${{ (github.event_name == 'schedule' && github.event.schedule != '53 17 * * *') || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # checkout, public repo metadata
+      actions: read # workflow runs on main, Actions cache
+      pull-requests: read # open Renovate PRs
+      security-events: read # code-scanning alerts (n/a when not granted)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Restore previous state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .upstream-watch
+          key: upstream-watch-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: upstream-watch-state-
+      - name: Watch upstream and escalate on change
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ESCALATION_WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+          ESCALATION_BEARER: ${{ secrets.ESCALATION_BEARER }}
+          EVENT: ${{ github.event_name }}
+          TEST_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.test == true && 'true' || 'false' }}
+        run: |
+          mkdir -p .upstream-watch
+          set -- --mode watch --state-in .upstream-watch/state.json --state-out .upstream-watch/next.json --event "${EVENT}" --summary "${GITHUB_STEP_SUMMARY}"
+          if [ "${TEST_MODE}" = true ]; then set -- "$@" --test; fi
+          node tools/upstream-watch.mjs "$@"
+          mv .upstream-watch/next.json .upstream-watch/state.json
+      - name: Save state
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .upstream-watch
+          key: upstream-watch-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+  # GitHub delays or silently drops schedule events. The evening cron checks that the last SCHEDULED watch run
+  # (lastScheduledAt in the cached state) is at most 26 h old and escalates otherwise (MagguuUI nightly.yml pattern).
+  upstream-watchdog:
+    name: upstream watch watchdog
+    if: ${{ github.event.schedule == '53 17 * * *' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # checkout
+      actions: read # Actions cache
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Restore last state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .upstream-watch
+          key: upstream-watch-state-watchdog-${{ github.run_id }}
+          restore-keys: upstream-watch-state-
+      - name: Check schedule freshness
+        env:
+          ESCALATION_WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+          ESCALATION_BEARER: ${{ secrets.ESCALATION_BEARER }}
+        run: node tools/upstream-watch.mjs --mode watchdog --state-in .upstream-watch/state.json --max-hours 26 --summary "${GITHUB_STEP_SUMMARY}"
+
+  alarm:
+    name: failure alarm
+    needs: [upstream-watch, upstream-watchdog]
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/ci-alarm.yml
+    secrets:
+      ESCALATION_WEBHOOK_URL: ${{ secrets.ESCALATION_WEBHOOK_URL }}
+      ESCALATION_BEARER: ${{ secrets.ESCALATION_BEARER }}
