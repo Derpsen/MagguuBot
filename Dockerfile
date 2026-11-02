@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.28
 # ─── Build Stage ─────────────────────────────────
 # node:26-alpine multi-arch index digest (26.12.1, 2026-10-22); Renovate keeps it current via the comment below
 # renovate: image=node:26-alpine
