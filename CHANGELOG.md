@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Tests: import-cycle guard for `src/` (`tests/import-cycles.test.ts`), allowlist only `/help` <-> command registry.
 - Refactor (behavior-neutral): discord.js Client holder moved to the leaf module `src/discord/client-ref.ts`; removes 13 of 16 runtime import cycles through `client.ts`.
 - discord.js 14.27.0 → 14.28.0 (@discordjs/builders 1.15.0). Renovate: discord.js stays below 15, @types/node below 27.
 

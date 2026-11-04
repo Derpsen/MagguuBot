@@ -349,3 +349,4 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## Hard-refactor 2026-11-04 (Marco via Buddy, skill autonomer-hard-refactor)
 
 - Step 1: `src/discord/client-ref.ts` is the leaf holder of the discord.js Client (`getClient`/`setClient`). Feature modules, commands, server routes import `getClient` from there, never from `client.ts` (boot + interaction routing). Runtime import cycles (type-only imports ignored) went from 16 to 3.
+- Step 2: `tests/import-cycles.test.ts` walks `src/` (static value imports only; `import type` and `import()` ignored) and fails on any runtime import cycle beyond the accepted `/help` <-> `commands/index.ts` (registry read lazily in execute). New cycle = import `getClient` from `client-ref.ts`, use `import type`, or a lazy `import()`.
