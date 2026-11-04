@@ -4,7 +4,7 @@ import { db } from '../db/client.js';
 import { countdowns } from '../db/schema.js';
 import { buildCountdownEmbed, renderTimeLeft } from '../embeds/countdown.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 export async function tickCountdowns(): Promise<void> {
   const rows = db

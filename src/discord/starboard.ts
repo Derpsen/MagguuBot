@@ -14,7 +14,7 @@ import { Colors, truncate } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 function starEmojiFrom(reaction: MessageReaction | PartialMessageReaction): string | null {
   const { name, id } = reaction.emoji;

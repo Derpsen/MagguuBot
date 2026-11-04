@@ -16,7 +16,7 @@ import { checkRouting, describeRoutingProblem, type LiveChannelInfo } from '../u
 import { collectStoredRefs, describeStaleRef, findStaleRefs, type GuildIndex } from '../utils/stale-ids.js';
 import { auditGuildCards } from './card-context.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { ARCHIVE_CATEGORY_NAME, CHANNEL } from './server-layout.js';
 
 export interface SelfCheckSection {

@@ -1,7 +1,8 @@
 import { serve, type ServerType } from '@hono/node-server';
 import { config } from './config.js';
 import { sqliteHandle } from './db/client.js';
-import { getClient, startDiscord } from './discord/client.js';
+import { startDiscord } from './discord/client.js';
+import { getClient } from './discord/client-ref.js';
 import { flushPlexCardOnShutdown } from './discord/plex-card.js';
 import { startScheduler, stopScheduler } from './discord/scheduler.js';
 import { buildApp } from './server/app.js';

@@ -29,14 +29,8 @@ import { handleTicketCategorySelect } from './interactions/ticket-category-selec
 import { handleTicketModalSubmit } from './interactions/ticket-modal.js';
 import { handleMovieNightVote } from './movie-night.js';
 import { auditRioTiers } from './rio-roles.js';
+import { setClient } from './client-ref.js';
 import { noteGatewayDown, noteGatewayReady, setGatewayProbe } from './gateway-health.js';
-
-let client: Client | null = null;
-
-export function getClient(): Client {
-  if (!client) throw new Error('discord client not initialized');
-  return client;
-}
 
 export async function startDiscord(): Promise<void> {
   const c = new Client({
@@ -56,7 +50,7 @@ export async function startDiscord(): Promise<void> {
     partials: [Partials.Message, Partials.Channel, Partials.Reaction],
     allowedMentions: { parse: [], repliedUser: false },
   });
-  client = c;
+  setClient(c);
 
   // Gateway state for /healthz (booleans, ping and timestamps only).
   setGatewayProbe(() => ({ ready: c.isReady(), pingMs: c.ws.ping }));

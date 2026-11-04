@@ -9,7 +9,7 @@ import { db } from '../../db/client.js';
 import { suggestions } from '../../db/schema.js';
 import { buildSuggestionButtons, buildSuggestionEmbed, type SuggestionStatus } from '../../embeds/suggestion.js';
 import { logger } from '../../utils/logger.js';
-import { getClient } from '../client.js';
+import { getClient } from '../client-ref.js';
 import type { SlashCommand } from './index.js';
 
 const STATUS_CHOICES: Array<{ name: string; value: SuggestionStatus }> = [

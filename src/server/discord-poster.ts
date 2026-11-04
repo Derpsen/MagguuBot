@@ -1,7 +1,7 @@
 import { type ActionRowBuilder, type ButtonBuilder, type EmbedBuilder, type Message } from 'discord.js';
 import { config } from '../config.js';
 import { findLayoutRole } from '../discord/role-lookup.js';
-import { getClient } from '../discord/client.js';
+import { getClient } from '../discord/client-ref.js';
 import { db } from '../db/client.js';
 import { webhookEvents, type NewWebhookEvent } from '../db/schema.js';
 import { enforceEmbedTotalSize } from '../embeds/colors.js';

@@ -9,7 +9,7 @@ import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { deleteFeatureState, getFeatureState, setFeatureState } from './feature-state.js';
 import { postModLog } from './mod-log.js';
 

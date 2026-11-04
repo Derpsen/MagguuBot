@@ -6,7 +6,7 @@ import { birthdays } from '../db/schema.js';
 import { Colors } from '../embeds/colors.js';
 import { getSetting } from '../settings.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 export async function tickBirthdays(): Promise<void> {
   const channelId = getSetting('birthdayChannelId');

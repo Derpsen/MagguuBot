@@ -13,7 +13,7 @@ import { runBlueTrackerTick } from './blue-tracker.js';
 import { refreshWebsiteFaqCache } from './faq-autoanswer.js';
 import { updateChannelTopics } from './channel-topics.js';
 import { tickCountdowns } from './countdown-ticker.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { tickGiveaways } from './giveaway.js';
 import { runRssFeedTick } from './rss-manager.js';
 import { tickTicketAutoClose } from './ticket-autoclose.js';

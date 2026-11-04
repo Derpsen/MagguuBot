@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { seerrRequests, webhookEvents } from '../../db/schema.js';
-import { getClient } from '../../discord/client.js';
+import { getClient } from '../../discord/client-ref.js';
 import { getChannel } from '../../discord/channel-store.js';
 import {
   buildSeerrApprovalButtons,

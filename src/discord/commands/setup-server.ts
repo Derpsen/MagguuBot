@@ -27,7 +27,7 @@ import { cardContextForGuild } from '../card-context.js';
 import { ensurePinned } from '../pin.js';
 import { logger } from '../../utils/logger.js';
 import { isChannelKey, type ChannelKey } from '../channel-store.js';
-import { getClient } from '../client.js';
+import { getClient } from '../client-ref.js';
 import {
   LAYOUT_CHANNEL_NAMES,
   STRUCTURE,

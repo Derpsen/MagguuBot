@@ -4,7 +4,7 @@ import { db } from '../db/client.js';
 import { tickets } from '../db/schema.js';
 import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 const WARN_AFTER_MS = 24 * 60 * 60 * 1000;
 const CLOSE_AFTER_MS = 48 * 60 * 60 * 1000;

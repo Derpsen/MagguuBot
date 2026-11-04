@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { plexActivityMessages } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 const CLEANUP_BATCH_SIZE = 100;
 

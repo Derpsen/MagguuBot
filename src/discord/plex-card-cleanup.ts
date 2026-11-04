@@ -5,7 +5,7 @@ import { plexCleanupState } from '../db/schema.js';
 import { protectedMessageIds } from '../rollout/live.js';
 import { logger } from '../utils/logger.js';
 import { classifyCleanupMessage, type CleanupMessageView } from '../utils/plex-card-cleanup.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { discordErrorCode, type PlexCardSyncStatus } from './plex-card-manager.js';
 
 /**

@@ -7,7 +7,7 @@ import { getSonarrHealth, getSonarrQueue } from '../services/sonarr.js';
 import { composeTopic, counterText, shouldEditTopic, type TopicCounter } from '../utils/channel-topic.js';
 import { logger } from '../utils/logger.js';
 import { getChannel, type ChannelKey } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { channelPlanForRef } from './server-layout.js';
 
 /** Channel keys whose layout channel carries a live counter (`liveCounter` in STRUCTURE). */

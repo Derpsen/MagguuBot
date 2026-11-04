@@ -5,7 +5,7 @@ import { plexActivityMessages } from '../db/schema.js';
 import { Colors, FOOTER_ICONS } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
 import { PLEX_PAUSE_HOLD_MS, shouldFlushDeferredPause } from '../utils/plex-activity.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 export async function runPlexPauseFlushTick(now = new Date()): Promise<void> {
   const cutoff = new Date(now.getTime() - PLEX_PAUSE_HOLD_MS);

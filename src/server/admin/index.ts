@@ -30,7 +30,7 @@ import {
   isAutoRoleReconcileCandidate,
 } from '../../discord/auto-role-reconcile.js';
 import { CHANNEL_CATALOG, getChannel, isChannelKey, saveChannel } from '../../discord/channel-store.js';
-import { getClient } from '../../discord/client.js';
+import { getClient } from '../../discord/client-ref.js';
 import { checkRoleAssignment } from '../../discord/role-assignment.js';
 import { approveSeerrRequest, declineSeerrRequest } from '../../services/seerr.js';
 import { getAllSettings, getSetting, setSetting } from '../../settings.js';

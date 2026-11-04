@@ -6,7 +6,7 @@ import { buildWeeklyDigestEmbed } from '../embeds/weekly-digest.js';
 import { logger } from '../utils/logger.js';
 import { weeklyPeriodKey } from '../utils/schedule.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { getFeatureState, setFeatureState } from './feature-state.js';
 import { getLeaderboard } from './xp.js';
 

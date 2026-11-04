@@ -11,7 +11,7 @@ import { db } from '../db/client.js';
 import { giveaways, type Giveaway } from '../db/schema.js';
 import { Colors } from '../embeds/colors.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 
 export function buildGiveawayEmbed(g: Giveaway, ended: boolean): EmbedBuilder {
   const e = new EmbedBuilder()

@@ -5,7 +5,7 @@ import { db } from '../db/client.js';
 import { movieNightNominations, movieNights, movieNightVotes } from '../db/schema.js';
 import { buildMovieNightComponents, buildMovieNightEmbed, type MovieNightView } from '../embeds/movie-night.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { getFeatureState, setFeatureState } from './feature-state.js';
 
 export function getActiveMovieNight(guildId = config.DISCORD_GUILD_ID) {

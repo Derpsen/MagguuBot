@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
 import { reminderChannelPayload, reminderDmPayload } from '../utils/raid-reminder.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import {
   RaidReminderManager,
   type NewReminder,

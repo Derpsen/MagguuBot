@@ -8,7 +8,7 @@ import { getSabQueue } from '../services/sabnzbd.js';
 import { getSonarrQueue } from '../services/sonarr.js';
 import { logger } from '../utils/logger.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { FOOTER_ICONS } from '../embeds/colors.js';
 import { ensurePinned } from './pin.js';
 

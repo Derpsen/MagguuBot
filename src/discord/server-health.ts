@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { serverHealthCard } from '../db/schema.js';
 import { logger } from '../utils/logger.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { getChannel } from './channel-store.js';
 import { discordCardGateway } from './plex-card.js';
 import { loadServerHealthStats } from './server-health-stats.js';

@@ -14,7 +14,7 @@ import {
   type PlexCardUserConfig,
 } from '../utils/plex-card-users.js';
 import { getChannel } from './channel-store.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { runPlexCardCleanupTick } from './plex-card-cleanup.js';
 import {
   PlexCardManager,

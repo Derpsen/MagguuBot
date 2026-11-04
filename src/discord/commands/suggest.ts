@@ -5,7 +5,7 @@ import { suggestions } from '../../db/schema.js';
 import { buildSuggestionButtons, buildSuggestionEmbed } from '../../embeds/suggestion.js';
 import { logger } from '../../utils/logger.js';
 import { getChannel } from '../channel-store.js';
-import { getClient } from '../client.js';
+import { getClient } from '../client-ref.js';
 import type { SlashCommand } from './index.js';
 
 export const suggestCommand: SlashCommand = {

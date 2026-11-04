@@ -12,7 +12,7 @@ import {
   shouldCloseOrphanActivityCard,
   type PlexProgressWatch,
 } from '../utils/plex-activity.js';
-import { getClient } from './client.js';
+import { getClient } from './client-ref.js';
 import { getPlexCard, plexCardChannelId } from './plex-card.js';
 
 const TERMINATE_COOLDOWN_MS = 5 * 60_000;
