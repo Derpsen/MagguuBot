@@ -124,3 +124,43 @@ test('collect: npm/GitHub failures keep keys out instead of writing n/a noise', 
   assert.equal(signals['node.lts'].value, 'v26.13.0 (Lithium)');
   assert.equal(signals['repo.MagguuBot.visibility'].value, 'n/a (nicht öffentlich lesbar)');
 });
+
+test('fetch errors: one failed run is silent, two in a row warn once, recovery resets', () => {
+  const prev = { 'repo.MagguuBot.ci-main': { value: 'grün' }, 'node.lts': { value: 'v26.13.0 (Lithium)' } };
+  // run 1: ci-main read failed -> previous value kept, no change, counter 1
+  const cur1 = uw.mergeWithPrevious(prev, { 'node.lts': prev['node.lts'] }, ['repo.MagguuBot.ci-main']);
+  const r1 = uw.trackFetchErrors({}, ['repo.MagguuBot.ci-main']);
+  assert.deepEqual(uw.diffSignals(prev, cur1), []);
+  assert.deepEqual(r1.warnings, []);
+  assert.deepEqual(r1.errors, { 'repo.MagguuBot.ci-main': { count: 1, warned: false } });
+  // run 2: fails again -> exactly one warning
+  const r2 = uw.trackFetchErrors(r1.errors, ['repo.MagguuBot.ci-main']);
+  assert.deepEqual(r2.warnings.map(uw.formatChange), ['fetch-error.repo.MagguuBot.ci-main: (neu) -> 2 Läufe in Folge']);
+  // run 3: still failing -> no repeated warning
+  const r3 = uw.trackFetchErrors(r2.errors, ['repo.MagguuBot.ci-main']);
+  assert.deepEqual(r3.warnings, []);
+  assert.equal(r3.errors['repo.MagguuBot.ci-main'].count, 3);
+  // run 4: recovered -> counter gone; a later single failure is silent again
+  const r4 = uw.trackFetchErrors(r3.errors, []);
+  assert.deepEqual(r4.errors, {});
+  assert.deepEqual(uw.trackFetchErrors(r4.errors, ['repo.MagguuBot.ci-main']).warnings, []);
+});
+
+test('collect: transient GitHub errors are fetch errors, 403/404 stay a stable n/a', async () => {
+  const fake = async (url: string) => {
+    const u = new URL(url);
+    if (u.hostname === 'api.github.com' && u.pathname === '/repos/Derpsen/Magguu-Dashboard') return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+    if (u.hostname === 'api.github.com' && u.pathname === '/repos/Derpsen/MagguuBot') return { ok: true, status: 200, json: async () => ({ visibility: 'public' }) } as unknown as Response;
+    if (u.hostname === 'api.github.com' && u.pathname === '/repos/Derpsen/MagguuBot/actions/runs') return { ok: false, status: 502, json: async () => ({}) } as unknown as Response;
+    if (u.hostname === 'api.github.com' && u.pathname === '/repos/Derpsen/MagguuBot/pulls') return { ok: true, status: 200, json: async () => [] } as unknown as Response;
+    return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
+  };
+  const { signals, failed } = await uw.collect({ fetchImpl: fake });
+  assert.ok(failed.includes('repo.Magguu-Dashboard.visibility') && failed.includes('repo.Magguu-Dashboard.ci-main'));
+  assert.equal(signals['repo.Magguu-Dashboard.visibility'], undefined);
+  assert.ok(failed.includes('repo.MagguuBot.ci-main'));
+  assert.ok(!failed.includes('repo.MagguuBot.dependabot-alerts'));
+  assert.equal(signals['repo.MagguuBot.dependabot-alerts'].value, 'n/a');
+  assert.equal(signals['repo.MagguuUI.visibility'].value, 'n/a (nicht öffentlich lesbar)');
+  assert.ok(!failed.some((k: string) => k.startsWith('repo.MagguuUI.')));
+});

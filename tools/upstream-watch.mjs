@@ -141,6 +141,24 @@ export function mergeWithPrevious(prev, cur, failedKeys) {
   return out;
 }
 
+/**
+ * Consecutive fetch errors per signal key. A failed key keeps its previous value (mergeWithPrevious) and is never
+ * reported as a change; after `threshold` failed runs in a row ONE warning `fetch-error.<key>` is emitted (warned
+ * flag, not repeated while it keeps failing). A successful read drops the key, so the counter starts over.
+ */
+export function trackFetchErrors(prevErrors, failed, threshold = 2) {
+  const errors = {};
+  const warnings = [];
+  for (const key of [...new Set(failed)].sort()) {
+    const count = (prevErrors?.[key]?.count ?? 0) + 1;
+    const already = Boolean(prevErrors?.[key]?.warned);
+    const warned = already || count >= threshold;
+    if (warned && !already) warnings.push({ key: `fetch-error.${key}`, from: null, to: `${count} Läufe in Folge` });
+    errors[key] = { count, warned };
+  }
+  return { errors, warnings };
+}
+
 export const formatChange = (c) => `${c.key}: ${c.from ?? '(neu)'} -> ${c.to ?? '(weg)'}`;
 
 export function buildPayload({ title = TITLE, repository, runUrl, changes, test = false, note }) {
@@ -171,7 +189,8 @@ async function getJson(url, { token, accept = 'application/json', fetchImpl = fe
   for (let i = 0; i < 3; i++) {
     try {
       const res = await fetchImpl(url, { headers: { accept, 'user-agent': UA, ...(token ? { authorization: `Bearer ${token}` } : {}) }, signal: AbortSignal.timeout(20000) });
-      if (res.status === 403 || res.status === 404 || res.status === 401) return { ok: false, status: res.status };
+      // 401/403/404 = permanently not readable (private repo, missing rights): stable "n/a", not a fetch error.
+      if (res.status === 403 || res.status === 404 || res.status === 401) return { ok: false, status: res.status, permanent: true };
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return { ok: true, json: await res.json() };
     } catch (e) { last = e; await new Promise((r) => setTimeout(r, 1500 * (i + 1))); }
@@ -182,6 +201,8 @@ async function getJson(url, { token, accept = 'application/json', fetchImpl = fe
 export const npmUrl = (pkg) => `https://registry.npmjs.org/${encodeURIComponent(pkg)}`;
 const NPM_PACKAGES = ['typescript-eslint', 'nuxt-og-image', 'nuxt', 'nitro', 'discord.js', '@discordjs/rest', '@types/node'];
 const KEY_OF = { 'typescript-eslint': ['lock.ts7.typescript-eslint'], 'nuxt-og-image': ['lock.satori.nuxt-og-image'], nuxt: ['lock.nuxt5.nuxt'], nitro: ['lock.nitro3.nitro'], 'discord.js': ['lock.discordjs15.discord.js'], '@discordjs/rest': ['lock.undici8.@discordjs/rest'], '@types/node': ['lock.typesnode27.@types/node'] };
+
+const REPO_KEYS = ['visibility', 'renovate-prs', 'ci-main', 'dependabot-alerts', 'code-scanning-alerts'];
 
 export async function collect({ token, fetchImpl = fetch } = {}) {
   const failed = [];
@@ -203,6 +224,8 @@ export async function collect({ token, fetchImpl = fetch } = {}) {
   if (!pl.ok) failed.push('profilarr.latest');
   for (const repo of REPOS) {
     const meta = await gh(`/repos/${repo}`);
+    const rk = (x) => `repo.${repo.split('/')[1]}.${x}`;
+    if (!meta.ok && !meta.permanent) { failed.push(...REPO_KEYS.map(rk)); continue; }
     const isPublic = meta.ok && meta.json.visibility === 'public';
     const d = { public: isPublic };
     if (isPublic) {
@@ -212,6 +235,7 @@ export async function collect({ token, fetchImpl = fetch } = {}) {
         gh(`/repos/${repo}/dependabot/alerts?state=open&per_page=100`),
         gh(`/repos/${repo}/code-scanning/alerts?state=open&per_page=100`),
       ]);
+      for (const [r, key] of [[pulls, 'renovate-prs'], [runs, 'ci-main'], [dep, 'dependabot-alerts'], [cs, 'code-scanning-alerts']]) if (!r.ok && !r.permanent) failed.push(rk(key));
       d.pulls = pulls.ok ? pulls.json : null;
       d.runs = runs.ok ? runs.json.workflow_runs.filter((r) => r.event === 'push' || r.event === 'schedule') : null;
       d.dependabot = dep.ok ? dep.json : null;
@@ -259,10 +283,12 @@ async function main(argv) {
     const test = argv.includes('--test');
     const { signals: raw, failed } = await collect({ token: env.GITHUB_TOKEN || undefined });
     const signals = mergeWithPrevious(prev?.signals, raw, failed);
-    const changes = prev ? diffSignals(prev.signals, signals) : [];
+    // failed keys already carry the previous value (no change); only the 2-in-a-row warning is reported, once
+    const { errors, warnings } = trackFetchErrors(prev?.fetchErrors, failed);
+    const changes = prev ? [...diffSignals(prev.signals, signals), ...warnings] : [];
     const scheduled = opt('--event') === 'schedule';
     const now = new Date().toISOString();
-    let next = { version: 1, checkedAt: now, lastScheduledAt: scheduled ? now : (prev?.lastScheduledAt ?? null), signals };
+    let next = { version: 1, checkedAt: now, lastScheduledAt: scheduled ? now : (prev?.lastScheduledAt ?? null), signals, fetchErrors: errors };
     lines.push('# upstream-watch', '', prev ? `${changes.length} Änderung(en) seit ${prev.checkedAt}` : 'Baseline (kein vorheriger Zustand, keine Eskalation)', '');
     if (failed.length) lines.push(`Nicht lesbar (vorheriger Wert bleibt): ${failed.join(', ')}`, '');
     lines.push('| Signal | Wert |', '|---|---|', ...Object.entries(signals).map(([k, v]) => `| ${k}${v.met ? ' ⚠' : ''} | ${String(v.value).replace(/\|/g, '/')} |`));
@@ -276,7 +302,12 @@ async function main(argv) {
       const r = await postEscalation(buildPayload({ repository, runUrl, changes }), hook);
       lines.push('', `escalation: HTTP ${r.status}`);
       console.log(`escalation POST finished, HTTP status: ${r.status}`);
-      if (!r.sent && hook.url && hook.bearer) next = { ...next, signals: mergeWithPrevious(signals, prev.signals, changes.map((c) => c.key)) };
+      if (!r.sent && hook.url && hook.bearer) {
+        // keep the old values / un-warned counters so the same change is sent again next run
+        const keys = changes.map((c) => c.key);
+        const kept = Object.fromEntries(Object.entries(errors).map(([k, v]) => [k, keys.includes(`fetch-error.${k}`) ? { ...v, warned: false } : v]));
+        next = { ...next, signals: mergeWithPrevious(prev.signals, signals, keys), fetchErrors: kept };
+      }
     }
     if (opt('--state-out')) await writeFile(opt('--state-out'), `${JSON.stringify(next, null, 2)}\n`);
     console.log(`upstream-watch: ${Object.keys(signals).length} Signale, ${changes.length} Änderung(en), ${failed.length} nicht lesbar`);

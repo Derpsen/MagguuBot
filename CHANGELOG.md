@@ -17,6 +17,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - ARCHIV deletion retry 2026-11-02 marked done (per the Unraid & Server dry run: category and both archived channels already deleted, nothing listed, retry queue 0); 2026-11-16 channel-list note: not relevant while the bot role has Administrator, kept for a future role change. Audit-log reason strings per delete path listed in AGENTS.
 
 ### Fixed
+- upstream-watch: transient fetch errors keep the cached value (no webhook noise); per-key error counter, one `fetch-error.<key>` warning after 2 failed runs in a row, reset on recovery; 401/403/404 stay a stable n/a.
 - CI red after `f740c3b`: `tests/roles-tools.test.ts` loaded the env config because `roles-effects.ts` imported `rest.js` (→ db/config) and `roles-refs.ts` imported `xp.ts` (→ db/config). The pure roles modules no longer import config/db: error status is duck-typed, `RANK_RULES` moved to the pure `src/discord/xp-ranks.ts` (re-exported from `xp.ts`, behaviour unchanged). Verified with an empty environment (`env -i`, 791 tests green). Rule: pure planning modules and their tests never import `config`, `db/client`, `rest.ts` or `xp.ts`.
 - `scripts/undici-watch.mjs`: the npm registry URL escaped only the first `/` of a package name (CodeQL `js/incomplete-sanitization`, alert 110); it now uses `encodeURIComponent` for the whole name (`registryUrl`, tested with several slashes and a backslash). Behaviour for the two watched packages is unchanged.
 
