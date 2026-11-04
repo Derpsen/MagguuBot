@@ -41,10 +41,6 @@ export function faqAutoanswerChannelIds(): string[] {
     .filter(Boolean);
 }
 
-export function faqAutoanswerEnabled(): boolean {
-  return helpChannels().size > 0;
-}
-
 /** Refreshes the cache from the public website FAQ API (also feeds `/faq`, independent of auto-answer channels). */
 export async function refreshWebsiteFaqCache(): Promise<void> {
   const res = await safeFetch(config.WEBSITE_FAQ_API_URL, {

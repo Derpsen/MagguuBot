@@ -126,7 +126,3 @@ export function requestWelcomeCounterRefresh(): void {
     logger.warn({ err }, 'welcome counter request failed');
   }
 }
-
-export function cancelWelcomeCounterRefresh(): void {
-  trigger.cancel();
-}

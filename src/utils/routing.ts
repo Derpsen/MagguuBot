@@ -68,13 +68,6 @@ export function expectedChannelName(key: ChannelKey): string | undefined {
   return allChannelPlans().find(({ channel }) => channel.refs?.includes(key))?.channel.name;
 }
 
-export function expectedChannelNames(): Record<ChannelKey, string | undefined> {
-  return Object.fromEntries(CHANNEL_CATALOG.map(({ key }) => [key, expectedChannelName(key)])) as Record<
-    ChannelKey,
-    string | undefined
-  >;
-}
-
 export interface LiveChannelInfo {
   id: string;
   name: string;
@@ -176,7 +169,3 @@ export function classifyBotEmbed(embed: EmbedView): ChannelKey[] | null {
   return null;
 }
 
-/** Channel names a classified post may live in (layout names for its keys). */
-export function allowedChannelNames(keys: readonly ChannelKey[]): Set<string> {
-  return new Set(keys.map(expectedChannelName).filter((n): n is string => !!n));
-}

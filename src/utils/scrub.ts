@@ -13,10 +13,6 @@ export function registerSecret(value: string | undefined | null): void {
   if (value && value.length >= 6) literals.add(value);
 }
 
-export function clearRegisteredSecretsForTests(): void {
-  literals.clear();
-}
-
 const PARAM = /(^|[?&;,\s"'(])((?:x-plex-token|api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|key)=)([^&\s"'<>)]*)/gi;
 // Anchored on the `://` and looking BACK for the scheme: a leading `(\b[a-z][a-z0-9+.-]*:\/\/)` retried the whole
 // scheme-charset run from every word boundary (`a.a.a.`/`-token-token` = quadratic, 200 kB ran into a timeout). A run can

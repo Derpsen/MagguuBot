@@ -6,7 +6,7 @@
 import type { RestLike } from './execute.js';
 import {
   BOT_POST_REQUIRED, CATEGORY_TYPE, CRITICAL_PERMS, P, basePermissions, botRoleIds, channelPermissions, cloneSnapshot, permNames,
-  type ChannelRec, type OverwriteRec, type RoleRec, type RolesSnapshot,
+  type ChannelRec, type RoleRec, type RolesSnapshot,
 } from './roles-model.js';
 
 export type RoleChanges = Partial<Pick<RoleRec, 'name' | 'permissions' | 'mentionable' | 'hoist' | 'color'>>;
@@ -27,7 +27,6 @@ export interface Step {
   phase: number;
 }
 
-export const isPending = (id: string): boolean => id.startsWith('new:');
 
 // ─── Simulation ───────────────────────────────────────────────────────────
 export function applyEffect(snap: RolesSnapshot, e: Effect): void {
@@ -234,5 +233,3 @@ export async function executeSteps(rest: RestLike, guildId: string, steps: reado
   }
   return { done, failed: null, notRun: 0 };
 }
-
-export const ownOverwrite = (c: ChannelRec, id: string, type: 0 | 1): OverwriteRec | undefined => c.overwrites.find((o) => o.id === id && o.type === type);
