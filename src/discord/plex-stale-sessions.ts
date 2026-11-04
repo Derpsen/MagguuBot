@@ -1,4 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
+import { isAlreadyGone } from './discord-errors.js';
 import { eq } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
@@ -140,9 +141,4 @@ function markStopped(id: number, now: Date): void {
     .set({ state: 'stop', pausedAt: null, updatedAt: now })
     .where(eq(plexActivityMessages.id, id))
     .run();
-}
-
-function isAlreadyGone(err: unknown): boolean {
-  if (!err || typeof err !== 'object' || !('code' in err)) return false;
-  return err.code === 10_003 || err.code === 10_008;
 }

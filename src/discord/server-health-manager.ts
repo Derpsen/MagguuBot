@@ -1,9 +1,7 @@
 import type { EmbedBuilder } from 'discord.js';
 import { buildServerHealthEmbed, serverHealthHash, type ServerHealthStats } from '../utils/server-health.js';
+import { discordErrorCode, isMessageGone, isPermanentDiscordError } from './discord-errors.js';
 import {
-  discordErrorCode,
-  isMessageGone,
-  isPermanentDiscordError,
   PLEX_CARD_PERMANENT_PAUSE_MS,
   type PlexCardGateway,
 } from './plex-card-manager.js';

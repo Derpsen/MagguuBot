@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import type { EmbedBuilder } from 'discord.js';
 import {
   PlexCardManager,
-  isPermanentDiscordError,
   type PlexCardGateway,
   type PlexCardRecord,
   type PlexCardStore,
 } from '../src/discord/plex-card-manager.ts';
+import { isPermanentDiscordError } from '../src/discord/discord-errors.ts';
 import {
   applyPlexCardEvent,
   buildPlexUserCardEmbed,

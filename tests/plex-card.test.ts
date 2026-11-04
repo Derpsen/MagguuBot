@@ -3,11 +3,11 @@ import { test } from 'node:test';
 import type { EmbedBuilder } from 'discord.js';
 import {
   PlexCardManager,
-  isMessageGone,
   type PlexCardGateway,
   type PlexCardRecord,
   type PlexCardStore,
 } from '../src/discord/plex-card-manager.ts';
+import { isMessageGone } from '../src/discord/discord-errors.ts';
 import {
   plexActivityMatchesLiveSession,
   plexPlayerCorrelationKey,

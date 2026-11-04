@@ -6,7 +6,8 @@ import { protectedMessageIds } from '../rollout/live.js';
 import { logger } from '../utils/logger.js';
 import { classifyCleanupMessage, type CleanupMessageView } from '../utils/plex-card-cleanup.js';
 import { getClient } from './client-ref.js';
-import { discordErrorCode, type PlexCardSyncStatus } from './plex-card-manager.js';
+import { discordErrorCode } from './discord-errors.js';
+import type { PlexCardSyncStatus } from './plex-card-manager.js';
 
 /**
  * One-time removal of the old Plex activity cards (the former single card and earlier Plex cards) in the

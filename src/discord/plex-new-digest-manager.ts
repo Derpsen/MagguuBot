@@ -9,7 +9,7 @@ import {
   lastScheduledRun,
 } from '../utils/plex-new-digest.js';
 import type { NeuItem } from '../utils/plex-new.js';
-import { discordErrorCode, isPermanentDiscordError } from './plex-card-manager.js';
+import { discordErrorCode, isPermanentDiscordError } from './discord-errors.js';
 import type { PlexNewSinceResult } from './plex-new.js';
 
 export interface PlexNewDigestRecord {

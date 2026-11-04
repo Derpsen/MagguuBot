@@ -1,4 +1,5 @@
 import type { EmbedBuilder } from 'discord.js';
+import { discordErrorCode, isMessageGone, isPermanentDiscordError } from './discord-errors.js';
 import {
   applyPlexCardEvent,
   buildPlexUserCardEmbed,
@@ -113,33 +114,6 @@ export const PLEX_CARD_PERMANENT_PAUSE_MS = 30 * 60_000;
 export const PLEX_CARD_POST_SPACING_MS = 3_000;
 export const PLEX_CARD_EDIT_SPACING_MS = 400;
 const CAP_WARN_INTERVAL_MS = 10 * 60_000;
-
-const DISCORD_UNKNOWN_MESSAGE = 10_008;
-const DISCORD_CANNOT_EDIT_OTHERS = 50_005;
-const DISCORD_UNKNOWN_CHANNEL = 10_003;
-const DISCORD_MISSING_ACCESS = 50_001;
-const DISCORD_MISSING_PERMISSIONS = 50_013;
-
-export function discordErrorCode(err: unknown): number | null {
-  if (!err || typeof err !== 'object' || !('code' in err)) return null;
-  const code = (err as { code: unknown }).code;
-  return typeof code === 'number' ? code : null;
-}
-
-/** The stored message can never be edited again: deleted, or not authored by this bot. */
-export function isMessageGone(err: unknown): boolean {
-  const code = discordErrorCode(err);
-  return code === DISCORD_UNKNOWN_MESSAGE || code === DISCORD_CANNOT_EDIT_OTHERS;
-}
-
-/**
- * Retrying cannot help until someone fixes the server: channel deleted (10003), bot lost access
- * (50001) or lost the permission to view/send/edit (50013).
- */
-export function isPermanentDiscordError(err: unknown): boolean {
-  const code = discordErrorCode(err);
-  return code === DISCORD_UNKNOWN_CHANNEL || code === DISCORD_MISSING_ACCESS || code === DISCORD_MISSING_PERMISSIONS;
-}
 
 interface Pending {
   timer: unknown;

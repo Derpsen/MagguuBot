@@ -1,4 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
+import { isAlreadyGone } from './discord-errors.js';
 import { and, eq, isNotNull, lte, ne } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { plexActivityMessages } from '../db/schema.js';
@@ -55,9 +56,4 @@ function clearPausedAt(id: number): void {
     .set({ pausedAt: null, updatedAt: new Date() })
     .where(eq(plexActivityMessages.id, id))
     .run();
-}
-
-function isAlreadyGone(err: unknown): boolean {
-  if (!err || typeof err !== 'object' || !('code' in err)) return false;
-  return err.code === 10_003 || err.code === 10_008;
 }

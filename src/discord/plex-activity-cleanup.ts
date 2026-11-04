@@ -1,4 +1,5 @@
 import { asc, eq, lt } from 'drizzle-orm';
+import { isAlreadyGone } from './discord-errors.js';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
 import { plexActivityMessages } from '../db/schema.js';
@@ -43,9 +44,4 @@ export async function runPlexActivityCleanupTick(now = new Date()): Promise<void
 
 function removeTrackingRow(id: number): void {
   db.delete(plexActivityMessages).where(eq(plexActivityMessages.id, id)).run();
-}
-
-function isAlreadyGone(err: unknown): boolean {
-  if (!err || typeof err !== 'object' || !('code' in err)) return false;
-  return err.code === 10_003 || err.code === 10_008;
 }

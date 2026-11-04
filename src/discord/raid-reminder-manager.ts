@@ -1,5 +1,5 @@
 import type { EmbedBuilder } from 'discord.js';
-import { discordErrorCode, isPermanentDiscordError } from './plex-card-manager.js';
+import { discordErrorCode, isPermanentDiscordError } from './discord-errors.js';
 import {
   DISCORD_CANNOT_DM_USER,
   MAX_REMINDERS_PER_USER,

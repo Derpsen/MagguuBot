@@ -8,7 +8,7 @@ import {
 } from '../utils/plex-new-digest.js';
 import type { FaqEntry } from '../utils/faq-matcher.js';
 import { buildFaqTopEmbed, faqTopWindow, summarizeFaqUsage, type FaqUsageRow } from '../utils/faq-top.js';
-import { discordErrorCode, isPermanentDiscordError } from './plex-card-manager.js';
+import { discordErrorCode, isPermanentDiscordError } from './discord-errors.js';
 
 export interface FaqTopRecord {
   lastScheduledAt: number | null;

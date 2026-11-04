@@ -1,4 +1,5 @@
 import { PermissionFlagsBits } from 'discord.js';
+import { discordErrorCode } from './discord-errors.js';
 import { and, eq } from 'drizzle-orm';
 import { config } from '../config.js';
 import { db } from '../db/client.js';
@@ -24,11 +25,6 @@ import {
  */
 
 /** Numeric Discord API error code of a thrown error (kept local: this module must stay free of client imports). */
-function discordErrorCode(err: unknown): number | null {
-  if (!err || typeof err !== 'object' || !('code' in err)) return null;
-  const code = (err as { code: unknown }).code;
-  return typeof code === 'number' ? code : null;
-}
 
 // ─── thresholds (env, overridable by /rio-config; stored in bot_settings) ───
 

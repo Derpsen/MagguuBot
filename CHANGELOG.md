@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Discord error-code helpers consolidated in `src/discord/discord-errors.ts`; three private `isAlreadyGone` copies and the `rio-roles` copy of `discordErrorCode` removed (behavior unchanged, new unit test).
 - Refactor: 7 unused exports removed (routing, welcome counter, scrub test helper, FAQ auto-answer flag, two rollout helpers).
 - Tests: import-cycle guard for `src/` (`tests/import-cycles.test.ts`), allowlist only `/help` <-> command registry.
 - Refactor (behavior-neutral): discord.js Client holder moved to the leaf module `src/discord/client-ref.ts`; removes 13 of 16 runtime import cycles through `client.ts`.

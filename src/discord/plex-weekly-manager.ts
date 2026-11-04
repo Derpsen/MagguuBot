@@ -6,10 +6,8 @@ import {
   type PlexWeeklyRaw,
   type PlexWeeklyStats,
 } from '../utils/plex-weekly.js';
+import { discordErrorCode, isMessageGone, isPermanentDiscordError } from './discord-errors.js';
 import {
-  isMessageGone,
-  isPermanentDiscordError,
-  discordErrorCode,
   PLEX_CARD_PERMANENT_PAUSE_MS,
   type PlexCardGateway,
 } from './plex-card-manager.js';
