@@ -108,7 +108,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## MagguuUI product facts (2026-10-05)
 
-- EllesmereUI TOC min **9.0.6+**; live host **9.2.9**; Magguu Ellesmere bake is **dump-based**; release notes reference **v12.1.8** (latest MagguuUI tag).
+- EllesmereUI TOC min **9.0.6+**; live host **9.2.9**; Magguu Ellesmere bake is **dump-based**.
+- Release notes reference **v12.1.9** (latest MagguuUI tag).
 - Four sibling AddOns: MagguuUI / MagguuUI_Data / MagguuUI_EUI / MagguuUI_Media (all enabled).
 - Gold **Magguu-Profile übernehmen** (EN: Apply Magguu profiles) = Magguu profiles + Magguu Settings + companions. **Magguu Settings** = overlay/QoL/fonts/scale/chat only (no re-import). **Load profiles** = activate Magguu profiles; no re-import except a missing companion once; class layouts per character. Setup buttons: BigWigs, Northern Sky, EXBoss, Smart Reminders, Whisper Messenger.
 - Player-facing FAQ/welcome never says bake, dump, or recapture.
@@ -360,3 +361,7 @@ Base commit 5733280, 2026-11-04. Next levers, only when the trigger hits:
 1. Split `src/server/admin/index.ts` (about 1400 lines, route god-file) into per-area routers. Trigger: next feature that adds admin routes, or a regression there. Precondition: characterization tests for route paths, methods and auth guards first.
 2. Shared `parseDuration`/`formatDuration`/`formatUptime`/`germanDate` helpers (2-3 copies each, semantics not yet compared). Trigger: a bug fixed in one copy, or a fourth copy. Compare outputs per copy before merging.
 3. `/help` <-> command registry cycle (only accepted entry in `tests/import-cycles.test.ts`). Trigger: registry changes to eager reads, or a startup-order bug. Low ROI today because the registry is read lazily.
+
+## 2026-11-08 MagguuUI release
+
+- MagguuUI addon live **v12.1.9**: Retail and WoW Forever in one package with one shared changelog. FAQ and tag copy name v12.1.9 as the latest release.
