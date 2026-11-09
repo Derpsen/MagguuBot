@@ -279,6 +279,7 @@ Per-repo routing: `ADDON_REPO_FULL_NAMES` defaults to `Derpsen/MagguuUI`. Only r
 - **Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, Whisper Messenger (WhisperMessenger), Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders.
 - **Whisper Messenger** is the whisper addon (Setup button). WIM and Ellesmere WIM Skin are retired. Do not list them or import WIM.
 - No WindTools. HandyNotes MapNotes is on WowUp Optional; Magguu settings apply with HandyNotes via Magguu-Profile übernehmen / Profile laden. No KeystoneLoot / Archon-BiS / KSL-BiS in user-facing copy or Optional pack; never MagguuKSL; never name Devourer as a special include.
+- **Forever (2026-11-08/09):** Starter (5): EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky Raid Tools. Optional (8): Auctionator, HandyNotes, Whisper Messenger, Waypoint UI, Talent Tree Tweaks, GTFO, BugSack, BugGrabber. HandyNotes MapNotes works on Forever (import with HandyNotes) but is not in Marco's Forever WowUp collection, so do not add it to Forever Optional until a new collection includes it. Zygor/RXP stay Magguu Tools include sliders for Marco only — never packs, Install All, or public copy.
 
 ## Grok Bot / Buddy + Git publish
 
