@@ -142,7 +142,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-05
 
-- Docs/FAQ refresh: Whisper Messenger replaces WIM / Ellesmere WIM Skin in WowUp Optional (FAQ embed + test); bake dump-based; notes v12.1.8; public contact contact@magguu.xyz.
+- Docs/FAQ refresh: Whisper Messenger replaces WIM / Ellesmere WIM Skin in WowUp Optional (FAQ embed + test); bake dump-based; notes v12.1.9; public contact contact@magguu.xyz.
 
 ## 2026-10-06 Ops sync (Buddy Inventur)
 
@@ -153,7 +153,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-12 Facts refresh
 
-- MagguuUI addon live **v12.1.8**.
+- MagguuUI addon live **v12.1.9** (was v12.1.8 until 2026-11-08).
 - Container runs as **uid 99** (entrypoint drops to `PUID=99`/`PGID=100` via su-exec; `PUID=0` keeps root). Images are signed with **Cosign keyless** (GitHub OIDC) in `docker.yml`.
 - **WIM is removed** everywhere. Whisper Messenger is the whisper chat in embeds/FAQ. Player button: **Apply Magguu profiles**.
 - Node: `engines.node >=26`, Node 26 live (Marco approved 2026-10-16); Active LTS 'Lithium' since 2026-10-28.
@@ -162,7 +162,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - Helpers (renamed again 2026-10-16, IDs unchanged): "Website" = MagguuUI-Website only; "Bot & Dashboard" = MagguuBot + Magguu-Dashboard; "Addon (Lua)" = addon Lua; "Code-Review" = review on request; "Release" = releases/Tag-Gate; "Unraid & Server" = Unraid; Buddy = front door. Former names: Webcraft, Botsmith, Luaforge, Sentinel, Launchpad, Homebase. Captain and all group chats/rooms were deleted 2026-10-16; Buddy contacts helpers directly; Notion holds only rules and the daily Docs-Abgleich log.
 - Buddy makes small MagguuUI-Website design/text changes directly; bigger work goes to the helpers. Since 2026-10-12 helpers and Buddy push directly to `main` (no PRs, no pre-review); Buddy reviews commits afterwards; after a green Docker publish the no-AI Unraid pull/test script (`magguu-pull`, rollback on failure) pulls the new image.
-- Addon live v12.1.8. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
+- Addon live **v12.1.9** (was v12.1.8). "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
 - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, v12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
 - Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 live; TS 7 released 2026-10-26 (native `tsc` via `@typescript/native`; `typescript` stays the TS 6 API shim for vue-tsc), h3 2 locked (Website only); @types/node 26 released 2026-10-26; uid 99 + Cosign; `engines.node >=26`; no tags without Marco's yes; never remove third-party author names.
 
@@ -365,3 +365,4 @@ Base commit 5733280, 2026-11-04. Next levers, only when the trigger hits:
 ## 2026-11-08 MagguuUI release
 
 - MagguuUI addon live **v12.1.9**: Retail and WoW Forever in one package with one shared changelog. FAQ and tag copy name v12.1.9 as the latest release.
+- Forever WowUp packs (v12.1.9): Starter EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky Raid Tools; Optional Auctionator, HandyNotes, Whisper Messenger, Waypoint UI, Talent Tree Tweaks, GTFO, BugSack, BugGrabber. EllesmereUI fixture/gate 9.8.2; Tools under Patch Notes after reveal; Raid Tools from bake.
