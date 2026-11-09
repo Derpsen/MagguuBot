@@ -357,14 +357,16 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## Hard-refactor 2026-11-09 (Marco via Buddy, skill autonomer-hard-refactor)
 
 - Step 1: shared leaf `src/utils/format.ts` (`formatUptime`, `germanDate`, `formatDeNumber` with cached `Intl.NumberFormat('de-DE')`). Call sites: `embeds/status.ts`, `commands/botinfo.ts`, `utils/server-health.ts`, `utils/welcome-counter.ts`. Characterization + microbench in `tests/format.test.ts` (cached formatter much faster than fresh Intl on embed hot paths).
+- Step 2: `tests/admin-routes.test.ts` pins the admin HTTP surface (45 method+path rows + `adminRouter.use('*', requireAdmin)`). No split of `src/server/admin/index.ts` yet — characterization first so a later router split cannot silently drop a route.
 
 ## Hard-refactor ROI backlog
 
-Base commit 5733280, 2026-11-04. Next levers, only when the trigger hits:
+Base commit f72984a / step-2 follow-up, 2026-11-09. Next levers, only when the trigger hits:
 
-1. Split `src/server/admin/index.ts` (about 1400 lines, route god-file) into per-area routers. Trigger: next feature that adds admin routes, or a regression there. Precondition: characterization tests for route paths, methods and auth guards first.
-2. Shared `parseDuration`/`formatDuration`/`formatUptime`/`germanDate` helpers (2-3 copies each, semantics not yet compared). Trigger: a bug fixed in one copy, or a fourth copy. Compare outputs per copy before merging.
-3. `/help` <-> command registry cycle (only accepted entry in `tests/import-cycles.test.ts`). Trigger: registry changes to eager reads, or a startup-order bug. Low ROI today because the registry is read lazily.
+1. Split `src/server/admin/index.ts` (~1398 lines) into per-area routers. Precondition now met: `tests/admin-routes.test.ts` pins 45 routes + requireAdmin. Trigger: next admin feature or a failing route characterization after an edit.
+2. Shared `parseDuration` helpers (remindme vs giveaway vs schedule-announce — different accepted units/spaces). Trigger: a bug fixed in one copy, or a fourth copy. Do not merge without per-input golden tests.
+3. Scheduler timer coalesce (28 `setInterval`s in `scheduler.ts`). Trigger: sustained overlap-skip warnings in logs. Keep tick isolation until then.
+4. `/help` <-> command registry cycle (accepted in `tests/import-cycles.test.ts`). Trigger: registry changes to eager reads. Low ROI while lazy.
 
 ## 2026-11-08 MagguuUI release
 

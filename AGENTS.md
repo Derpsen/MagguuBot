@@ -431,4 +431,5 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy); skip "Unraid & Serv
 ## Hard-refactor 2026-11-09 (Marco via Buddy, skill autonomer-hard-refactor)
 
 - Step 1: shared leaf `src/utils/format.ts` (`formatUptime`, `germanDate`, `formatDeNumber` with cached `Intl.NumberFormat('de-DE')`). Call sites: `embeds/status.ts`, `commands/botinfo.ts`, `utils/server-health.ts`, `utils/welcome-counter.ts`. Characterization + microbench in `tests/format.test.ts` (cached formatter much faster than fresh Intl on embed hot paths).
+- Step 2: `tests/admin-routes.test.ts` pins the admin HTTP surface (45 method+path rows + `adminRouter.use('*', requireAdmin)`). No split of `src/server/admin/index.ts` yet — characterization first so a later router split cannot silently drop a route.
 
