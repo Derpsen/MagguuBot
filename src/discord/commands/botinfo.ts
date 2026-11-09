@@ -4,15 +4,7 @@ import { db } from '../../db/client.js';
 import { webhookEvents } from '../../db/schema.js';
 import { Colors, formatBytes, buildFooter } from '../../embeds/colors.js';
 import type { SlashCommand } from './index.js';
-
-function formatUptime(s: number): string {
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
+import { formatUptime } from '../../utils/format.js';
 
 export const botinfoCommand: SlashCommand = {
   category: 'utility',

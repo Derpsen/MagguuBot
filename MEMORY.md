@@ -354,6 +354,10 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Step 3: dead exports removed after re-grep over src/tests/scripts/tools/frontend (0 readers): `allowedChannelNames`, `expectedChannelNames` (routing), `cancelWelcomeCounterRefresh`, `clearRegisteredSecretsForTests` (scrub), `faqAutoanswerEnabled`, `isPending`/`ownOverwrite` (rollout roles-effects). Drizzle row types in `schema.ts`, webhook payload types and `RIO_FORBIDDEN_PERMISSIONS` (documented denylist next to the allowlist gate) stay on purpose.
 - Step 4: Discord REST error-code helpers live in `src/discord/discord-errors.ts` (`discordErrorCode`, `isMessageGone`, `isPermanentDiscordError`, `isAlreadyGone`). Import them from there, not from `plex-card-manager.ts`, and never copy a private `isAlreadyGone`/`discordErrorCode` into a feature module again (`pin.ts` `discordErrorCodeOf` keeps its own undefined-semantics on purpose).
 
+## Hard-refactor 2026-11-09 (Marco via Buddy, skill autonomer-hard-refactor)
+
+- Step 1: shared leaf `src/utils/format.ts` (`formatUptime`, `germanDate`, `formatDeNumber` with cached `Intl.NumberFormat('de-DE')`). Call sites: `embeds/status.ts`, `commands/botinfo.ts`, `utils/server-health.ts`, `utils/welcome-counter.ts`. Characterization + microbench in `tests/format.test.ts` (cached formatter much faster than fresh Intl on embed hot paths).
+
 ## Hard-refactor ROI backlog
 
 Base commit 5733280, 2026-11-04. Next levers, only when the trigger hits:

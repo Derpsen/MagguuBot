@@ -1,5 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { Colors } from '../embeds/colors.js';
+import { formatDeNumber, germanDate } from './format.js';
 
 /**
  * Welcome counter card (public welcome channel): pure part. ONE self-editing message that shows two plain numbers.
@@ -20,15 +21,6 @@ export interface WelcomeCounterStats {
   weekStart: string;
 }
 
-function num(n: number): string {
-  return new Intl.NumberFormat('de-DE').format(n);
-}
-
-function germanDate(isoDate: string): string {
-  const [y, m, d] = isoDate.split('-');
-  return y && m && d ? `${d}.${m}.${y}` : isoDate;
-}
-
 /** No timestamp: the content hash must only change with the numbers. */
 export function buildWelcomeCounterEmbed(stats: WelcomeCounterStats): EmbedBuilder {
   return new EmbedBuilder()
@@ -36,8 +28,8 @@ export function buildWelcomeCounterEmbed(stats: WelcomeCounterStats): EmbedBuild
     .setTitle('👋 Willkommen')
     .setDescription(`Schön, dass du da bist. Regeln und Rollen findest du in den angepinnten Karten hier.\nWoche seit ${germanDate(stats.weekStart)} (Mo–So)`)
     .addFields(
-      { name: 'Mitglieder', value: stats.members === null ? '–' : num(Math.max(0, Math.trunc(stats.members))), inline: true },
-      { name: 'Neu diese Woche', value: num(Math.max(0, Math.trunc(stats.newThisWeek))), inline: true },
+      { name: 'Mitglieder', value: stats.members === null ? '–' : formatDeNumber(Math.max(0, Math.trunc(stats.members))), inline: true },
+      { name: 'Neu diese Woche', value: formatDeNumber(Math.max(0, Math.trunc(stats.newThisWeek))), inline: true },
     )
     .setFooter({ text: WELCOME_COUNTER_FOOTER });
 }

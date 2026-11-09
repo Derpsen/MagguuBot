@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Hard-refactor: shared `src/utils/format.ts` (uptime/date/de-number); drops duplicate helpers; cached `Intl.NumberFormat` on embed hot paths.
 - MagguuUI FAQ/install embeds: v12.1.9 / WoW 12.1.5 + Forever; Tools-Banner 5×; Forever WowUp-Packs; QoL-Parität Smart Tab, Keybinds, Boost, BigWigs-Leistenstil, MapNotes-Import (ohne Zygor/RXP in öffentlicher Copy).
 - Discord error-code helpers consolidated in `src/discord/discord-errors.ts`; three private `isAlreadyGone` copies and the `rio-roles` copy of `discordErrorCode` removed (behavior unchanged, new unit test).
 - Refactor: 7 unused exports removed (routing, welcome counter, scrub test helper, FAQ auto-answer flag, two rollout helpers).

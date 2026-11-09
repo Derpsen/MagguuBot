@@ -2,6 +2,9 @@ import { EmbedBuilder } from 'discord.js';
 import type { FaqStatusBlock } from '../utils/faq-top.js';
 import type { UnseenReportBlock } from '../utils/unseen-report.js';
 import { Colors, truncate } from './colors.js';
+import { formatUptime } from '../utils/format.js';
+
+export { formatUptime };
 
 export const STATUS_WEBHOOK_SOURCES = [
   'sonarr',
@@ -47,15 +50,6 @@ export function readBuildInfo(env: NodeJS.ProcessEnv = process.env): BuildInfo {
     sha: UNKNOWN_REFS.has(rawSha) ? null : rawSha,
     date: UNKNOWN_REFS.has(rawDate) ? null : rawDate,
   };
-}
-
-export function formatUptime(s: number): string {
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
 }
 
 function formatAge(ms: number): string {

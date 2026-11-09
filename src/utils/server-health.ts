@@ -3,6 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 import { Colors, truncate } from '../embeds/colors.js';
 import { escapePlexMarkdown } from './plex-card.js';
 import { weeklyPeriodKey } from './schedule.js';
+import { formatDeNumber, germanDate } from './format.js';
 
 /**
  * Server health card: pure part (week key, anonymous active-user counter, embed, hash). No Discord, no DB.
@@ -88,27 +89,18 @@ export interface ServerHealthStats {
   weekStart: string;
 }
 
-function germanDate(dayKey: string): string {
-  const [y, m, d] = dayKey.split('-');
-  return `${d}.${m}.${y}`;
-}
-
-function num(n: number): string {
-  return new Intl.NumberFormat('de-DE').format(n);
-}
-
 /** One embed; no timestamp (the hash must only change with the content). */
 export function buildServerHealthEmbed(stats: ServerHealthStats): EmbedBuilder {
   const top = stats.topCommands.slice(0, SERVER_HEALTH_TOP_COMMANDS);
-  const lines = top.map((c, i) => `${i + 1}. /${escapePlexMarkdown(c.name.slice(0, MAX_COMMAND_NAME))} · ${num(c.count)}×`);
+  const lines = top.map((c, i) => `${i + 1}. /${escapePlexMarkdown(c.name.slice(0, MAX_COMMAND_NAME))} · ${formatDeNumber(c.count)}×`);
   return new EmbedBuilder()
     .setColor(Colors.info)
     .setTitle('📊 Server-Health')
     .setDescription(`Woche seit ${germanDate(stats.weekStart)} (Mo–So)`)
     .addFields(
-      { name: 'Mitglieder', value: stats.members === null ? '–' : num(stats.members), inline: true },
-      { name: 'Aktive Nutzer', value: num(stats.activeUsers), inline: true },
-      { name: 'Befehle', value: num(stats.commandsTotal), inline: true },
+      { name: 'Mitglieder', value: stats.members === null ? '–' : formatDeNumber(stats.members), inline: true },
+      { name: 'Aktive Nutzer', value: formatDeNumber(stats.activeUsers), inline: true },
+      { name: 'Befehle', value: formatDeNumber(stats.commandsTotal), inline: true },
       { name: 'Top-Befehle', value: truncate(lines.length > 0 ? lines.join('\n') : 'Noch keine Befehle.', 1024) },
     )
     .setFooter({ text: SERVER_HEALTH_FOOTER });
