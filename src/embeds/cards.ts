@@ -268,12 +268,12 @@ export function buildHelpCard(ctx: CardContext): CardPayload {
 export function buildFaqCard(ctx: CardContext): CardPayload {
   const tagLines = commandLines(ctx, [['tag list', 'alle FAQ-Einträge'], ['tag get', 'einen Eintrag abrufen']]);
   const embed = card('📦 MagguuUI: Installation & FAQ', [
-    'MagguuUI sitzt in **EllesmereUI** (Ready for WoW **12.1**, läuft weiter auf Midnight **12.0**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (`/mui tools` oder Header **10×**). UI in **11 Client-Sprachen**.',
+    'MagguuUI sitzt in **EllesmereUI** (**v12.1.9**, Ready for WoW **12.1.5**, läuft weiter auf Midnight **12.0**, auch auf **WoW Forever**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (EllesmereUI-Banner **5×** zum dauerhaften Freischalten; `/mui tools` öffnet einmal). UI in **11 Client-Sprachen**.',
     '',
     '**Installation**',
     '1. **EllesmereUI** 9.0.6+ installieren und aktivieren (CurseForge / Wago / WowUp)',
     `2. Neueste MagguuUI-ZIP aus ${mention(ctx, 'addonUpdates', CHANNEL.updates)} laden und entpacken`,
-    '3. Die **vier** Ordner nach `World of Warcraft/_retail_/Interface/AddOns/`: `MagguuUI`, `MagguuUI_Data` ([Data]), `MagguuUI_EUI` ([EUI]), `MagguuUI_Media` ([Media]), alle vier aktiviert lassen',
+    '3. Die **vier** Ordner nach `Interface/AddOns/` (Retail und Forever, ein Paket): `MagguuUI`, `MagguuUI_Data` ([Data]), `MagguuUI_EUI` ([EUI]), `MagguuUI_Media` ([Media]), alle vier aktiviert lassen. Forever-Profile bleiben getrennt von Retail',
     '4. Einloggen: Ellesmere-Startpopup wird übersprungen, das Magguu-Setup öffnet sich',
     '5. `/mui` → **Setup**: **Magguu-Profile übernehmen** (Profile + Magguu Settings + Begleiter; Edit Mode **MagguuUI** einmal; Window & Tooltip Skins Precheck), dann **Magguu Settings** (nur Overlay/QoL) oder **Profile laden** (nur aktivieren, außer Klassenlayouts; kein Neuimport). Scale `0.58` kommt mit. Auf einem Alt erscheint ein Popup zum Laden der Profile',
     '',
@@ -290,6 +290,8 @@ export function buildFaqCard(ctx: CardContext): CardPayload {
         'Im Setup kopieren und in WowUp einfügen.',
         '**Starter:** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky, EXBoss, EXCore',
         '**Optional:** BugGrabber, BugSack, HandyNotes, HandyNotes MapNotes, MDT, Raider.IO, Simulationcraft, Talent Tree Tweaks, Whisper Messenger, Waypoint UI, GTFO, Premade Groups Filter, Auctionator, Smart Reminders',
+        '**Forever (5):** EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky Raid Tools',
+        '**Forever (+8):** Auctionator, HandyNotes, Whisper Messenger, Waypoint UI, Talent Tree Tweaks, GTFO, BugSack, BugGrabber',
       ].join('\n'),
     },
     {
@@ -297,9 +299,9 @@ export function buildFaqCard(ctx: CardContext): CardPayload {
       value: [
         '`UI-Skalierung?` → `0.58` über Magguu-Profile übernehmen / Magguu Settings',
         '`Tooltip?` → fester Platz, folgt nicht der Maus',
-        '`Setup?` → Magguu-Profile übernehmen = Profile+Settings+Begleiter (Waypoint/HandyNotes/TTT/GTFO/BugSack/PGF). Magguu Settings = Overlay/QoL. Profile laden nur aktivieren (kein Neuimport). Setup-Buttons BigWigs/NSRT/EXBoss/Smart Reminders/Whisper Messenger. WowUp PGF+Auctionator+Smart Reminders+MapNotes',
+        '`Setup?` → Magguu-Profile übernehmen = Profile+Settings+Begleiter (Waypoint/HandyNotes/TTT/GTFO/BugSack/PGF). Magguu Settings = Overlay/QoL. Profile laden nur aktivieren (kein Neuimport). Setup-Buttons BigWigs/NSRT/EXBoss/Smart Reminders/Whisper Messenger. WowUp PGF+Auctionator+Smart Reminders+MapNotes. Forever: Setup wie Retail, getrennte Profile',
         '`Skinning?` → NAMEN & FARBEN DualRow (Unit | Party/Raid) + klassenfarbige Keybinds',
-        '`QoL?` → Death-Release, Co-Tank, Stealth/Stance, Spell-Alerts, Itemlevel Party/Raid (2P/4P), Smart Tab, Quick Focus, Ellesmere-Lautsprecher, Boiling Point; AuraBuff-Count CENTER. Targeted Spell Bars ON; EXBoss MythicCast OFF. Kein TopBar/Hearth/Magguu-FPS',
+        '`QoL?` → Smart Tab, Keybinds, Boost, BigWigs-Leistenstil, Death-Release, Co-Tank, Stealth/Stance, Spell-Alerts, Itemlevel (2P/4P), Quick Focus, Lautsprecher, AuraBuff CENTER (Retail+Forever). MapNotes mit HandyNotes (Retail Optional; Forever noch nicht in Collection). Retail: Boiling Point, DoT Coverage, Wild Guardian. Targeted Spell Bars ON; MythicCast OFF. Kein TopBar/Hearth/Magguu-FPS',
         '`Pre-Releases?` → werden gepostet, aber nicht gepingt',
       ].join('\n'),
     },

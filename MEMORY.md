@@ -366,3 +366,9 @@ Base commit 5733280, 2026-11-04. Next levers, only when the trigger hits:
 
 - MagguuUI addon live **v12.1.9**: Retail and WoW Forever in one package with one shared changelog. FAQ and tag copy name v12.1.9 as the latest release.
 - Forever WowUp packs (v12.1.9): Starter EllesmereUI, MagguuUI, BigWigs, LittleWigs, Northern Sky Raid Tools; Optional Auctionator, HandyNotes, Whisper Messenger, Waypoint UI, Talent Tree Tweaks, GTFO, BugSack, BugGrabber. EllesmereUI fixture/gate 9.8.2; Tools under Patch Notes after reveal; Raid Tools from bake.
+
+## MagguuUI v12.1.9 Forever QoL parity (2026-11-09, Marco via Buddy)
+
+- Source: MagguuUI tag `v12.1.9` (2026-11-08) README/CHANGELOG/AGENTS. Live release, not draft.
+- Player FAQ / pinned install card: Ready for WoW 12.1.5, also Forever; Tools unlock = EllesmereUI banner 5× (not 10×); Forever Retail/Optional packs listed separately; QoL names Smart Tab, class keybinds, Boost, MagguuUI BigWigs bar style, MapNotes import with HandyNotes.
+- Never name Zygor or RXP in public Bot answers, FAQ, website or changelog.
