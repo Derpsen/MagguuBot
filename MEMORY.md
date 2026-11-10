@@ -354,6 +354,10 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Step 3: dead exports removed after re-grep over src/tests/scripts/tools/frontend (0 readers): `allowedChannelNames`, `expectedChannelNames` (routing), `cancelWelcomeCounterRefresh`, `clearRegisteredSecretsForTests` (scrub), `faqAutoanswerEnabled`, `isPending`/`ownOverwrite` (rollout roles-effects). Drizzle row types in `schema.ts`, webhook payload types and `RIO_FORBIDDEN_PERMISSIONS` (documented denylist next to the allowlist gate) stay on purpose.
 - Step 4: Discord REST error-code helpers live in `src/discord/discord-errors.ts` (`discordErrorCode`, `isMessageGone`, `isPermanentDiscordError`, `isAlreadyGone`). Import them from there, not from `plex-card-manager.ts`, and never copy a private `isAlreadyGone`/`discordErrorCode` into a feature module again (`pin.ts` `discordErrorCodeOf` keeps its own undefined-semantics on purpose).
 
+## Renovate #120 (2026-11-10)
+
+- 2026-11-10 (Renovate #120, Marco via Buddy): CI red on `b6ce249` because Renovate bumped all three `undici` overrides to 7.30.2 and left `package-lock.json` unsynced (`npm ci` EUSAGE: lock file undici@7.30.1 does not satisfy undici@7.30.2) — typecheck + docker-scan failed. The 6.29.1→7.30.2 jump for discord.js/@discordjs/rest is a major and was wrongly grouped into `npm non-major` (the existing 'undici majors off' rule did not catch it). Fix on the Renovate branch: keep discord.js/@discordjs/rest on 6.29.1, land cheerio 7.30.2 + lockfile, add packageRule `matchCurrentVersion: /^6\./` + `allowedVersions: <7` so 6.x overrides cannot cross to 7.
+
 ## Hard-refactor 2026-11-09 (Marco via Buddy, skill autonomer-hard-refactor)
 
 - Step 1: shared leaf `src/utils/format.ts` (`formatUptime`, `germanDate`, `formatDeNumber` with cached `Intl.NumberFormat('de-DE')`). Call sites: `embeds/status.ts`, `commands/botinfo.ts`, `utils/server-health.ts`, `utils/welcome-counter.ts`. Characterization + microbench in `tests/format.test.ts` (cached formatter much faster than fresh Intl on embed hot paths).
