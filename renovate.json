@@ -150,6 +150,14 @@
       "enabled": false
     },
     {
+      "description": "undici 6.x overrides (discord.js/@discordjs/rest) stay on major 6; Renovate #120 grouped 6.29.1\u21927.30.2 into npm non-major",
+      "matchPackageNames": [
+        "undici"
+      ],
+      "matchCurrentVersion": "/^6\\./",
+      "allowedVersions": "<7"
+    },
+    {
       "description": "Node base image: digest/minor only, Node majors are a manual decision (engines >=26, Node 26 locked line)",
       "matchDatasources": [
         "docker"

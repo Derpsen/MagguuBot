@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Deps: cheerio `undici` override 7.30.1 → 7.30.2 (lockfile synced). discord.js/@discordjs/rest stay on undici 6.29.1; Renovate #120's 6→7 bump was reverted and a `<7` rule for 6.x overrides added.
 - Tests: admin route characterization (`tests/admin-routes.test.ts`) pins 45 admin method/path pairs and the requireAdmin gate before any god-file split.
 - Hard-refactor: shared `src/utils/format.ts` (uptime/date/de-number); drops duplicate helpers; cached `Intl.NumberFormat` on embed hot paths.
 - MagguuUI FAQ/install embeds: v12.1.9 / WoW 12.1.5 + Forever; Tools-Banner 5×; Forever WowUp-Packs; QoL-Parität Smart Tab, Keybinds, Boost, BigWigs-Leistenstil, MapNotes-Import (ohne Zygor/RXP in öffentlicher Copy).
