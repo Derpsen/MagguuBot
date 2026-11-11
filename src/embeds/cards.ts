@@ -20,6 +20,7 @@ import {
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import type { ResolvedTicketCategory } from '../discord/ticket-categories.js';
+import { formatAddonVersion, resolveAddonVersion } from '../utils/addon-version.js';
 import { BRAND_COLOR, WEBSITE_LOGO_URL } from './colors.js';
 import {
   CHANNEL,
@@ -43,6 +44,8 @@ export interface CardContext {
   commands: ReadonlyMap<string, CommandInfo>;
   /** Ticket categories for the help-channel ticket panel (DB or defaults). */
   ticketCategories?: ReadonlyArray<Pick<ResolvedTicketCategory, 'key' | 'label' | 'emoji' | 'description'>>;
+  /** MagguuUI release tag for the pinned FAQ. Optional; the builder falls back. */
+  addonVersion?: string;
 }
 
 export type CardRow = ActionRowBuilder<ButtonBuilder> | ActionRowBuilder<StringSelectMenuBuilder>;
@@ -266,9 +269,10 @@ export function buildHelpCard(ctx: CardContext): CardPayload {
  * are pinned by tests; `/mui` etc. are in-game WoW commands, not Discord ones.
  */
 export function buildFaqCard(ctx: CardContext): CardPayload {
+  const addonVersion = formatAddonVersion(ctx.addonVersion) ?? resolveAddonVersion();
   const tagLines = commandLines(ctx, [['tag list', 'alle FAQ-Einträge'], ['tag get', 'einen Eintrag abrufen']]);
   const embed = card('📦 MagguuUI: Installation & FAQ', [
-    'MagguuUI sitzt in **EllesmereUI** (**v12.1.9**, Ready for WoW **12.1.5**, läuft weiter auf Midnight **12.0**, auch auf **WoW Forever**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (EllesmereUI-Banner **5×** zum dauerhaften Freischalten; `/mui tools` öffnet einmal). UI in **11 Client-Sprachen**.',
+    'MagguuUI sitzt in **EllesmereUI** (**' + addonVersion + '**, Ready for WoW **12.1.5**, läuft weiter auf Midnight **12.0**, auch auf **WoW Forever**). Öffnen mit `/mui`. Sidebar: **Optionen** (Setup / Skinning / QoL) und **Changelog**. Werkzeuge bleiben versteckt (EllesmereUI-Banner **5×** zum dauerhaften Freischalten; `/mui tools` öffnet einmal). UI in **11 Client-Sprachen**.',
     '',
     '**Installation**',
     '1. **EllesmereUI** 9.0.6+ installieren und aktivieren (CurseForge / Wago / WowUp)',
