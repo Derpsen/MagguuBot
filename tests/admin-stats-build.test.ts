@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 
 // Real GET /api/admin/stats through buildApp (app.request, no socket).
 // Admin access is a signed session cookie for an allowlisted user — the same
 // requireAdmin path as production (tests/admin-routes.test.ts only pins the
 // route inventory in source, it does not issue requests).
 const dir = mkdtempSync(join(tmpdir(), 'magguu-admin-stats-'));
+
+after(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
+
 const ADMIN_ID = '1498095100000000001';
 const BUILD_SHA = 'abcdef1234567deadbeef';
 const BUILD_DATE = '2026-11-11T20:06:01Z';
