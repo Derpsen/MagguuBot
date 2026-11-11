@@ -24,6 +24,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - discord.js 14.27.0 → 14.28.0 (@discordjs/builders 1.15.0). Renovate: discord.js stays below 15, @types/node below 27.
 
 ### Docs
+- Tests: `tests/admin-stats-build.test.ts` pins `GET /api/admin/stats` `build` via a real `app.request` and a signed admin session cookie (allowlisted user), not a source regex. Unauth and a non-admin session stay 401.
 - Admin-SPA Übersicht zeigt die Image-Version (`sha-` + erste 7 Zeichen von `MAGGUU_BUILD_SHA`, sonst „unbekannt“) aus dem bestehenden admin-only `GET /api/admin/stats` (neues Feld `build`, gleiche Quelle wie `/status`). Keine Auth-Änderung, kein neuer Endpoint.
 - Slash-command inventory in AGENTS/README: 56 → 59. The category list omitted `/rio-link`, `/rio-unlink` and `/rio-config` (already documented in the Raider.IO section). `/search` was already listed under Downloads. No command code change.
 - Leftover `v12.1.8` tokens on current-claim (`live`) lines in AGENTS/MEMORY rephrased so they match live MagguuUI **v12.1.9**. That was why scheduled `version-check` job `check` went red on 2026-11-09..11. Historical 12.1.8 notes remain, without a `v`-token on those lines.
