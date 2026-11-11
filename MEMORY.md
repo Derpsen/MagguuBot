@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## Admin-SPA /stats-Build-Test (2026-11-11)
+
+- Code-Review-Low zu #124: `tests/admin-stats-build.test.ts` prüft `build` jetzt per echtem `GET /api/admin/stats` (`buildApp`/`app.request`, signierte `__Host-magguu_session` für eine Allowlist-ID). `tests/admin-routes.test.ts` bleibt die Source-Charakterisierung der Routenliste und hat keine Session. Unauth und Nicht-Admin bleiben 401. Nur Test + Docs.
+
 ## Admin-SPA Image-Version (2026-11-11)
 
 - Übersicht zeigt `sha-` + erste 7 Zeichen von `MAGGUU_BUILD_SHA` (sonst „unbekannt“; Build-Datum als Tooltip). Quelle: bestehendes admin-only `GET /api/admin/stats`, additives Feld `build` über `readBuildInfo()` (gleiche Quelle wie `/status`). Keine Auth-Änderung, kein neuer Endpoint, `tests/admin-routes.test.ts` unverändert. Live erst nach Image-Publish sichtbar.
