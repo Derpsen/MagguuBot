@@ -24,7 +24,7 @@ const COLOR_CHOICES = [
 
 const DURATION_PATTERN = /^(\d+)([smhd])$/i;
 
-function parseDuration(input: string): number | null {
+export function parseDuration(input: string): number | null {
   const m = DURATION_PATTERN.exec(input.trim());
   if (!m) return null;
   const n = Number(m[1]);

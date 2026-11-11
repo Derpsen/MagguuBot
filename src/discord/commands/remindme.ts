@@ -20,7 +20,7 @@ const MULTIPLIERS: Record<string, number> = {
 
 const MAX_DURATION_MS = 90 * 86_400_000;
 
-function parseDuration(input: string): number | null {
+export function parseDuration(input: string): number | null {
   const match = DURATION_RE.exec(input.trim());
   if (!match || !match[1] || !match[2]) return null;
   const value = Number(match[1]);

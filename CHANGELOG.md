@@ -25,6 +25,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - discord.js 14.27.0 → 14.28.0 (@discordjs/builders 1.15.0). Renovate: discord.js stays below 15, @types/node below 27.
 
 ### Docs
+- Tests: `tests/parse-duration.test.ts` golden-pins the three `parseDuration` copies (remindme / giveaway / schedule-announce), including measured divergence cases (`5ms`/`1hs` on remindme, case, decimals/plus, huge values, `Infinity` on remindme). They stay separate (different units and spacing); unification stays deferred until a bug or a fourth copy. The functions are exported only so the goldens call the real parsers. Behaviour unchanged.
 - Tests: `tests/admin-stats-build.test.ts` deletes its `mkdtempSync` directory in `after` (`rmSync`).
 - Tests: `tests/admin-stats-build.test.ts` pins `GET /api/admin/stats` `build` via a real `app.request` and a signed admin session cookie (allowlisted user), not a source regex. Unauth and a non-admin session stay 401.
 - Admin-SPA Übersicht zeigt die Image-Version (`sha-` + erste 7 Zeichen von `MAGGUU_BUILD_SHA`, sonst „unbekannt“) aus dem bestehenden admin-only `GET /api/admin/stats` (neues Feld `build`, gleiche Quelle wie `/status`). Keine Auth-Änderung, kein neuer Endpoint.
