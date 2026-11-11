@@ -2,7 +2,9 @@ import type { Guild } from 'discord.js';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { welcomeMessages } from '../db/schema.js';
+import { loadAnnouncedTags } from './addon-release-poller.js';
 import { commandIndex, resolveChannelRefs, type CardContext, type CommandInfo } from '../embeds/cards.js';
+import { resolveAddonVersion } from '../utils/addon-version.js';
 import { auditMessages, type AuditFinding, type AuditMessage } from '../utils/card-audit.js';
 import { ARCHIVE_CATEGORY_NAME } from './server-layout.js';
 import { listTicketCategories } from './ticket-categories.js';
@@ -48,6 +50,7 @@ export async function cardContextForGuild(guild: Guild, layoutIds: Record<string
     channels: resolveChannelRefs(layoutIds, activeChannelIds(guild)),
     commands: await guildCommandIndex(guild),
     ticketCategories: listTicketCategories(),
+    addonVersion: resolveAddonVersion(loadAnnouncedTags()),
   };
 }
 
