@@ -10,6 +10,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## Admin-SPA /stats-Build-Test (2026-11-11)
 
 - Code-Review-Low zu #124: `tests/admin-stats-build.test.ts` prüft `build` jetzt per echtem `GET /api/admin/stats` (`buildApp`/`app.request`, signierte `__Host-magguu_session` für eine Allowlist-ID). `tests/admin-routes.test.ts` bleibt die Source-Charakterisierung der Routenliste und hat keine Session. Unauth und Nicht-Admin bleiben 401. Nur Test + Docs.
+- Code-Review-Low zu #125: `tests/admin-stats-build.test.ts` räumt das `mkdtempSync`-Verzeichnis (`magguu-admin-stats-*` unter TMPDIR) in `after` per `rmSync` auf. Vorhandene Reste auf der Ubuntu-VM wurden 2026-11-11 gelöscht.
 
 ## Admin-SPA Image-Version (2026-11-11)
 
