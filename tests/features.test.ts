@@ -264,6 +264,19 @@ test('pinned FAQ and updates cards keep the current addon install facts', () => 
   assert.equal(/\/queue/.test(commands.description ?? ''), false, 'unregistered commands are not listed');
 });
 
+test('pinned FAQ card shows a supplied addon version instead of the fallback', () => {
+  const ctx: CardContext = {
+    channels: {},
+    commands: new Map([['help', { subcommands: new Set<string>() }]]),
+    addonVersion: 'v12.1.42',
+  };
+  const faq = buildFaqCard(ctx).embeds[0]!.toJSON();
+  const faqText = [faq.description, ...(faq.fields ?? []).map((field) => field.value)].join('\n');
+  assert.match(faqText, /\*\*v12\.1\.42\*\*/);
+  assert.equal(/v12\.1\.9/.test(faqText), false);
+  assert.match(faqText, /Ready for WoW \*\*12\.1\.5\*\*/);
+});
+
 test('setup dry-run plans welcome embed rewrites in full mode and skips them in fast mode', () => {
   const channels = [
     { planName: '❓・faq', status: 'exists' as const },

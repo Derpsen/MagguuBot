@@ -6,6 +6,11 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - ROI backlog #2: characterization only. `tests/parse-duration.test.ts` pins remindme vs giveaway vs schedule-announce (spaces, week/aliases only on remindme, shared `30s`/`15m`/`2h`/`3d`). The three functions are now exported; behaviour is unchanged. Do not unify until a bug is fixed in one copy or a fourth copy appears.
 
+## FAQ-Card MagguuUI-Version (2026-11-11)
+
+- `src/embeds/cards.ts` no longer hardcodes a `v`-token for the addon release. `buildFaqCard` uses `ctx.addonVersion` (filled from `addonReleaseAnnouncedTags` via `resolveAddonVersion` in `/setup-server` and `discord-cards`) and falls back to shipped `12.1.9` when the cache is empty or a value is not `major.minor.patch`. No new secret, no extra GitHub fetch. `scripts/check-versions.mjs` still fails on leftover `vX.Y.Z` literals in `src/`; `tests/addon-version.test.ts` pins that `cards.ts` has none.
+- Known limit / proposal: the pinned Discord FAQ card is only rewritten on the next card rollout, not when the addon-release poller or webhook announces a new tag. A follow-up could re-plan the help FAQ card after `markAddonReleaseAnnounced`.
+
 ## Admin-SPA /stats-Build-Test (2026-11-11)
 
 - Code-Review-Low zu #124: `tests/admin-stats-build.test.ts` prüft `build` jetzt per echtem `GET /api/admin/stats` (`buildApp`/`app.request`, signierte `__Host-magguu_session` für eine Allowlist-ID). `tests/admin-routes.test.ts` bleibt die Source-Charakterisierung der Routenliste und hat keine Session. Unauth und Nicht-Admin bleiben 401. Nur Test + Docs.

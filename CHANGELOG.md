@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Pinned FAQ card (`buildFaqCard`) reads the MagguuUI release tag from the existing addon-release announced-tag cache (last well-formed tag) and falls back to the last shipped known release (`12.1.9`, no `v`-token in `src/`). No new GitHub call, no new secret. The scheduled `version-check` job `check` no longer has a hardcoded `v`-token in `src/embeds/cards.ts` to go red on. The pinned Discord message still updates only on the next card rollout (`/setup-server` or `discord-cards`), not automatically when a release is announced.
 - Deps: cheerio `undici` override 7.30.1 → 7.30.2 (lockfile synced). discord.js/@discordjs/rest stay on undici 6.29.1; Renovate #120's 6→7 bump was reverted and a `<7` rule for 6.x overrides added.
 - Deps: `fast-xml-parser` 5.11.2 → 5.12.0 (non-major; GHSA-474x-hrwr-fgx4). Needed so `npm audit --omit=dev` and osv-scanner stay green.
 - Tests: admin route characterization (`tests/admin-routes.test.ts`) pins 45 admin method/path pairs and the requireAdmin gate in `src/server/admin/index.ts`.
