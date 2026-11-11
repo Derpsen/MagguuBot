@@ -6,9 +6,11 @@
 import { config } from '../config.js';
 import { sqliteHandle } from '../db/client.js';
 import { CHANNEL_CATALOG, type ChannelKey } from '../discord/channel-catalog.js';
+import { loadAnnouncedTags } from '../discord/addon-release-poller.js';
 import { listTicketCategories } from '../discord/ticket-categories.js';
 import { ARCHIVE_CATEGORY_NAME } from '../discord/server-layout.js';
 import { commandIndex, resolveChannelRefs, type CardContext } from '../embeds/cards.js';
+import { resolveAddonVersion } from '../utils/addon-version.js';
 import { expectedChannelName } from '../utils/routing.js';
 import type { LiveMessage, TrackedCard, TransientTable } from './cards-plan.js';
 import { isNewRef, planRollout, type GuildSnapshot } from './plan.js';
@@ -164,7 +166,7 @@ export async function collectLive(rest: DiscordRest, view: GuildView, scanLimit:
 }
 
 export function cardContext(view: GuildView, commands: CardContext['commands']): CardContext {
-  return { channels: resolveChannelRefs(view.layoutIds, view.activeIds), commands, ticketCategories: listTicketCategories() };
+  return { channels: resolveChannelRefs(view.layoutIds, view.activeIds), commands, ticketCategories: listTicketCategories(), addonVersion: resolveAddonVersion(loadAnnouncedTags()) };
 }
 
 /** Target channel per key: the layout channel that carries it (the state --apply establishes). */
