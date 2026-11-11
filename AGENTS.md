@@ -208,14 +208,14 @@ Channels are resolved at runtime via `getChannel(key)` from `src/discord/channel
 
 **CI failure alarm** — `.github/workflows/ci-alarm.yml` is a reusable workflow; `ci`, `docker` and `quality` each end with an `alarm` job (`if: failure()`, push on main only). It POSTs repository, workflow, SHA, run URL and the last ~20 redacted log lines as JSON to the GitHub secret `ESCALATION_WEBHOOK_URL` (`Authorization: Bearer` from `ESCALATION_BEARER`, passed via curl config on stdin, never echoed). Empty secret or non-https URL = quiet skip, `continue-on-error`, 10 s timeout, no alarm for re-runs, `Idempotency-Key` = sha256(repo|workflow|sha). Never add values to Git or logs. Controlled test: `gh workflow run ci-alarm.yml --ref main -f test=true` (`workflow_dispatch` input `test`, job runs only for the dispatch on main) posts one marked payload ("CI-Alarm Test, kein echter Fehler") without `failure()`; run it sparingly and read only the logged HTTP status.
 
-## Slash commands (56 total, categorized in `/help`)
+## Slash commands (59 total, categorized in `/help`)
 
 - Startup registration (`registerCommands` in `src/discord/client.ts`) reads the registered guild commands and re-PUTs when they differ from the code (same `diffCommands` as acceptance), even if the stored body hash is unchanged. Keep descriptions free of variation selectors/ZWJ (`tests/commands.test.ts`).
 
 - **Downloads**: `/queue`, `/arr-status`, `/calendar`, `/plex-top`, `/plex-now-playing`, `/neu`, `/search movie|show`
 - **Moderation**: `/warn`, `/timeout`, `/kick`, `/ban`, `/unban`, `/purge`, `/purge-user`, `/slowmode`, `/lockdown`
-- **Utility**: `/help`, `/announce`, `/poll`, `/profile`, `/wrapped`, `/movie-night`, `/countdown`, `/remindme`, `/erinnerung`, `/rank`, `/leaderboard`, `/userinfo`, `/serverinfo`, `/avatar`, `/botinfo`, `/status`, `/tag`, `/faq`, `/rep`, `/suggest`, `/afk`, `/snipe`, `/editsnipe`, `/quote`, `/giveaway`, `/birthday`
-- **Admin**: `/setup-server` (dry-run by default; renames/archives, never deletes; `full:true` re-renders all pinned panels), `/cleanup-server` (archive only), `/doctor`, `/downloads-live`, `/wochenstatistik`, `/sticky`, `/db-backup`, `/db-restore`, `/roles-panel`, `/autoresponder`, `/schedule-announce`, `/ticket-panel`, `/suggestion-status`, `/jtc`
+- **Utility**: `/help`, `/announce`, `/poll`, `/profile`, `/wrapped`, `/movie-night`, `/countdown`, `/remindme`, `/erinnerung`, `/rank`, `/leaderboard`, `/userinfo`, `/serverinfo`, `/avatar`, `/botinfo`, `/status`, `/tag`, `/faq`, `/rep`, `/suggest`, `/afk`, `/snipe`, `/editsnipe`, `/quote`, `/giveaway`, `/birthday`, `/rio-link`, `/rio-unlink`
+- **Admin**: `/setup-server` (dry-run by default; renames/archives, never deletes; `full:true` re-renders all pinned panels), `/cleanup-server` (archive only), `/doctor`, `/downloads-live`, `/wochenstatistik`, `/sticky`, `/db-backup`, `/db-restore`, `/roles-panel`, `/autoresponder`, `/schedule-announce`, `/ticket-panel`, `/suggestion-status`, `/jtc`, `/rio-config`
 
 ## GitHub webhook
 
