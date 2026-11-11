@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## parseDuration goldens (2026-11-11)
+
+- ROI backlog #2: characterization only. `tests/parse-duration.test.ts` pins remindme vs giveaway vs schedule-announce (spaces, week/aliases only on remindme, shared `30s`/`15m`/`2h`/`3d`). The three functions are now exported; behaviour is unchanged. Do not unify until a bug is fixed in one copy or a fourth copy appears.
+
 ## Admin-SPA /stats-Build-Test (2026-11-11)
 
 - Code-Review-Low zu #124: `tests/admin-stats-build.test.ts` prüft `build` jetzt per echtem `GET /api/admin/stats` (`buildApp`/`app.request`, signierte `__Host-magguu_session` für eine Allowlist-ID). `tests/admin-routes.test.ts` bleibt die Source-Charakterisierung der Routenliste und hat keine Session. Unauth und Nicht-Admin bleiben 401. Nur Test + Docs.
@@ -388,7 +392,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 Base commit f72984a / admin-split on `refactor/admin-router-split` (2026-11-11, PR, do not merge until Code-Review Ship). Remaining levers, only when the trigger hits:
 
 1. ~~Split `src/server/admin/index.ts` into per-area modules~~ — done in this PR: index.ts is the composer (requireAdmin + 45 pinned registrations); handlers live in area modules. `tests/admin-routes.test.ts` unchanged.
-2. Shared `parseDuration` helpers (remindme vs giveaway vs schedule-announce — different accepted units/spaces). Trigger: a bug fixed in one copy, or a fourth copy. Do not merge without per-input golden tests.
+2. Shared `parseDuration` helpers (remindme vs giveaway vs schedule-announce — different accepted units/spaces). Per-input goldens now live in `tests/parse-duration.test.ts`. Trigger to unify: a bug fixed in one copy, or a fourth copy. Do not unify without updating those goldens.
 3. Scheduler timer coalesce (28 `setInterval`s in `scheduler.ts`). Trigger: sustained overlap-skip warnings in logs. Keep tick isolation until then.
 4. `/help` <-> command registry cycle (accepted in `tests/import-cycles.test.ts`). Trigger: registry changes to eager reads. Low ROI while lazy.
 

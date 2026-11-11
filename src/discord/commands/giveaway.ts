@@ -15,7 +15,7 @@ import type { SlashCommand } from './index.js';
 
 const DURATION_REGEX = /^(\d+)\s*(s|m|h|d)$/i;
 
-function parseDuration(raw: string): number | null {
+export function parseDuration(raw: string): number | null {
   const m = raw.trim().match(DURATION_REGEX);
   if (!m) return null;
   const n = Number.parseInt(m[1] ?? '', 10);
