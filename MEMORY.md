@@ -153,7 +153,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## 2026-10-12 Facts refresh
 
-- MagguuUI addon live **v12.1.9** (was v12.1.8 until 2026-11-08).
+- MagguuUI addon live **v12.1.9** (since 2026-11-08).
 - Container runs as **uid 99** (entrypoint drops to `PUID=99`/`PGID=100` via su-exec; `PUID=0` keeps root). Images are signed with **Cosign keyless** (GitHub OIDC) in `docker.yml`.
 - **WIM is removed** everywhere. Whisper Messenger is the whisper chat in embeds/FAQ. Player button: **Apply Magguu profiles**.
 - Node: `engines.node >=26`, Node 26 live (Marco approved 2026-10-16); Active LTS 'Lithium' since 2026-10-28.
@@ -162,8 +162,8 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 - Helpers (renamed again 2026-10-16, IDs unchanged): "Website" = MagguuUI-Website only; "Bot & Dashboard" = MagguuBot + Magguu-Dashboard; "Addon (Lua)" = addon Lua; "Code-Review" = review on request; "Release" = releases/Tag-Gate; "Unraid & Server" = Unraid; Buddy = front door. Former names: Webcraft, Botsmith, Luaforge, Sentinel, Launchpad, Homebase. Captain and all group chats/rooms were deleted 2026-10-16; Buddy contacts helpers directly; Notion holds only rules and the daily Docs-Abgleich log.
 - Buddy makes small MagguuUI-Website design/text changes directly; bigger work goes to the helpers. Since 2026-10-12 helpers and Buddy push directly to `main` (no PRs, no pre-review); Buddy reviews commits afterwards; after a green Docker publish the no-AI Unraid pull/test script (`magguu-pull`, rollback on failure) pulls the new image.
-- Addon live **v12.1.9** (was v12.1.8). "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
-- Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, v12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
+- Addon live **v12.1.9**. "Split names" options are becoming "Two-tone unit-frame names" / "Two-tone party and raid names" (MagguuUI PR #30; `SPLIT_NAMES` keys unchanged): half the name in the default color, half in the class color.
+- Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, 12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
 - Unchanged: WIM removed, Whisper Messenger used; "Apply Magguu profiles"; Node 26 live; TS 7 released 2026-10-26 (native `tsc` via `@typescript/native`; `typescript` stays the TS 6 API shim for vue-tsc), h3 2 locked (Website only); @types/node 26 released 2026-10-26; uid 99 + Cosign; `engines.node >=26`; no tags without Marco's yes; never remove third-party author names.
 
 ## 2026-10-14 "Bot & Dashboard" wave
@@ -210,7 +210,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
   > - (updated 2026-10-15) Container `MagguuBot` / `ghcr.io/derpsen/magguu-bot`: digest `sha256:07b2cf08a14636e7e4593ab8a6f204efaa545157eff3c2acae75baf0a3ce4b61` (OCI `sha-db54e38` / tip `db54e38`) is the **2026-10-06 baseline (superseded)**. Last recorded Bot image (Notion Tag-Gate note 2026-10-14 ~23:39 Berlin, next to the live Website digest): OCI `sha-69f8d95` / digest `sha256:a5827ffe879da787aa6ff3e3f9012a96815eb7fef7a7e0cbd2d186dbee3ae82f` (includes the 2026-10-14 waves: `/status`, release poller, FAQ auto-answer, `/api/status`). GHCR `:latest` is now `sha-cb706c3` (`sha256:53f13eb5…`, green docker publish of a MEMORY-only commit → no "Unraid & Server" pull needed).
   >
-  > - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, v12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
+  > - Website live `sha-d8e734a` (digest `sha256:516f6c21…`, 2026-10-14: admin restyle, admin save clears cache, `/admin/content` shows a page list) — superseded: live since 2026-10-14 late evening is `sha-5db94ed` (digest `sha256:abfe0d1d…`, 12.1.8 changelog notes; superseded 2026-10-17 by `sha-6dc9870`, build id `da0941f8`, Node 26); legal notice = "free, non-commercial project operated from Switzerland" + `contact@magguu.xyz` (no name, no address).
 
 ## /neu (new on Plex) — wave b
 - Request (Marco): slash command `/neu` for new movies/series of the last N days. Rollback branch `rollback/pre-neu-9a45cd0`. Details: AGENTS.md "`/neu`".
@@ -353,6 +353,10 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 - Step 2: `tests/import-cycles.test.ts` walks `src/` (static value imports only; `import type` and `import()` ignored) and fails on any runtime import cycle beyond the accepted `/help` <-> `commands/index.ts` (registry read lazily in execute). New cycle = import `getClient` from `client-ref.ts`, use `import type`, or a lazy `import()`.
 - Step 3: dead exports removed after re-grep over src/tests/scripts/tools/frontend (0 readers): `allowedChannelNames`, `expectedChannelNames` (routing), `cancelWelcomeCounterRefresh`, `clearRegisteredSecretsForTests` (scrub), `faqAutoanswerEnabled`, `isPending`/`ownOverwrite` (rollout roles-effects). Drizzle row types in `schema.ts`, webhook payload types and `RIO_FORBIDDEN_PERMISSIONS` (documented denylist next to the allowlist gate) stay on purpose.
 - Step 4: Discord REST error-code helpers live in `src/discord/discord-errors.ts` (`discordErrorCode`, `isMessageGone`, `isPermanentDiscordError`, `isAlreadyGone`). Import them from there, not from `plex-card-manager.ts`, and never copy a private `isAlreadyGone`/`discordErrorCode` into a feature module again (`pin.ts` `discordErrorCodeOf` keeps its own undefined-semantics on purpose).
+
+## version-check job `check` red 2026-11-09..11
+
+- 2026-11-11 (Marco via Buddy): scheduled job `check` failed on 2026-11-09 17:38, 2026-11-10 16:02 and 2026-11-11 15:33 Europe/Berlin (runs 42656854732, 42840127026, 43039606079). Same cause in all three gh logs: leftover 12.1.8 `v`-tokens on addon-version claim lines after MagguuUI went to v12.1.9 (parenthetical "was …" and "changelog notes" in AGENTS/MEMORY). `upstream watch` and `undici lock watch` stayed green; evening watchdog skipped `check` and looked successful. Push CI was green. Not an EUI jump, fetch error or cache miss. Docs now state v12.1.9; dated 12.1.8 history kept without a `v`-token on those lines. No checker code change.
 
 ## Renovate #120 (2026-11-10)
 

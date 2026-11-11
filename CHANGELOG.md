@@ -24,6 +24,8 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - discord.js 14.27.0 → 14.28.0 (@discordjs/builders 1.15.0). Renovate: discord.js stays below 15, @types/node below 27.
 
 ### Docs
+- Leftover `v12.1.8` tokens on current-claim (`live`) lines in AGENTS/MEMORY rephrased so they match live MagguuUI **v12.1.9**. That was why scheduled `version-check` job `check` went red on 2026-11-09..11. Historical 12.1.8 notes remain, without a `v`-token on those lines.
+
 - ARCHIV deletion retry 2026-11-02 marked done (per the Unraid & Server dry run: category and both archived channels already deleted, nothing listed, retry queue 0); 2026-11-16 channel-list note: not relevant while the bot role has Administrator, kept for a future role change. Audit-log reason strings per delete path listed in AGENTS.
 
 ### Fixed
