@@ -431,5 +431,9 @@ Nach App-Image-Wellen: Prefer **Done-Wave Capture** (Buddy); skip "Unraid & Serv
 ## Hard-refactor 2026-11-09 (Marco via Buddy, skill autonomer-hard-refactor)
 
 - Step 1: shared leaf `src/utils/format.ts` (`formatUptime`, `germanDate`, `formatDeNumber` with cached `Intl.NumberFormat('de-DE')`). Call sites: `embeds/status.ts`, `commands/botinfo.ts`, `utils/server-health.ts`, `utils/welcome-counter.ts`. Characterization + microbench in `tests/format.test.ts` (cached formatter much faster than fresh Intl on embed hot paths).
-- Step 2: `tests/admin-routes.test.ts` pins the admin HTTP surface (45 method+path rows + `adminRouter.use('*', requireAdmin)`). No split of `src/server/admin/index.ts` yet — characterization first so a later router split cannot silently drop a route.
+- Step 2: `tests/admin-routes.test.ts` pins the admin HTTP surface (45 method+path rows + `adminRouter.use('*', requireAdmin)`). The test reads only `src/server/admin/index.ts`, so registrations and the requireAdmin gate must stay there.
+
+## Hard-refactor 2026-11-11 (Marco via Buddy)
+
+- `src/server/admin/index.ts` is the thin composer: `adminRouter.use('*', requireAdmin)` first, then the 45 method/path registrations in the pinned order. Handler bodies live in per-area modules (`session.ts`, `overview.ts`, `moderation.ts`, `members.ts`, `webhooks.ts`, `rss.ts`, `settings.ts`, `channels.ts`, `requests.ts`, `content.ts`) plus shared `helpers.ts`. `tests/admin-routes.test.ts` is unchanged. Do not move the `adminRouter.METHOD('path'` lines out of index.ts, and do not change commands, routes, paths, middleware order, or response contracts.
 

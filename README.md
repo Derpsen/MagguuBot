@@ -197,7 +197,7 @@ src/
 ├── embeds/                      # EmbedBuilder factories (no posting)
 ├── server/
 │   ├── app.ts                   # Hono + webhook auth + static dashboard
-│   ├── admin/                   # dashboard API
+│   ├── admin/                   # dashboard API (index.ts composer + per-area handlers)
 │   └── webhooks/                # sonarr, radarr, seerr, tautulli, sabnzbd, prowlarr, github
 ├── services/                    # *arr / SAB / Seerr / Tautulli / RSS clients
 └── utils/
