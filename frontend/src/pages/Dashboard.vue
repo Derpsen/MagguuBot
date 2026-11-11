@@ -5,6 +5,7 @@ import Skeleton from '../components/Skeleton.vue';
 
 interface Stats {
   uptimeSeconds: number;
+  build?: { sha: string | null; date: string | null };
   warningsCount: number;
   webhooksLast24h: number;
   topUser: { username: string; xp: number; level: number } | null;
@@ -104,6 +105,11 @@ function formatUptime(sec: number): string {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
+
+function formatBuildSha(sha: string | null | undefined): string {
+  if (!sha) return 'unbekannt';
+  return `sha-${sha.slice(0, 7)}`;
+}
 </script>
 
 <template>
@@ -117,6 +123,10 @@ function formatUptime(sec: number): string {
       <div class="flex items-center gap-2 text-xs text-slate-400">
         <span class="h-1.5 w-1.5 rounded-full bg-brand-400" />
         Live · {{ lastUpdated?.toLocaleTimeString() ?? 'verbinde …' }}
+        <span
+          class="font-mono text-slate-500"
+          :title="stats?.build?.date ?? undefined"
+        >{{ formatBuildSha(stats?.build?.sha) }}</span>
         <button class="btn-ghost btn-sm" :disabled="refreshing" @click="load()">Aktualisieren</button>
       </div>
     </div>

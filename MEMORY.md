@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## Admin-SPA Image-Version (2026-11-11)
+
+- Übersicht zeigt `sha-` + erste 7 Zeichen von `MAGGUU_BUILD_SHA` (sonst „unbekannt“; Build-Datum als Tooltip). Quelle: bestehendes admin-only `GET /api/admin/stats`, additives Feld `build` über `readBuildInfo()` (gleiche Quelle wie `/status`). Keine Auth-Änderung, kein neuer Endpoint, `tests/admin-routes.test.ts` unverändert. Live erst nach Image-Publish sichtbar.
+
 ## 2026-11-11 Slash-command inventory (docs)
 
 - Registry `src/discord/commands/index.ts` exports 59 guild commands. AGENTS/README still said 56 and the category list omitted `/rio-link`, `/rio-unlink`, `/rio-config` (those commands were already documented in the Raider.IO section). `/search` was already under Downloads. Docs aligned; no command code change. Live Discord registration was not compared (no token).

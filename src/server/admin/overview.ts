@@ -27,6 +27,7 @@ import {
 import { getChannel } from '../../discord/channel-store.js';
 import { getClient } from '../../discord/client-ref.js';
 import { getServiceHealth } from '../service-health.js';
+import { readBuildInfo } from '../../embeds/status.js';
 import { resolveUsername } from './helpers.js';
 
 const globalSearchSchema = z.string().trim().min(2).max(100);
@@ -177,6 +178,7 @@ export const getStats = async (c: Context<any, '/stats'>) => {
 
   return c.json({
     uptimeSeconds: Math.floor(process.uptime()),
+    build: readBuildInfo(),
     warningsCount,
     webhooksLast24h,
     topUser,
