@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## 2026-11-11 Slash-command inventory (docs)
+
+- Registry `src/discord/commands/index.ts` exports 59 guild commands. AGENTS/README still said 56 and the category list omitted `/rio-link`, `/rio-unlink`, `/rio-config` (those commands were already documented in the Raider.IO section). `/search` was already under Downloads. Docs aligned; no command code change. Live Discord registration was not compared (no token).
+
 ## 2026-10-25 Raider.IO review lows + score role rollout (Marco Go)
 
 - (2026-10-25: rollback branch `rollback/pre-riolows-0e019e3`) Part 1 (create the Discord roles) was NOT executed: the repo defines no default role names/thresholds/colors (`RIO_ROLE_THRESHOLDS` is empty by default, thresholds are admin data) and has no provisioning tool or repo-local token for it (no `.env`, only `.env.example`; `setup-server`/`cleanup-server` are in-bot slash commands). Nothing was invented, no token was searched for. Proposal and exact steps went into the report to Marco.
