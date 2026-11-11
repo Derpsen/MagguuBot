@@ -5,6 +5,12 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 ## parseDuration goldens (2026-11-11)
 
 - ROI backlog #2: characterization only. `tests/parse-duration.test.ts` pins remindme vs giveaway vs schedule-announce (spaces, week/aliases only on remindme, shared `30s`/`15m`/`2h`/`3d`). The three functions are now exported; behaviour is unchanged. Do not unify until a bug is fixed in one copy or a fourth copy appears.
+- Code-Review #127 divergence cases measured (IST, not endorsed): remindme `5ms` = 5 min and `1hs` = 1 h (optional trailing `s`); `1W`/`30MIN` only remindme; `2H`/`5M` all three; `1.5h`/`+5m` none; `99999999999999999999d` = `8.64e27` on all three; `'9'.repeat(400)+'m'` = `Infinity` on remindme only (schedule/giveaway return null via `Number.isFinite`).
+
+## Backlog (not done, proposals)
+
+- **parseDuration bugs (pinned by goldens, behaviour unchanged):** remindme can return `Infinity` (no finite check); none of the three parsers caps the result (remindme only caps 90 days in its handler; schedule-announce/giveaway accept `8.64e27` ms); remindme reads `5ms` as 5 minutes (trailing-`s` plural). Fix with a finite + upper-bound check per parser and a clearer unit regex; update the goldens in the same PR.
+- **FAQ addon version fallback (Low from #128 review):** when the announced-tag cache is empty or unreadable, `resolveAddonVersion` silently uses the shipped `12.1.9`; that value goes stale without a signal. Proposal: log once when the fallback is used, and/or let the scheduled `version-check` compare `FALLBACK_ADDON_VERSION` with the latest release.
 
 ## FAQ-Card MagguuUI-Version (2026-11-11)
 

@@ -51,6 +51,23 @@ const CASES: Case[] = [
   { input: '-1m', schedule: null, giveaway: null, remindme: null },
   { input: 'xyz', schedule: null, giveaway: null, remindme: null },
   { input: '5x', schedule: null, giveaway: null, remindme: null },
+  // Divergence cases (IST, measured 2026-11-11; behaviour pinned, not endorsed — see MEMORY backlog).
+  // remindme accepts an optional trailing `s`, so '5ms' is 5 minutes and '1hs' is 1 hour, not ms.
+  { input: '5ms', schedule: null, giveaway: null, remindme: 5 * M },
+  { input: '1hs', schedule: null, giveaway: null, remindme: 1 * H },
+  // remindme matches units case-insensitively, including week and long aliases
+  { input: '1W', schedule: null, giveaway: null, remindme: 1 * W },
+  { input: '30MIN', schedule: null, giveaway: null, remindme: 30 * M },
+  // all three match single-letter units case-insensitively
+  { input: '2H', schedule: 2 * H, giveaway: 2 * H, remindme: 2 * H },
+  { input: '5M', schedule: 5 * M, giveaway: 5 * M, remindme: 5 * M },
+  // decimals and explicit plus signs are rejected everywhere
+  { input: '1.5h', schedule: null, giveaway: null, remindme: null },
+  { input: '+5m', schedule: null, giveaway: null, remindme: null },
+  // no upper bound inside any parser (remindme caps 90 days later in its handler)
+  { input: '99999999999999999999d', schedule: 8.64e27, giveaway: 8.64e27, remindme: 8.64e27 },
+  // only remindme lacks a finite check: 400 nines overflow to Infinity there
+  { input: '9'.repeat(400) + 'm', schedule: null, giveaway: null, remindme: Number.POSITIVE_INFINITY },
 ];
 
 test('parseDuration goldens: schedule-announce vs giveaway vs remindme', () => {
