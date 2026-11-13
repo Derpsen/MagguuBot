@@ -11,6 +11,7 @@ All notable MagguuBot changes. Format loosely follows [Keep a Changelog](https:/
 - docker.yml: the GitHub build-provenance attestation is now also pushed to GHCR (`push-to-registry: true`, same as MagguuUI-Website). Verify commands in README/AGENTS.
 
 ### Changed
+- Deps: `hono` 4.13.14 → 4.13.18 (same major; first patched release is 4.13.16). Fixes GHSA-4h7h-rv7c-7m2v (`validator('form')` skipped `multipart/form-data` with extra parameters) and the other 4.13.15 advisories (mount path, RegExpRouter, csrf `text/ping`, css helper). Needed so `npm audit --omit=dev` stays green alongside `@hono/node-server` 2.1.6 in this PR. discord.js stays below 15, `@types/node` below 27, undici locks unchanged.
 - Pinned FAQ card (`buildFaqCard`) reads the MagguuUI release tag from the existing addon-release announced-tag cache (last well-formed tag) and falls back to the last shipped known release (`12.1.9`, no `v`-token in `src/`). No new GitHub call, no new secret. The scheduled `version-check` job `check` no longer has a hardcoded `v`-token in `src/embeds/cards.ts` to go red on. The pinned Discord message still updates only on the next card rollout (`/setup-server` or `discord-cards`), not automatically when a release is announced.
 - Deps: cheerio `undici` override 7.30.1 → 7.30.2 (lockfile synced). discord.js/@discordjs/rest stay on undici 6.29.1; Renovate #120's 6→7 bump was reverted and a `<7` rule for 6.x overrides added.
 - Deps: `fast-xml-parser` 5.11.2 → 5.12.0 (non-major; GHSA-474x-hrwr-fgx4). Needed so `npm audit --omit=dev` and osv-scanner stay green.

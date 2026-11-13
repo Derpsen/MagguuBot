@@ -2,6 +2,10 @@
 
 Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
+## hono 4.13.18 security bump (2026-11-13)
+
+- Renovate #129 (`@hono/node-server` 2.1.5 → 2.1.6) went red on `npm audit --omit=dev` because `hono` 4.13.14 is in GHSA-4h7h-rv7c-7m2v (and related 4.13.15 advisories). Bumped `hono` to 4.13.18 (major 4, first fix 4.13.16). No major jump, no `npm audit fix --force`, discord.js/`@types/node`/undici locks unchanged.
+
 ## parseDuration goldens (2026-11-11)
 
 - ROI backlog #2: characterization only. `tests/parse-duration.test.ts` pins remindme vs giveaway vs schedule-announce (spaces, week/aliases only on remindme, shared `30s`/`15m`/`2h`/`3d`). The three functions are now exported; behaviour is unchanged. Do not unify until a bug is fixed in one copy or a fourth copy appears.
