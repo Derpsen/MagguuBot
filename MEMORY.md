@@ -4,7 +4,7 @@ Helper memory for MagguuBot. Architecture and CI live in `AGENTS.md`.
 
 ## hono 4.13.18 security bump (2026-11-13)
 
-- Renovate #129 (`@hono/node-server` 2.1.5 → 2.1.6) went red on `npm audit --omit=dev` because `hono` 4.13.14 is in GHSA-4h7h-rv7c-7m2v (and related 4.13.15 advisories). Bumped `hono` to 4.13.18 (major 4, first fix 4.13.16). No major jump, no `npm audit fix --force`, discord.js/`@types/node`/undici locks unchanged.
+- Renovate #129 (`@hono/node-server` 2.1.5 → 2.1.6) went red on `npm audit --omit=dev` because `hono` 4.13.14 is in GHSA-4h7h-rv7c-7m2v (and related advisories). Bumped `hono` to 4.13.18 (major 4). 4.13.18 is the first release that fully closes all current advisories; 4.13.16 was only a partial fix for GHSA-4h7h-rv7c-7m2v. Also includes GHSA-39q9-qp46-w8xg (`bodyLimit()`, fixed only in 4.13.18). No major jump, no `npm audit fix --force`, discord.js/`@types/node`/undici locks unchanged.
 
 ## parseDuration goldens (2026-11-11)
 
